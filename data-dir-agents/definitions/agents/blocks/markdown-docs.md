@@ -1,0 +1,3 @@
+- **Important first:** put status/conclusion/overview at the top; keep questions out of the top section.
+- **No questions at the top:** keep the top section focused on the most important communications, not open questions.
+- When answering, start with a **very short summary** of the key information. Only elaborate further if necessary for comprehension.

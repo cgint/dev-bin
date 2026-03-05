@@ -1,0 +1,36 @@
+# Guidelines for coding
+
+It is important to follow these guidelines when creating or adapting code:
+- Create structured code that is easy to understand and maintain
+- Make classes where possible instead of simple functions
+- Structure the code in files according to their purpose / intent
+- How to ideally approach the task:
+  - Understand the task
+  - Understand the codebase
+  - Create a plan
+  - Create classes and interfaces
+  - Write the specification as test code
+  - Implement the code and iterate until the tests pass
+  - If you find more specification to be written as useful during implementation, write it as test code
+  - In case you change existing code, adapt the specification first
+
+## When you are done implementing:
+- Run `./precommit.sh` to check if everything is working
+- Fix all errors - warnings are not that important to address
+- Run `./precommit.sh` again to check if everything is working
+- Repeat until everything is working
+
+## When running python code in a UV project (uv.lock)
+- Run `uv run python <file>.py` to run the code
+
+
+## When askes to fix mypy errors:
+- Fix all errors from output of './pre_plugin_mypy.sh'
+- Repeat multiple errors in one file at once
+- Repeat until errors are fixed
+- Use types whereever possible.
+- Before adding self written type files or similar rather ignore the specific type of error with a '# type: ignore[<specific-type>]'
+- Do not change logic or too much code at all.
+- Only concentrate on the types.
+- If things seem to be unclear, switch to architect mode and clarify the things there before continuing with the coding
+- In case of real uncertainty - please ask

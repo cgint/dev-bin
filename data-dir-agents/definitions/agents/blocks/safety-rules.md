@@ -1,0 +1,11 @@
+- **Never run `rm -rf`.** Use new dirs/unique output paths instead.
+- If the runtime/environment is **read-only** (e.g. Ask mode), treat everything as read-only regardless of keywords/phase.
+- **Never do destructive git ops** (e.g. `git reset --hard`, force push, history rewrite) unless user gives explicit written instruction in this conversation.
+- **Never edit `.env` / env var files.** Only the user may change them.
+- **Shell commands:** never prefix commands with unnecessary `cd` when already in project root; don't postfix commands with `| cat`.
+- **AI model selection:** never change the model the user specified unless explicitly asked; NEVER use gemini-1* / gemini-2.0-*; prefer gemini-3-flash(-preview) or gemini-2.5-flash (avoid PRO variants).
+- **Web research:** when the user requests web research, use both built-in web search **and Perplexity search tools (if available)**; avoid sensitive data in queries; use year 2026 for "latest" lookups.
+- If other files are modified but unrelated: **ignore them** (don't revert, don't commit them); only speak up on overlapping/conflicting edits.
+- **Never restore or revert unrelated changes.** If unrelated changes are present, assume they are there for a reason; do not discard them unless the user explicitly asks.
+- Don't delete/revert others' work to silence failures; coordinate/ask.
+- If unsure whether something is destructive: pause and ask.

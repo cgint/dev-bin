@@ -1,0 +1,119 @@
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ $# -ne 1 ]]; then
+  echo "Usage: md2html <file.md>" >&2
+  exit 1
+fi
+input="$1"
+output="${input%.md}.html"
+title="$(basename "$input" .md)"
+
+pandoc -s \
+  --metadata title="$title" \
+  --syntax-highlighting=tango \
+  -B <(cat <<'EOF'
+<style>
+body {
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 12px !important;
+  font-family: "HelveticaNeue-Light", sans-serif, "宋体", "Segoe WPC", "Segoe UI", "SFUIText-Light", "Droid Sans Fallback" !important;
+  font-size: 18px !important;
+  line-height: 1.6 !important;
+  word-wrap: break-word;
+  color: #333333 !important;
+}
+
+a {
+  color: #4080D0;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+pre {
+  background: #f5f5f5;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 12px;
+  overflow-x: auto;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+code {
+  background: #f5f5f5;
+  border-radius: 3px;
+  padding: 0.2em 0.4em;
+  font-size: 14px;
+  font-family: "Courier New", Courier, monospace;
+}
+
+:not(pre):not(.hljs) > code {
+  color: #C9AE75;
+  font-size: inherit;
+}
+
+pre code {
+  background: transparent;
+  padding: 0;
+  font-size: inherit;
+  color: inherit;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+}
+
+h1 { font-size: 2em; border-bottom: 2px solid #4080D0; padding-bottom: 0.3em; }
+h2 { font-size: 1.5em; border-bottom: 1px solid #ddd; padding-bottom: 0.3em; }
+h3 { font-size: 1.25em; }
+
+blockquote {
+  border-left: 4px solid #4080D0;
+  margin: 0;
+  padding: 0 0 0 12px;
+  color: #666;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+}
+
+th, td {
+  border: 1px solid #ddd;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+th {
+  background: #f5f5f5;
+  font-weight: 600;
+}
+
+tr:nth-child(even) {
+  background: #fafafa;
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid #ddd;
+  margin: 2em 0;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+</style>
+EOF
+) \
+  "$input" -o "$output"
+
+echo "→ $output"

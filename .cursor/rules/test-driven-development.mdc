@@ -1,0 +1,13 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Test-Driven Development
+
+Always follow basic TDD principles while keeping in mind the stage of the project or feature (prototype - minimal testing, mature - rigid testing of behaviour):
+1) **Create or Find+modify tests** that cover your functionality change to reflect desired behavior - they must fail initially. 
+2) **Write/adapt code** to make tests pass. 
+3) **Run full test suite** to ensure no regressions. 
+
+**Key principle:** Never write code without a failing test first - test failure proves the test works.

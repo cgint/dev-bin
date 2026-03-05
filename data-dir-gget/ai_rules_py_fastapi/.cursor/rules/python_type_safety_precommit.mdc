@@ -1,0 +1,17 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+### Type Safety (MANDATORY)
+- **ALL functions MUST have complete type annotations** for parameters AND return values
+- Use `-> None` explicitly for functions that don't return values
+- NO untyped functions allowed - mypy will catch and reject these
+
+### Quality Assurance Workflow
+- **MANDATORY: Run `./precommit.sh` after any non-trivial changes or additions**
+- All quality checks must pass before committing:
+  - mypy (type checking)
+  - ruff (formatting/linting) 
+  - pytest (tests)
+- Fix type errors immediately when they appear

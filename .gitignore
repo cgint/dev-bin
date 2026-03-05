@@ -1,0 +1,21 @@
+!.aider.conf.yml
+!.aiderignore
+.aider*
+.env
+agent
+cursor-agent
+*_codegiant_*
+neo4j_export/
+
+codecollector_not_include
+# Ignore Code Giant output directory
+.codegiant/
+.claude/
+.DS_Store
+web/
+
+__pycache__/
+
+testing_tmp/
+*.zip
+.venv*

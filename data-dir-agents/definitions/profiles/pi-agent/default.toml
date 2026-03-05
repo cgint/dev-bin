@@ -1,0 +1,4 @@
+name = "default"
+target_dir = "~/.pi/agent"
+agents_file = "AGENTS_GPT52.md"
+# skills and prompts keys absent = all included

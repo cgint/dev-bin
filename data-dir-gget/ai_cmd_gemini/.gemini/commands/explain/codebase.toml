@@ -1,0 +1,46 @@
+description = "Generate a comprehensive self-contained HTML document combining technical architecture and functional features of the codebase."
+
+prompt = """
+<!-- GINTI:START -->
+**Guardrails**
+- Create a clear and readable *self-contained* HTML file that comprehensively explains both the technical architecture and functional features of the codebase.
+- **Follow a top-down approach**: Start with the highest-level overview, then progressively reveal more detail. Users should be able to stop reading at any point with a complete understanding at that level, or dive deeper if desired.
+- The documentation should serve both technical developers (understanding code structure) and non-technical users (understanding what the system does).
+- The HTML output must include referenced SVG diagrams visualizing both code relationships and user flows/feature interactions.
+- The command should require no external resources to view or understand, except for the SVG files which are referenced.
+- Favor directness: produce an artifact immediately useful for complete codebase orientation and understanding.
+- Only document actual, existing code and features—do not speculate or invent undocumented parts.
+- All diagrams must be referenced as external SVG files (no fetches or external embeds within the SVG itself).
+
+**Steps**
+1. Analyze the main project files and modules, extracting high-level structure such as packages, main class/function definitions, and their relationships.
+2. Identify key user-facing features and functionalities of the codebase.
+3. Generate one or more PlantUML diagrams representing:
+   - Code relationships (e.g., file/module tree, call-graph, class inheritance) for the technical section
+   - User flows or feature interactions for the functional section
+   Save these as separate SVG files.
+4. Convert the PlantUML diagrams to SVG using the `plantuml-python` library and save these as separate SVG files.
+  - Technical diagram: `cat codebase_overview.puml | docker run --rm -i plantuml/plantuml -tsvg -pipe > codebase_overall_tech.svg`
+  - Functional diagram: `cat flow_diagram.puml | docker run --rm -i plantuml/plantuml -tsvg -pipe > codebase_overall_functional.svg`
+5. Structure the HTML document in a **top-down manner**:
+   - **Introduction**: A brief overview of what the codebase does (2-3 sentences covering both purpose and capabilities)
+   - **At a Glance**: Quick reference of main features from a users perspective and none technical details.
+   - **Functional Features Section** (progressively detailed):
+     - Key features overview
+     - Feature details and how to use them
+     - Step-by-step guides (optional, for deeper guidance)
+   - **Technical Architecture Section** (progressively detailed):
+     - High-level architecture overview with diagram
+     - Component details and inter-connections
+     - Implementation notes (optional, for those diving deepest)
+6. Combine both sections and HTML references to the SVG diagrams into a single, standalone HTML file with clear navigation between sections.
+7. Ensure all output is self-contained, with the exception of the referenced SVG files. Do not require external CSS, JS, or assets for rendering or navigation.
+8. Name the file `codebase_overall.html`.
+9. Finally call `open codebase_overall.html` to open the file in the default browser.
+
+**Reference**
+- Review existing codebase docs if present for context.
+- Always show actual code structure and functional features.
+- Provide clear section headers and navigation to distinguish between technical and functional information.
+<!-- GINTI:END -->
+"""

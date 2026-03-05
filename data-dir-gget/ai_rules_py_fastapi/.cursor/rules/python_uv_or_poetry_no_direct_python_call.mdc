@@ -1,0 +1,136 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# 🚨 CRITICAL PYTHON COMMAND RULE 🚨
+
+**NEVER use bare `python` commands - they bypass virtual environments!**
+
+## MANDATORY CHECK BEFORE ANY PYTHON COMMAND:
+1. **ALWAYS check project layout for dependency files**
+2. **IF uv.lock exists** → use `uv run python ...`
+4. **NO EXCEPTIONS**
+
+## Command Examples:
+```bash
+# ❌ WRONG - bypasses virtual env
+python script.py
+python -c "import something"
+
+# ✅ CORRECT - uses virtual env
+uv run python script.py
+uv run python -c "import something"
+```
+
+## Memory Trigger:
+**Every time you type "python" → STOP → Check for uv.lock → Use "uv run python"**
+
+---
+
+# 📦 MIGRATION FROM POETRY TO UV (2025 BEST PRACTICES)
+
+## Why Migrate to UV?
+- **Performance**: 10x+ faster dependency resolution and installation
+- **Single Binary**: No complex installation, distributed as standalone binary
+- **Modern Standards**: Better alignment with PEP 621, PEP 735, etc.
+- **Unified Tool**: Replaces pip, pyenv, pipx, pip-tools, and Poetry in one tool
+- **Python Management**: Can install and manage Python versions directly
+
+## Migration Strategy: Gradual Project-by-Project Approach
+**Recommended**: Migrate projects one by one rather than big-bang migration.
+
+### Step-by-Step Migration Process
+
+#### 1. Prerequisites
+```bash
+# Install uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+# or
+brew install uv
+
+# Verify installation
+uv --version
+```
+
+#### 2. Convert pyproject.toml
+```bash
+# Option A: Use dedicated migration tool (recommended)
+uvx migrate-to-uv
+
+# Option B: Use PDM import (more control)
+uvx pdm import pyproject.toml
+```
+
+#### 3. Manual Cleanup (CRITICAL)
+After running the migration tool, manually clean up `pyproject.toml`:
+
+1. **Remove old Poetry sections**:
+   - Delete all `[tool.poetry]` sections
+   - Delete `[tool.poetry.dependencies]`
+   - Delete `[tool.poetry.group.*]` sections
+
+2. **Fix build system** (if using PDM import):
+   ```toml
+   # Replace PDM backend with setuptools
+   [build-system]
+   requires = ["setuptools >= 61.0"]
+   build-backend = "setuptools.build_meta"
+   ```
+
+3. **Update dependency groups**:
+   ```toml
+   # Rename [tool.pdm.dev-dependencies] to:
+   [dependency-groups]
+   dev = [
+       "pytest>=8.0.0",
+       "ruff>=0.7.0",
+   ]
+   ```
+
+4. **Configure UV defaults** (optional):
+   ```toml
+   [tool.uv]
+   default-groups = []  # Don't install dev deps by default in production
+   ```
+
+#### 5. Recreate Virtual Environment
+```bash
+# Remove old virtual environment
+rm -rf .venv
+
+# Install dependencies with UV
+uv sync
+
+# Verify migration worked
+uv run pytest  # or your test command
+```
+
+### Verification Checklist
+After migration, verify:
+- [ ] `uv sync` installs all dependencies correctly
+- [ ] `uv run pytest` (or your test command) passes
+- [ ] All dependency groups are properly defined
+- [ ] CI/CD pipelines work with UV commands
+- [ ] Pre-commit hooks use UV equivalents
+- [ ] Build/deployment processes updated
+
+### Troubleshooting Common Issues
+
+1. **Dependency groups not working**: Ensure you renamed `[tool.pdm.dev-dependencies]` to `[dependency-groups]`
+
+2. **Missing dependencies in production**: Check `[tool.uv.default-groups]` configuration
+
+3. **Build system errors**: Verify `[build-system]` uses a compatible backend (not `pdm.backend`)
+
+4. **Lock file issues**: Run `uv lock --check` to verify lock file consistency
+
+### When NOT to Migrate (Yet)
+Consider delaying migration if:
+- Project uses complex Poetry plugins that have no UV equivalent
+- Team is not ready for the tooling change
+- CI/CD pipeline is too complex to update immediately
+
+### Final Note
+**UV is the recommended approach for 2025**. The Python packaging ecosystem is converging on UV due to its performance and modern design. Plan to migrate incrementally but consistently.

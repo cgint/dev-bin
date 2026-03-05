@@ -1,0 +1,18 @@
+name = "partner"
+target_dir = "~/.pi/profiles/partner/agent"
+agents_file = "AGENTS_PARTNER.md"
+
+skills = [
+  "codebase-search",
+  "tldr",
+  "read-code-structure",
+  "web-search",
+  "web-browser-use",
+  "diagrams",
+  "sub-agent-handoff",
+  "my-tools-toolbox",
+  "openspec-apply-change",
+  "openspec-propose"
+]
+
+prompts = ["done-archived-commit-exact.md"]

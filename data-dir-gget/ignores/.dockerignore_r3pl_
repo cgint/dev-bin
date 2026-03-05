@@ -1,0 +1,58 @@
+# Do not add ignores specific to your repository here.
+# Add them in a files named .extra_repo_ignores in your repository instead.
+# Contents of .extra_repo_ignores will be prepended to the ignores file in this directory.
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+node_modules/
+.eslintcache/
+.svelte-kit/
+.wrangler/
+build/
+dist/
+*.egg-info/
+coverage/
+htmlcov/
+
+# IDE specific files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+.~lock*
+
+# Test output files
+test-logs/
+test-results/
+mlruns/
+playwright-report/
+
+!.aider.conf.yml
+!.aiderignore
+.aider*
+.env
+*.env.yaml
+*_codegiant_*
+.codegiant/
+.claude/
+
+*.log
+*.tar.gz
+*.gz
+*.zip
+*.tar
+
+.aider*
+!.aider.conf.yml

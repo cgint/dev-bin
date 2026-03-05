@@ -1,0 +1,12 @@
+@startuml
+actor User
+rectangle Frontend {
+  LandingPage
+  Login
+}
+rectangle Backend {
+  AuthService
+  API
+}
+User -> LandingPage -> Login -> AuthService -> API
+@enduml

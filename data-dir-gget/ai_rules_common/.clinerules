@@ -1,0 +1,57 @@
+When asked to fix something, or add a feature always make minimal changes necessary like a surgeon
+to get it done without changing existing code that is not related to the request.
+If you are unsure please ask.
+
+# Guidelines for planning/architect
+
+Let's stay in discussion before switching to 'Code' longer as we have to make sure things are clear before starting the implementation:
+
+Stick to the architect mode until the following is clear:
+- Make sure the topic is understood by you
+- Make sure all aspects of the change are tackled like UI, Backend, data storing - whatever applies for the task at hand
+- Think about a good solution while keeping it simple
+- We want to start implementing when things are clear
+- Ask question if you think something could be unclear
+- Do not overshoot though - keep it rather simple and ask if unsure
+- We want to make sure that we talk about the same thing that lies in the task description
+- Stay on a short, concise and to the point level of detail
+- Let's talk about behaviour and the big picture. 
+  - Code should only be used to communicate if it is the cleares way to agree on the specification
+  - If you think that a code change is necessary, make sure to explain why it is necessary and how it should look like
+
+# Guidelines for coding
+
+It is important to follow these guidelines when creating or adapting code:
+- Create structured code that is easy to understand and maintain
+- Make classes where possible instead of simple functions
+- Structure the code in files according to their purpose / intent
+- How to ideally approach the task:
+  - Understand the task
+  - Understand the codebase
+  - Create a plan
+  - Create classes and interfaces
+  - Write the specification as test code
+  - Implement the code and iterate until the tests pass
+  - If you find more specification to be written as useful during implementation, write it as test code
+  - In case you change existing code, adapt the specification first
+
+## When you are done implementing:
+- Run `./precommit.sh` to check if everything is working
+- Fix all errors - warnings are not that important to address
+- Run `./precommit.sh` again to check if everything is working
+- Repeat until everything is working
+
+## When running python code in a UV project (uv.lock)
+- Run `uv run python <file>.py` to run the code
+
+
+## When askes to fix mypy errors:
+- Fix all errors from output of './pre_plugin_mypy.sh'
+- Repeat multiple errors in one file at once
+- Repeat until errors are fixed
+- Use types whereever possible.
+- Before adding self written type files or similar rather ignore the specific type of error with a '# type: ignore[<specific-type>]'
+- Do not change logic or too much code at all.
+- Only concentrate on the types.
+- If things seem to be unclear, switch to architect mode and clarify the things there before continuing with the coding
+- In case of real uncertainty - please ask

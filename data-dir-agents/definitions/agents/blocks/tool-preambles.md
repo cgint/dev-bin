@@ -1,0 +1,2 @@
+- Before tool calls: restate the goal + a short 2–4 step plan
+- After tool calls: summarize what you learned/changed + the next step

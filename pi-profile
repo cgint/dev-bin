@@ -1,0 +1,57 @@
+#!/bin/bash
+# pi-profile [profile] [pi args...]
+#   profile: default, minimal, etc. (defaults to "default")
+#   pi args: passed through to pi
+#
+# Usage:
+#   pi-profile              # run default profile
+#   pi-profile minimal      # run minimal profile
+#   pi-profile --list      # list deployed profiles
+
+set -euo pipefail
+
+PI_BASE="$HOME/.pi"
+
+list_profiles() {
+  echo "Deployed pi-agent profiles:"
+  if [ -d "$PI_BASE/agent" ]; then
+    echo "  default  -> $PI_BASE/agent"
+  fi
+  if [ -d "$PI_BASE/profiles" ]; then
+    for d in "$PI_BASE/profiles"/*/; do
+      [ -d "$d" ] || continue
+      name=$(basename "$d")
+      if [ -d "$d/agent" ]; then
+        echo "  $name     -> $d/agent"
+      fi
+    done
+  fi
+}
+
+if [ $# -eq 0 ]; then
+  list_profiles
+  exit 0
+fi
+
+PROFILE="$1"
+
+if [ "$PROFILE" = "--list" ] || [ "$PROFILE" = "-l" ]; then
+  list_profiles
+  exit 0
+fi
+
+shift
+
+if [ "$PROFILE" = "default" ]; then
+  export PI_CODING_AGENT_DIR="$PI_BASE/agent"
+else
+  export PI_CODING_AGENT_DIR="$PI_BASE/profiles/$PROFILE/agent"
+fi
+
+if [ ! -d "$PI_CODING_AGENT_DIR" ]; then
+  echo "Profile '$PROFILE' not found at $PI_CODING_AGENT_DIR" >&2
+  echo "Run agents_files_cp.sh to deploy profiles. Use 'pi-profile --list' to see available profiles." >&2
+  exit 1
+fi
+
+exec pi "$@"

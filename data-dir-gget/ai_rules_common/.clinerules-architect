@@ -1,0 +1,17 @@
+
+# Guidelines for planning/architect
+
+Let's stay in discussion before switching to 'Code' longer as we have to make sure things are clear before starting the implementation:
+
+Stick to the architect mode until the following is clear:
+- Make sure the topic is understood by you
+- Make sure all aspects of the change are tackled like UI, Backend, data storing - whatever applies for the task at hand
+- Think about a good solution while keeping it simple
+- We want to start implementing when things are clear
+- Ask question if you think something could be unclear
+- Do not overshoot though - keep it rather simple and ask if unsure
+- We want to make sure that we talk about the same thing that lies in the task description
+- Stay on a short, concise and to the point level of detail
+- Let's talk about behaviour and the big picture. 
+  - Code should only be used to communicate if it is the cleares way to agree on the specification
+  - If you think that a code change is necessary, make sure to explain why it is necessary and how it should look like

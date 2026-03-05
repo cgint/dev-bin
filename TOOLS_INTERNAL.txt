@@ -1,0 +1,89 @@
+# CLI Tools Catalog
+# Run <tool> -h for detailed usage information
+
+================================================================================
+TOOLS WITHOUT -h (use source/comments for usage)
+================================================================================
+
+--- CONFIGURATION & DEPLOYMENT ---
+
+gget.sh             Deploy configuration "scenarios" (gitignore, cursorrules, etc.) to current dir
+                    Usage: gget.sh [-f] <scenario> [filename] — Lists scenarios if no args
+
+grollout.sh         Sync a file from data-dir-gget scenario to all matching files in ~/dev
+                    Usage: grollout.sh <scenario> <filename> — Propagates config updates
+
+agents_files_cp.sh     Copy AGENTS.md files to Gemini/Codex/Copilot config directories
+                    Usage: just run it from ~/.local/bin directory
+
+--- PROJECT MANAGEMENT ---
+
+gopen.sh            Quick-launch projects in ~/dev; opens in editor (default: cursor)
+                    Usage: gopen.sh <query> [editor] — Use 'bin' to open scripts directory
+
+gclone.sh           Clone and rename a Cloudflare/Node project directory
+                    Usage: gclone.sh <old_project> <new_project>
+
+gcd.sh              Shell function to cd into a project found by gopen.sh
+                    Usage: source this script, then use: gcd <query>
+
+--- AI & CODING FOR HUMAN USE ---
+
+aider.sh            Launches aider AI coding assistant with preconfigured environment ::: Example: aider.sh
+
+
+--- GIT & VERSION CONTROL ---
+
+git_apply_changes.sh  Apply uncommitted git diff from source dir to target dir
+                      Usage: git_apply_changes.sh <source-dir> <target-dir>
+
+obsi_git_pull.sh      Pull latest changes for Obsidian notes repo
+obsi_git_commit_push.sh  Commit and push Obsidian notes changes
+
+--- NODE.JS & NPM ---
+
+complete_node_upgrade.sh  Upgrade all npm dependencies in package.json
+node_update_reinstall.sh  Update and reinstall node modules
+                          (Both require package.json in current directory)
+
+--- NEO4J DATABASE ---
+
+neo4j_auto_export.sh     Export Neo4j databases from Docker containers
+neo4j_backup.sh          Backup Neo4j database (requires downtime)
+neo4j_export_structured.py  Structured export of Neo4j data (needs chmod +x)
+
+--- SYSTEM & INSTALLATION ---
+
+install_ollama_mac.sh    Install specific Ollama version on macOS
+cgi_update_mac_stuff.sh  Update Mac system tools and packages
+
+--- WRANGLER / CLOUDFLARE ---
+
+wrangler_logs_tail.sh    Tail logs for Cloudflare Pages deployments
+
+--- INTERNAL / HELPER ---
+
+_env_loader.sh      Helper to load .env files; source from other scripts
+baider.sh           Launches aider with --browser flag
+test_codeg_newline_space.sh  Test script for codegiant (internal)
+java_switch_info.sh       Shows how to switch Java versions with SDKMAN
+code_collector_cp_idea.sh  Copy code collector ideas (internal)
+
+================================================================================
+PYTHON SCRIPTS (require chmod +x or run via uv/python)
+================================================================================
+
+html_cleaner.py     HTML cleaning library (use html_cleaner.sh wrapper instead)
+url2md.py           Fetch URL and convert HTML to Markdown (Pandoc required); default stdout for agents ::: Example: url2md.py https://example.com ::: url2md.py <url> -o out.md ::: Do not use for github.com
+create_logo_blog.py Generate blog logos (requires specific article file structure)
+neo4j_export_structured.py  Export Neo4j data (run via python/uv)
+
+================================================================================
+NOTES
+================================================================================
+
+- Most .sh scripts are executable; Python scripts may need: chmod +x <script>
+- Python scripts often require uv or a virtual environment
+- Environment variables are loaded via _env_loader.sh (source .env files)
+- The data-dir-gget/ directory contains configuration templates for gget.sh
+

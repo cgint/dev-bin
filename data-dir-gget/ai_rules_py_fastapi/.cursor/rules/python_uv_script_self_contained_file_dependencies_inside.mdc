@@ -1,0 +1,45 @@
+---
+description: When told to create uv tool standalong self-contained python script, use this rule.
+alwaysApply: false
+---
+
+# 📄 UV STANDALONE SCRIPTS (SINGLE-FILE APPROACH)
+
+## Overview
+UV supports **standalone Python scripts** with inline dependency declarations using PEP 723, eliminating the need for separate `pyproject.toml` files.
+
+## Python Version Guidelines to Use Python 3.11+
+Always use Python 3.11+ unless explicitly told otherwise.
+
+## Inline Script Dependencies
+```python
+#!/usr/bin/env python3
+# /// script
+# dependencies = [
+#     "neo4j>=5.0.0",
+#     "pandas>=2.0.0",
+# ]
+# requires-python = ">=3.11"
+# ///
+
+import pandas as pd
+from neo4j import GraphDatabase
+
+# Your script code here...
+```
+
+## Running UV Scripts
+```bash
+# UV automatically detects inline dependencies and creates a temporary venv
+uv run my_script.py
+
+# Pass arguments to the script
+uv run my_script.py --arg1 value1
+```
+
+> **⚠️ Vital:** Never install dependencies manually (e.g., with `uv pip install` or `pip install`) for UV self-contained scripts. Always use `uv run` to execute the script. Manual installation defeats the purpose of the script header and can cause version conflicts or unexpected behavior.
+
+## Key Benefits
+- **No project setup required**: Single file contains everything
+- **Automatic dependency management**: UV handles venv creation and package installation
+- **Portable**: Easy to share and distribute

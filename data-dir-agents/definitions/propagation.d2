@@ -1,0 +1,52 @@
+direction: down
+
+Definitions: {
+  label: "**definitions/**\n(canonical source)"
+
+  Agents: "**definitions/agents/**\nAGENTS_*.md"
+  Skills: "**definitions/skills/**\n<skill>/..."
+  Prompts: "**definitions/prompts/**\n*.md"
+}
+
+Generator: "**propagate_definitions.py**\nreads definitions/*\nwrites generated/*"
+
+Generated: {
+  label: "**generated/**\n(build output; can be committed, but is regenerated)"
+
+  Gemini: "generated/gemini/GEMINI.md\n+ generated/gemini/commands/*.md\n+ generated/gemini/skills/<skill>/..."
+  Codex: "generated/codex/AGENTS.md"
+  Copilot: "generated/copilot/copilot-instructions.md\n+ generated/copilot/skills/<skill>/..."
+  Cursor: "generated/cursor/skills/<skill>/..."
+  PiAgent: {
+    label: "generated/pi-agent/*"
+    PiAgents: "generated/pi-agent/AGENTS.md"
+    PiSkills: "generated/pi-agent/skills/<skill>/..."
+    PiPrompts: "generated/pi-agent/prompts/*.md"
+  }
+}
+
+Deployer: "**agents_files_cp.sh**\ncopies from generated/*\ninto user config dirs"
+
+UserConfig: {
+  label: "**User config dirs**"
+
+  HomeGemini: "~/.gemini/GEMINI.md"
+  HomeCodex: "~/.codex/AGENTS.md"
+  HomeCopilot: "~/.copilot/copilot-instructions.md"
+  HomeCursor: "~/.cursor/skills/<skill>/..."
+  HomePi: "~/.pi/agent/*"
+}
+
+Definitions.Agents -> Generator
+Definitions.Skills -> Generator
+Definitions.Prompts -> Generator
+
+Generator -> Generated
+
+Generated -> Deployer
+
+Deployer -> UserConfig.HomeGemini
+Deployer -> UserConfig.HomeCodex
+Deployer -> UserConfig.HomeCopilot
+Deployer -> UserConfig.HomeCursor
+Deployer -> UserConfig.HomePi

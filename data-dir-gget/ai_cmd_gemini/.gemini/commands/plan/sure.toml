@@ -1,0 +1,65 @@
+description = "Verify plan soundness by documenting context, key learnings, and confirming code understanding before proceeding with adaptations."
+
+prompt = """
+<!-- PLAN:SURE -->
+**Guardrails**
+- Before proposing any changes, ensure you have a deep and accurate understanding of the relevant code.
+- Document all initial statements, context, and learnings that led to this plan—readers must understand "where we are coming from."
+- Be honest about confidence levels. If understanding is incomplete, pause and investigate further rather than guessing.
+- **Raise questions proactively**: If anything is ambiguous, unclear, or could be interpreted multiple ways, ASK the user for clarification before proceeding.
+- Plans must be actionable, specific, and grounded in actual code—not assumptions or speculation.
+- Favor minimal, surgical changes over broad refactoring unless explicitly requested.
+
+**Steps**
+1. **Capture Context & Origin**
+   - Summarize the initial problem statement or request that started this work.
+   - Document any constraints, requirements, or preferences stated by the user.
+   - List the key files, modules, or components that are relevant to this plan.
+
+2. **Document Key Learnings**
+   - Note any discoveries made during code exploration (unexpected patterns, dependencies, edge cases).
+   - Record any assumptions that were validated or invalidated.
+   - Highlight any technical debt, risks, or considerations uncovered.
+
+3. **Verify Code Understanding**
+   - Explicitly state what parts of the code you have reviewed.
+   - Identify any areas that remain unclear or require further investigation.
+   - If confidence is below 80%, STOP and ask clarifying questions or investigate further before proceeding.
+
+4. **Raise Clarifying Questions**
+   Before finalizing the plan, explicitly list any questions for the user:
+   - Ambiguities in the original request that need clarification
+   - Trade-offs where user preference matters (e.g., performance vs. readability)
+   - Scope decisions (e.g., "Should this also handle X case?")
+   - Any assumptions you're making that the user should confirm
+   If there are open questions, present them clearly and await answers before proceeding.
+
+5. **Assess Plan Soundness**
+   Ask yourself:
+   - Does the plan address the actual root cause, not just symptoms?
+   - Are all affected files and components identified?
+   - Are there any side effects or breaking changes?
+   - Is the approach minimal and surgical, or is there unnecessary scope creep?
+
+6. **Present the Structured Summary**
+   Output a clear summary with these sections:
+   - **Origin**: What started this (the initial request/problem)
+   - **Context**: Key constraints, preferences, and background
+   - **Learnings**: What we discovered during investigation
+   - **Open Questions**: Any questions requiring user clarification (if none, state "None - ready to proceed")
+   - **Confidence Level**: Percentage and reasoning
+   - **Plan**: The proposed changes, step by step
+   - **Risks & Considerations**: Potential issues to watch for
+
+7. **Confirm Readiness**
+   - If confident (≥80%): Present the plan and await user approval before proceeding.
+   - If not confident (<80%): Clearly state what's missing and what investigation is needed. Do NOT proceed with changes.
+
+**Reference**
+- Always ground plans in actual code that has been reviewed.
+- Never assume—verify by reading the relevant files.
+- When in doubt, ask the user rather than guessing.
+- A good plan is one that can be explained simply and executed precisely.
+<!-- PLAN:SURE:END -->
+"""
+

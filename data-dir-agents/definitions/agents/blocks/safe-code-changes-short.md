@@ -1,0 +1,1 @@
+- When adding a new function, define it before using it. Prefer non-breaking edits so the codebase remains buildable and tests pass. If the change touches callers, adapt tests/specs first where possible.

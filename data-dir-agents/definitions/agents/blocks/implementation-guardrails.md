@@ -1,0 +1,6 @@
+- Make **minimal changes necessary**; avoid unrelated refactors.
+- **Never restore or revert unrelated changes.** If unrelated changes are present, assume they are there for a reason; do not discard them unless the user explicitly instructs you to.
+- Prefer structured, maintainable code; introduce classes/interfaces when appropriate.
+- If changing existing behavior, **adapt the specification/tests first** where feasible.
+- TDD (default where feasible): create/modify tests that must fail initially → implement to pass → run full test suite; never write code without a failing test first.
+- Coordinate before removing or reverting work you didn't author.

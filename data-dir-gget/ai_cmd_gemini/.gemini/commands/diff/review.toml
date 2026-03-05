@@ -1,0 +1,20 @@
+description = "Asks the model to review the current context for severe problems."
+
+prompt = """
+# Instructions
+Please analyze the code I've provided in the current context.
+- Do not provide a summary.
+- Perform a code review only.
+
+Your response should include:
+1. Severe problems with the code.
+2. Only issues should be returned that would result in severe problems when deployed to production.
+
+
+
+# Current git status
+!{git status}
+
+# Code diff to review
+!{git diff}
+"""

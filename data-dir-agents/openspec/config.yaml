@@ -1,0 +1,31 @@
+schema: spec-driven
+
+# Project context (optional)
+# This is shown to AI when creating artifacts.
+context: |
+  Read project-root/README.md for tech stack and overall information about the project.
+  Way-of-Working Standards:
+  - Goal-Oriented Naming: High-level artifact titles (H1) MUST describe the problem solved or value delivered, NOT the technical mechanism.
+  - The Laptop Test: Success is defined by a zero-friction experience where users can resume work after a break (laptop open/close) without being interrupted by re-authentication prompts.
+  - Strategic Roadmap Split: For complex, multi-phased changes, maintain a master "Strategic Roadmap" document to preserve long-term context while using separate execution changes for surgical implementation.
+  - Frequency of Pain: Prioritize fixing the most frequent user interruptions first.
+  - During implementation you MUST tick off the tasks timely after then change is completed.
+
+# Per-artifact rules (optional)
+rules:
+  proposal:
+    - Always start with a level 1 heading (# Title) that clearly names the change as a "Why" and "What" (Problem/Value) statement without including the "How".
+    - "The proposal MUST use only these top-level sections (H2): `## Why`, `## What Changes`, `## Capabilities`, `## Impact`."
+    - Any additional structure MUST be nested as H3+ subheadings inside those sections (do not add extra H2 sections).
+    - "The initial request of the user that starts the change process SHOULD be included in the proposal document 1:1 (exactly as provided), as a subheading under `## Why`."
+    - "Inside `## Why`, put `### Summary` first, then `### Original user request (verbatim)` (if available)."
+    - Describe what is the current situation, what is the problem with it and what is the value of the change.
+    - Find a good level of detail for the proposal that allows the reader to understand in some detail of the current situation and the problem with it.
+    - Make the information be concise and self contained but reference sources where applicable.
+    - Keep proposals under 1000 words.
+  tasks:
+    - Break tasks into chunks that are small enough to be simply manageable and self contained.
+    - Always check for existing tests at the beginning of the implementation - this MUST be a task to remind about doing TDD - the word "TDD" MUST be in the task description.
+    - Always include specific "Verification" tasks that specify what should be verified before getting back to the user.
+    - Always include specific "Final verification by the user" tasks that specify what the user should check finally to know the change is complete.
+    - Do not put CLI commands like 'openspec validate' in the tasks list.

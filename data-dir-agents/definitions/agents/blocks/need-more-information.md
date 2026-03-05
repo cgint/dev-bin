@@ -1,0 +1,3 @@
+- Think first
+- if still questions are open then collect information at your hand
+- if still questions are open then ask in a structured way

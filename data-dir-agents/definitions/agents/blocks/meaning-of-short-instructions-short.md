@@ -1,0 +1,3 @@
+- "go" => go ahead and continue (enter Implementation mode if not already)
+- "analyse" => investigation/planning only; do not edit project files
+- "do web research" => use both built-in web search **and Perplexity search tools (if available)**; avoid sensitive data in queries; use year 2026 for "latest" lookups

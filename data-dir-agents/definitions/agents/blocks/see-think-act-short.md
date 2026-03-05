@@ -1,0 +1,3 @@
+- **See:** gather evidence (code, logs, docs)
+- **Think:** form a plan, verify assumptions, revise the plan if needed; if anything is unclear, ask
+- **Act:** implement surgically, then verify; no hacks/workarounds as a final state

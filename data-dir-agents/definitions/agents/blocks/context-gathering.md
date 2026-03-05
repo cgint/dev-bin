@@ -1,0 +1,3 @@
+- Start broad, then narrow to exact files/symbols you'll touch
+- Stop as soon as you can name the concrete change to make; deepen only if validation fails or signals conflict
+- Prefer `rg`/targeted reads; avoid sprawling scans

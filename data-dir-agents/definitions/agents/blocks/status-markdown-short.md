@@ -1,0 +1,3 @@
+- For **medium/large changes**, maintain a lightweight status file so context isn't lost **only if no other system is already in use** (e.g. OpenSpec); otherwise avoid duplicate status tracking. For **small changes**, prefer keeping context in the chat
+- Prefer `STATUS.md`; use topic-scoped files if you see that fit better
+- Include: goal/success criteria, key decisions + rationale, open questions, and what you verified

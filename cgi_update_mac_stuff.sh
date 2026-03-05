@@ -1,0 +1,49 @@
+#!/bin/bash
+
+# Update and upgrade npm global packages and Homebrew
+
+ALL_MODE="false"
+TOOLS_TO_INSTALL_TEXT="'copilot', 'gemini-cli'"
+# Base npm packages
+NPM_PACKAGES="@github/copilot @google/gemini-cli @fission-ai/openspec@latest"
+
+if [ "$1" == "all" ]; then
+    ALL_MODE="true"
+    TOOLS_TO_INSTALL_TEXT="$TOOLS_TO_INSTALL_TEXT, 'codex', 'claude-code'"
+    # Add extra npm packages
+    NPM_PACKAGES="$NPM_PACKAGES @openai/codex @anthropic-ai/claude-code opencode-ai @mariozechner/pi-coding-agent agent-browser"
+fi
+
+echo
+echo "Updating:"
+echo " - brew"
+echo " - npm packages ($NPM_PACKAGES)"
+echo " - gcloud components"
+echo " - cursor extensions"
+echo " - vscode extensions"
+echo
+
+# Run consolidated npm install in a single background process to avoid lock contention
+(
+    echo "Starting consolidated npm install..."
+    npm i -g $NPM_PACKAGES
+    
+    if [ "$ALL_MODE" == "true" ]; then
+        echo "Running agent-browser post-install..."
+        agent-browser install --with-deps
+    fi
+) &
+
+cursor --update-extensions &
+
+code --update-extensions &
+
+(brew update; brew upgrade) &
+
+(echo Yn | gcloud components update) &
+
+if [ "$ALL_MODE" == "true" ]; then
+    echo "ALL MODE: is enabled..."
+fi
+
+wait

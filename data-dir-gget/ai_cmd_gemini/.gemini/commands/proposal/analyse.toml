@@ -1,0 +1,27 @@
+description = "Reviews a specified file as a proposal and creates an assessment file with the review results."
+
+prompt = """
+# Instructions
+Please analyze the file provided in {{args}} as a proposal and perform a comprehensive review.
+
+Your task:
+1. Review the file content for design, implementation, and potential issues
+2. Assess the proposal's viability, strengths, and weaknesses
+3. Provide constructive feedback and recommendations
+4. Create a detailed assessment report
+
+Please create a new file next to the original file with the suffix `.assessment.md` containing your review results.
+
+The assessment should include:
+- **Executive Summary**: Brief overview of the proposal
+- **Strengths**: What works well in the proposal
+- **Concerns**: Issues that need to be addressed
+- **Recommendations**: Specific suggestions for improvement
+- **Implementation Notes**: Technical considerations
+- **Risk Assessment**: Potential risks and mitigation strategies
+
+# File to review
+!{cat {{args}}}
+
+Please write your assessment to a file named `{{args}}.assessment.md` in the same directory as the original file.
+"""

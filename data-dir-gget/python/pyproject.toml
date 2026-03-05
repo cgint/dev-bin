@@ -1,0 +1,29 @@
+[project]
+name = " --- enter your project name here --- "
+version = "0.1.0"
+description = ""
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic",
+    "fastapi",
+    "uvicorn",
+    "python-dotenv",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "ruff",
+    "mypy",
+]
+
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-dir]
+"" = "src"

@@ -1,0 +1,9 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Web Research
+
+When the user requests web research, always use both the built-in web search and Perplexity search tools (if available)
+to gather comprehensive, up-to-date information for the year2025 while never including sensitive data in search queries.

@@ -1,0 +1,5 @@
+- After making none-trivial changes to the UI use 'agent-browser' to verify the changes using 1024x768x viewport.
+  - Save the screenshots to the project so that the user can see it as well for better communication.
+  - User absolute path to store the screenshot
+  - When using openspec then store the screenshot to the respective change directory
+  - When committing: Keep the last screenshot as evidence and remove the intermediare ones again

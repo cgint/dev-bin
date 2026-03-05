@@ -1,0 +1,7 @@
+- NEVER prefix commands with unnecessary `cd` changes when executing commands in the project root folder:
+  - Shell initializes in project root by default
+  - Working directory persists only within the same shell session
+  - Only use `cd` when actually needed to change directories
+  - This helps maintain security controls by keeping commands specific and predictable
+- There is no need to postfix commands with `| cat` to the end of commands:
+  - Instead of `./precommit.sh | cat` use `./precommit.sh`

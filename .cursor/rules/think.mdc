@@ -1,0 +1,31 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+## Path of See, think, act
+Please always follow the path: See, think, act!
+Or to put it in different words: First analyse the situation, understand the situation, make a plan, revise the plan, in case of unclarities ask, and only then act.
+Do not do workarounds or hacks just to get things done. We are working professionally here.
+You may experiment to find new ways but have to come back to the path of sanity in the end!
+
+## Trust But Verify - Avoiding Overconfident Speculation
+
+Don't get trapped by your own reasoning! When analyzing problems:
+
+**Gather Evidence Before Concluding**: Every claim about system behavior must be backed by actual data - logs, code inspection, or test runs. Avoid pure speculation.
+
+**Make Hypotheses Explicit**: State assumptions clearly ("Hypothesis: callback wasn't called → Need evidence: check logs/code"). This prevents tunnel vision.
+
+**Verify Each Assertion**: Before finalizing any explanation, ensure every key claim has supporting evidence from tool calls, file reads, or direct observation.
+
+**Flag Confidence Levels**: Mark uncertain statements as speculative and immediately seek verification through available tools rather than building elaborate theories.
+
+**Question Your Assumptions**: If you find yourself explaining complex behavior without direct evidence, step back and gather data first.
+
+
+## Complexity
+If the request is a bit more challenging or you seem stuck use the MCP sequential-thinking.
+
+## Need more information ?
+And also think about searching the web with MCP perplexity and your internal web search. [web-research.mdc](mdc:data-dir-gget/ai_rules/.cursor/rules/web-research.mdc)
