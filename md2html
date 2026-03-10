@@ -14,8 +14,8 @@ pandoc -s \
   -B <(cat <<'EOF'
 <style>
 body {
-  max-width: none !important;
-  margin: 0 !important;
+  max-width: 95% !important;
+  margin: auto !important;
   padding: 12px !important;
   font-family: "HelveticaNeue-Light", sans-serif, "宋体", "Segoe WPC", "Segoe UI", "SFUIText-Light", "Droid Sans Fallback" !important;
   font-size: 18px !important;
