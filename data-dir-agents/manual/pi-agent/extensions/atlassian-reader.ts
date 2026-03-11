@@ -141,6 +141,193 @@ async function atlassianChatImpl(
 	return { answer: String(answer), sessionId: String(returnedSessionId), raw: data };
 }
 
+type ConfluenceCommentRecord = {
+	comment_id: string | null;
+	parent_comment_id: string | null;
+	depth: number;
+	title: string | null;
+	status: string | null;
+	author: string | null;
+	created: string | null;
+	updated: string | null;
+	version_number: number | null;
+	message: string | null;
+	body: {
+		view: string | null;
+		storage: string | null;
+		text: string | null;
+	};
+};
+
+type ConfluenceCommentSummary = {
+	has_comments: boolean;
+	comment_count: number;
+	latest_comment_at: string | null;
+	latest_comment_by: string | null;
+	truncated: boolean;
+};
+
+const DEFAULT_COMMENT_SCAN_LIMIT = 200;
+
+async function fetchDirectConfluenceComments(
+	contentId: string,
+	limit: number,
+	start: number,
+	signal?: AbortSignal
+): Promise<any> {
+	const { email, apiToken } = requireEnv();
+	const baseUrl = DEFAULT_CONFLUENCE_BASE_URL;
+	const url = new URL(`${baseUrl}/wiki/rest/api/content/${encodeURIComponent(contentId)}/child/comment`);
+	url.searchParams.set("limit", String(limit));
+	url.searchParams.set("start", String(start));
+	url.searchParams.set("expand", "body.view,body.storage,version,history");
+
+	return fetchJson(
+		url.toString(),
+		{
+			method: "GET",
+			headers: {
+				accept: "application/json",
+				authorization: basicAuthHeader(email, apiToken),
+			},
+		},
+		signal
+	);
+}
+
+function normalizeConfluenceComment(item: any, parentCommentId: string | null, depth: number): ConfluenceCommentRecord {
+	const view = item?.body?.view?.value ?? null;
+	const storage = item?.body?.storage?.value ?? null;
+	const rawText = typeof view === "string" && view.trim() ? stripHtml(view) : typeof storage === "string" && storage.trim() ? stripHtml(storage) : null;
+	return {
+		comment_id: item?.id ?? null,
+		parent_comment_id: parentCommentId,
+		depth,
+		title: item?.title ?? null,
+		status: item?.status ?? null,
+		author: item?.version?.by?.displayName ?? item?.history?.createdBy?.displayName ?? null,
+		created: item?.history?.createdDate ?? null,
+		updated: item?.version?.when ?? null,
+		version_number: typeof item?.version?.number === "number" ? item.version.number : null,
+		message: item?.version?.message ?? null,
+		body: {
+			view,
+			storage,
+			text: rawText,
+		},
+	};
+}
+
+async function collectConfluenceComments(
+	contentId: string,
+	includeReplies: boolean,
+	maxComments: number,
+	signal?: AbortSignal,
+	parentCommentId: string | null = null,
+	depth = 0,
+	state: { comments: ConfluenceCommentRecord[]; truncated: boolean } = { comments: [], truncated: false }
+): Promise<{ comments: ConfluenceCommentRecord[]; truncated: boolean }> {
+	if (state.comments.length >= maxComments) {
+		state.truncated = true;
+		return state;
+	}
+
+	let start = 0;
+	const pageSize = Math.min(25, Math.max(1, maxComments - state.comments.length));
+	while (!state.truncated) {
+		const data = await fetchDirectConfluenceComments(contentId, pageSize, start, signal);
+		const results = Array.isArray(data?.results) ? data.results : [];
+		for (const item of results) {
+			if (state.comments.length >= maxComments) {
+				state.truncated = true;
+				break;
+			}
+			const normalized = normalizeConfluenceComment(item, parentCommentId, depth);
+			state.comments.push(normalized);
+			if (includeReplies && normalized.comment_id && !state.truncated) {
+				await collectConfluenceComments(normalized.comment_id, true, maxComments, signal, normalized.comment_id, depth + 1, state);
+			}
+		}
+		if (state.truncated || results.length < pageSize) break;
+		start += pageSize;
+	}
+
+	return state;
+}
+
+async function summarizeConfluenceComments(pageId: string, signal?: AbortSignal): Promise<ConfluenceCommentSummary> {
+	const { comments, truncated } = await collectConfluenceComments(pageId, true, DEFAULT_COMMENT_SCAN_LIMIT, signal);
+	const latest = comments
+		.filter((comment) => !!comment.updated)
+		.sort((a, b) => String(b.updated).localeCompare(String(a.updated)))[0] ?? null;
+	return {
+		has_comments: comments.length > 0,
+		comment_count: comments.length,
+		latest_comment_at: latest?.updated ?? null,
+		latest_comment_by: latest?.author ?? null,
+		truncated,
+	};
+}
+
+function sortCommentsChronologically(comments: ConfluenceCommentRecord[]): ConfluenceCommentRecord[] {
+	return [...comments].sort((a, b) => {
+		const aKey = a.updated ?? a.created ?? "";
+		const bKey = b.updated ?? b.created ?? "";
+		if (aKey !== bKey) return aKey.localeCompare(bKey);
+		return String(a.comment_id ?? "").localeCompare(String(b.comment_id ?? ""));
+	});
+}
+
+function renderConfluenceCommentsMarkdown(pageId: string, comments: ConfluenceCommentRecord[], flattened: boolean, truncated: boolean): string {
+	const lines: string[] = [];
+	lines.push(`# Confluence comments for page ${pageId}`);
+	lines.push("");
+	lines.push(`- Comments returned: ${comments.length}`);
+	lines.push(`- Flattened chronology: ${flattened}`);
+	lines.push(`- Truncated: ${truncated}`);
+	lines.push("");
+	if (comments.length === 0) {
+		lines.push("No comments returned.");
+		return lines.join("\n");
+	}
+
+	for (const comment of comments) {
+		const indent = flattened ? "" : "  ".repeat(Math.max(0, comment.depth));
+		lines.push(`${indent}- ${comment.updated ?? comment.created ?? "?"} — ${comment.author ?? "Unknown"} (comment ${comment.comment_id ?? "?"})`);
+		if (comment.parent_comment_id) lines.push(`${indent}  reply to: ${comment.parent_comment_id}`);
+		if (comment.body.text) lines.push(`${indent}  ${comment.body.text}`);
+		if (comment.message) lines.push(`${indent}  message: ${comment.message}`);
+	}
+	return lines.join("\n");
+}
+
+async function fetchConfluencePageCommentsImpl(
+	pageId: string,
+	limit: number | undefined,
+	format: string | undefined,
+	includeReplies: boolean | undefined,
+	flattenThreads: boolean | undefined,
+	signal?: AbortSignal
+) {
+	const maxComments = typeof limit === "number" && limit > 0 ? limit : 25;
+	const include_replies = includeReplies ?? true;
+	const flatten_threads = flattenThreads ?? true;
+	const requestedFormat = format === "markdown" ? "markdown" : "json";
+	const { comments, truncated } = await collectConfluenceComments(pageId, include_replies, maxComments, signal);
+	const ordered = flatten_threads ? sortCommentsChronologically(comments) : comments;
+	const result = {
+		page_id: pageId,
+		include_replies,
+		flatten_threads,
+		truncated,
+		comments: ordered,
+	};
+	return {
+		...result,
+		text: requestedFormat === "markdown" ? renderConfluenceCommentsMarkdown(pageId, ordered, flatten_threads, truncated) : JSON.stringify(result, null, 2),
+	};
+}
+
 async function fetchConfluencePageImpl(pageId: string, expand: string | undefined, format: string | undefined, includeChildren: boolean | undefined, signal: AbortSignal | undefined) {
 	const { email, apiToken } = requireEnv();
 	const baseUrl = "https://smec.atlassian.net";
@@ -213,6 +400,17 @@ async function fetchConfluencePageImpl(pageId: string, expand: string | undefine
 		}
 	}
 
+	let commentSummary: ConfluenceCommentSummary | null = null;
+	try {
+		commentSummary = await summarizeConfluenceComments(pageId, signal);
+	} catch (e) {
+		console.error("Failed to summarize Confluence comments:", e);
+	}
+
+	const recommendedFollowups = ["fetch_confluence_page_history", "download_confluence_inline_assets"];
+	if ((commentSummary?.comment_count ?? 0) > 0) recommendedFollowups.push("fetch_confluence_page_comments");
+	if (childrenResult.length > 0) recommendedFollowups.push("fetch_confluence_page");
+
 	return {
 		page_id: data?.id,
 		title: data?.title,
@@ -225,6 +423,21 @@ async function fetchConfluencePageImpl(pageId: string, expand: string | undefine
 		updated: data?.version?.when,
 		_links: data?._links,
 		children: childrenResult,
+		related_data: {
+			has_children: childrenResult.length > 0,
+			child_count: childrenResult.length,
+			has_comments: commentSummary?.has_comments ?? false,
+			comment_count: commentSummary?.comment_count ?? 0,
+			latest_comment_at: commentSummary?.latest_comment_at ?? null,
+			latest_comment_by: commentSummary?.latest_comment_by ?? null,
+			comments_truncated: commentSummary?.truncated ?? false,
+			available_tools: [
+				"fetch_confluence_page_history",
+				"fetch_confluence_page_comments",
+				"download_confluence_inline_assets",
+			],
+			recommended_followups: recommendedFollowups,
+		},
 	};
 }
 
@@ -1115,7 +1328,15 @@ export default function atlassianReaderExtension(pi: ExtensionAPI) {
 				if (params.format === "markdown" && res.body?.markdown) {
 					return {
 						content: [{ type: "text", text: res.body.markdown }],
-						details: { title: res.title, space: res.space?.key },
+						details: {
+							title: res.title,
+							space: res.space?.key,
+							has_comments: String(res.related_data?.has_comments ?? false),
+							comment_count: String(res.related_data?.comment_count ?? 0),
+							latest_comment_at: res.related_data?.latest_comment_at ?? "",
+							latest_comment_by: res.related_data?.latest_comment_by ?? "",
+							recommended_followups: JSON.stringify(res.related_data?.recommended_followups ?? []),
+						},
 					};
 				}
 				return {
@@ -1124,6 +1345,44 @@ export default function atlassianReaderExtension(pi: ExtensionAPI) {
 				};
 			} catch (e: any) {
 				log(ctx, "ERROR", "fetch_confluence_page failed", String(e?.message ?? e));
+				throw e;
+			}
+		},
+	});
+
+	pi.registerTool({
+		name: "fetch_confluence_page_comments",
+		label: "Fetch Confluence page comments",
+		description: "Fetch comments for a Confluence page, optionally including replies and flattening them into a chronology.",
+		parameters: Type.Object({
+			page_id: Type.String({ description: "Confluence page id" }),
+			limit: Type.Optional(Type.Number({ description: "Maximum number of comments to return across the page/thread tree (default: 25)" })),
+			format: Type.Optional(Type.String({ description: "Output format: 'markdown' or 'json' (default: json)" })),
+			include_replies: Type.Optional(Type.Boolean({ description: "Include replies to top-level comments (default: true)" })),
+			flatten_threads: Type.Optional(Type.Boolean({ description: "Flatten comments into chronological order instead of traversal order (default: true)" })),
+		}),
+		async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+			try {
+				const res = await fetchConfluencePageCommentsImpl(
+					params.page_id,
+					params.limit,
+					params.format,
+					params.include_replies,
+					params.flatten_threads,
+					signal
+				);
+				return {
+					content: [{ type: "text", text: res.text }],
+					details: {
+						page_id: res.page_id,
+						count: String(res.comments.length),
+						include_replies: String(res.include_replies),
+						flatten_threads: String(res.flatten_threads),
+						truncated: String(res.truncated),
+					},
+				};
+			} catch (e: any) {
+				log(ctx, "ERROR", "fetch_confluence_page_comments failed", String(e?.message ?? e));
 				throw e;
 			}
 		},
