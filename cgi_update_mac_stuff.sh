@@ -5,13 +5,15 @@
 ALL_MODE="false"
 TOOLS_TO_INSTALL_TEXT="'copilot', 'gemini-cli'"
 # Base npm packages
-NPM_PACKAGES="@github/copilot @google/gemini-cli @fission-ai/openspec@latest"
+NPM_PACKAGES="@github/copilot @google/gemini-cli @fission-ai/openspec@latest @googleworkspace/cli"
+NPM_PACKAGES_ALL_ADDON="@openai/codex @mariozechner/pi-coding-agent agent-browser"
+# disabled from all_addon "@anthropic-ai/claude-code opencode-ai"
 
 if [ "$1" == "all" ]; then
     ALL_MODE="true"
     TOOLS_TO_INSTALL_TEXT="$TOOLS_TO_INSTALL_TEXT, 'codex', 'claude-code'"
     # Add extra npm packages
-    NPM_PACKAGES="$NPM_PACKAGES @openai/codex @anthropic-ai/claude-code opencode-ai @mariozechner/pi-coding-agent agent-browser"
+    NPM_PACKAGES="$NPM_PACKAGES $NPM_PACKAGES_ALL_ADDON"
 fi
 
 echo
