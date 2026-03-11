@@ -506,6 +506,569 @@ async function downloadUrlToFile(url: string, destPath: string, signal?: AbortSi
 	return { bytes: buf.byteLength, contentType: res.headers.get("content-type") };
 }
 
+type RecentConfluencePageChangeSummary = {
+	from_version: number | null;
+	to_version: number | null;
+	previous_modified: string | null;
+	previous_modifier: string | null;
+	title_changed: boolean;
+	current_text_length: number | null;
+	previous_text_length: number | null;
+	text_length_delta: number | null;
+	added_excerpt: string | null;
+};
+
+type RecentConfluencePage = {
+	id: string | null;
+	title: string | null;
+	type: string | null;
+	status: string | null;
+	space_key: string | null;
+	space_name: string | null;
+	last_modified: string | null;
+	last_modifier: string | null;
+	version_number: number | null;
+	url: string | null;
+	change_summary?: RecentConfluencePageChangeSummary | null;
+};
+
+function toConfluenceCqlDate(isoDate: string): string {
+	const date = new Date(isoDate);
+	if (Number.isNaN(date.getTime())) {
+		throw new Error(`Invalid since value '${isoDate}'. Expected ISO date, e.g. 2026-03-10T00:00:00Z`);
+	}
+	const pad = (n: number) => String(n).padStart(2, "0");
+	return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}`;
+}
+
+function decodeBasicHtmlEntities(text: string): string {
+	const named: Record<string, string> = {
+		nbsp: " ",
+		amp: "&",
+		lt: "<",
+		gt: ">",
+		quot: '"',
+		apos: "'",
+		ouml: "ö",
+		Ouml: "Ö",
+		uuml: "ü",
+		Uuml: "Ü",
+		äuml: "ä",
+		Auml: "Ä",
+		auml: "ä",
+		eszlig: "ß",
+		szlig: "ß",
+		euro: "€",
+		ndash: "–",
+		mdash: "—",
+		hellip: "…",
+		laquo: "«",
+		raquo: "»",
+		lsquo: "‘",
+		rsquo: "’",
+		ldquo: "“",
+		rdquo: "”",
+		middot: "·",
+		copy: "©",
+		reg: "®",
+	};
+
+	return text
+		.replace(/&#(\d+);/g, (_match, dec) => {
+			const codePoint = Number.parseInt(dec, 10);
+			return Number.isFinite(codePoint) ? String.fromCodePoint(codePoint) : _match;
+		})
+		.replace(/&#x([0-9a-fA-F]+);/g, (_match, hex) => {
+			const codePoint = Number.parseInt(hex, 16);
+			return Number.isFinite(codePoint) ? String.fromCodePoint(codePoint) : _match;
+		})
+		.replace(/&([a-zA-Z][a-zA-Z0-9]+);/g, (match, name) => named[name] ?? match);
+}
+
+function normalizeWhitespace(text: string): string {
+	return decodeBasicHtmlEntities(text).replace(/\s+/g, " ").trim();
+}
+
+function normalizeDiffBlock(text: string): string {
+	return normalizeWhitespace(text).toLowerCase();
+}
+
+function isUrlOnlyText(text: string): boolean {
+	const trimmed = text.trim();
+	return /^https?:\/\/\S+$/i.test(trimmed);
+}
+
+function isUsefulDiffBlock(text: string): boolean {
+	const trimmed = normalizeWhitespace(text);
+	if (!trimmed) return false;
+	if (trimmed.length < 12) return false;
+	if (isUrlOnlyText(trimmed)) return false;
+	if (/^[\d\s\W_]+$/.test(trimmed)) return false;
+	return true;
+}
+
+function extractTextBlocks(html: string): string[] {
+	const withBreaks = html
+		.replace(/<style[\s\S]*?<\/style>/gi, "\n")
+		.replace(/<script[\s\S]*?<\/script>/gi, "\n")
+		.replace(/<br\s*\/?>/gi, "\n")
+		.replace(/<\/(?:p|div|li|tr|td|th|h[1-6]|section|article|ul|ol|table|blockquote)>/gi, "\n")
+		.replace(/<(?:p|div|li|tr|td|th|h[1-6]|section|article|ul|ol|table|blockquote)\b[^>]*>/gi, "\n")
+		.replace(/<[^>]+>/g, " ");
+
+	return withBreaks
+		.split(/\n+/)
+		.map((part) => normalizeWhitespace(part))
+		.filter(Boolean);
+}
+
+function stripHtml(html: string): string {
+	return extractTextBlocks(html).join(" ");
+}
+
+function findAddedExcerpt(previousHtmlOrText: string, currentHtmlOrText: string, maxLength = 220): string | null {
+	const previousBlocks = previousHtmlOrText.includes("<") ? extractTextBlocks(previousHtmlOrText) : previousHtmlOrText.split(/\n+/).map((s) => normalizeWhitespace(s)).filter(Boolean);
+	const currentBlocks = currentHtmlOrText.includes("<") ? extractTextBlocks(currentHtmlOrText) : currentHtmlOrText.split(/\n+/).map((s) => normalizeWhitespace(s)).filter(Boolean);
+	const previousSet = new Set(previousBlocks.map((block) => normalizeDiffBlock(block)));
+
+	const addedBlocks = currentBlocks.filter((block) => {
+		const normalized = normalizeDiffBlock(block);
+		return !previousSet.has(normalized) && isUsefulDiffBlock(block);
+	});
+
+	if (addedBlocks.length > 0) {
+		addedBlocks.sort((a, b) => b.length - a.length);
+		return addedBlocks[0].slice(0, maxLength);
+	}
+
+	const previousText = normalizeWhitespace(previousBlocks.join(" "));
+	const currentText = normalizeWhitespace(currentBlocks.join(" "));
+	if (!currentText || currentText === previousText) return null;
+
+	let prefix = 0;
+	while (
+		prefix < previousText.length &&
+		prefix < currentText.length &&
+		previousText.charCodeAt(prefix) === currentText.charCodeAt(prefix)
+	) {
+		prefix += 1;
+	}
+
+	let prevSuffix = previousText.length - 1;
+	let currSuffix = currentText.length - 1;
+	while (
+		prevSuffix >= prefix &&
+		currSuffix >= prefix &&
+		previousText.charCodeAt(prevSuffix) === currentText.charCodeAt(currSuffix)
+	) {
+		prevSuffix -= 1;
+		currSuffix -= 1;
+	}
+
+	const added = currentText.slice(prefix, currSuffix + 1).trim();
+	if (!isUsefulDiffBlock(added)) return null;
+	return added.slice(0, maxLength);
+}
+
+async function fetchConfluencePageVersionPayload(pageId: string, versionNumber: number, signal?: AbortSignal): Promise<{
+	title: string | null;
+	version_number: number | null;
+	modified: string | null;
+	modifier: string | null;
+	body_storage: string;
+}> {
+	const { email, apiToken } = requireEnv();
+	const baseUrl = DEFAULT_CONFLUENCE_BASE_URL;
+	const url = new URL(`${baseUrl}/wiki/rest/api/content/${encodeURIComponent(pageId)}/version/${versionNumber}`);
+	url.searchParams.set("expand", "content.body.storage,by");
+
+	const data = await fetchJson(
+		url.toString(),
+		{
+			method: "GET",
+			headers: {
+				accept: "application/json",
+				authorization: basicAuthHeader(email, apiToken),
+			},
+		},
+		signal
+	);
+
+	const content = data?.content ?? {};
+	return {
+		title: content?.title ?? null,
+		version_number: typeof data?.number === "number" ? data.number : null,
+		modified: data?.when ?? null,
+		modifier: data?.by?.displayName ?? null,
+		body_storage: content?.body?.storage?.value ?? "",
+	};
+}
+
+async function buildRecentConfluencePageChangeSummary(page: RecentConfluencePage, signal?: AbortSignal): Promise<RecentConfluencePageChangeSummary | null> {
+	if (!page.id || !page.version_number || page.version_number <= 1) {
+		return null;
+	}
+
+	const currentVersion = page.version_number;
+	const previousVersion = currentVersion - 1;
+	const [previous, current] = await Promise.all([
+		fetchConfluencePageVersionPayload(page.id, previousVersion, signal),
+		fetchConfluencePageVersionPayload(page.id, currentVersion, signal),
+	]);
+
+	const previousText = stripHtml(previous.body_storage);
+	const currentText = stripHtml(current.body_storage);
+
+	return {
+		from_version: previous.version_number,
+		to_version: current.version_number,
+		previous_modified: previous.modified,
+		previous_modifier: previous.modifier,
+		title_changed: (previous.title ?? "") !== (current.title ?? ""),
+		current_text_length: currentText.length,
+		previous_text_length: previousText.length,
+		text_length_delta: currentText.length - previousText.length,
+		added_excerpt: findAddedExcerpt(previous.body_storage, current.body_storage),
+	};
+}
+
+function normalizeRecentConfluencePage(item: any): RecentConfluencePage {
+	const content = item?.content ?? item;
+	const links = content?._links ?? item?._links ?? {};
+	const webui = links.webui ?? links.tinyui ?? null;
+	const url = webui ? new URL(webui, `${DEFAULT_CONFLUENCE_BASE_URL}/wiki`).toString() : null;
+
+	return {
+		id: content?.id ?? null,
+		title: content?.title ?? item?.title ?? null,
+		type: content?.type ?? item?.entityType ?? null,
+		status: content?.status ?? null,
+		space_key: content?.space?.key ?? item?.space?.key ?? null,
+		space_name: content?.space?.name ?? item?.space?.name ?? null,
+		last_modified: content?.version?.when ?? item?.lastModified ?? null,
+		last_modifier: content?.version?.by?.displayName ?? item?.friendlyLastModifiedBy ?? null,
+		version_number: typeof content?.version?.number === "number" ? content.version.number : null,
+		url,
+	};
+}
+
+function escapeMarkdownCell(value: string | number | null | undefined): string {
+	return String(value ?? "").replace(/\|/g, "\\|").replace(/\n/g, " ");
+}
+
+function renderRecentConfluencePagesMarkdown(pages: RecentConfluencePage[]): string {
+	if (pages.length === 0) return "No pages returned.";
+	const lines = [
+		"| Space | Title | Modified | By | Version | Change | URL |",
+		"|---|---|---|---|---:|---|---|",
+	];
+	for (const page of pages) {
+		const title = page.url ? `[${escapeMarkdownCell(page.title ?? "(no title)")}](${page.url})` : escapeMarkdownCell(page.title ?? "(no title)");
+		const version = page.version_number ?? "";
+		const change = page.change_summary
+			? `v${page.change_summary.from_version ?? "?"}→v${page.change_summary.to_version ?? "?"}; Δ ${page.change_summary.text_length_delta ?? "?"}${page.change_summary.title_changed ? "; title changed" : ""}${page.change_summary.added_excerpt ? `; ${escapeMarkdownCell(page.change_summary.added_excerpt)}` : ""}`
+			: "";
+		const url = page.url ? `[link](${page.url})` : "";
+		lines.push(`| ${escapeMarkdownCell(page.space_key)} | ${title} | ${escapeMarkdownCell(page.last_modified)} | ${escapeMarkdownCell(page.last_modifier)} | ${escapeMarkdownCell(version)} | ${change} | ${url} |`);
+	}
+	return lines.join("\n");
+}
+
+async function fetchRecentConfluencePagesImpl(
+	limit: number | undefined,
+	since: string | undefined,
+	spaceKeys: string[] | undefined,
+	format: string | undefined,
+	includeChangeSummary: boolean | undefined,
+	signal?: AbortSignal
+) {
+	const { email, apiToken } = requireEnv();
+	const baseUrl = DEFAULT_CONFLUENCE_BASE_URL;
+	const headers = {
+		accept: "application/json",
+		authorization: basicAuthHeader(email, apiToken),
+	};
+	const maxResults = typeof limit === "number" && limit > 0 ? limit : 25;
+	const requestedFormat = format === "markdown" ? "markdown" : "json";
+
+	const filters = ["type = page"];
+	const normalizedSpaceKeys = (spaceKeys ?? []).map((v) => v.trim()).filter(Boolean);
+	if (normalizedSpaceKeys.length === 1) {
+		filters.push(`space = "${normalizedSpaceKeys[0]}"`);
+	} else if (normalizedSpaceKeys.length > 1) {
+		filters.push(`space in ("${normalizedSpaceKeys.join(`","`)}")`);
+	}
+	if (since && since.trim()) {
+		filters.push(`lastmodified >= "${toConfluenceCqlDate(since.trim())}"`);
+	}
+	const cql = `${filters.join(" and ")} order by lastmodified desc`;
+
+	const endpointCandidates = [
+		"/wiki/rest/api/content/search",
+		"/wiki/rest/api/search",
+	];
+	let lastError: unknown;
+
+	for (const endpoint of endpointCandidates) {
+		const url = new URL(endpoint, baseUrl);
+		url.searchParams.set("cql", cql);
+		url.searchParams.set("limit", String(maxResults));
+		url.searchParams.set("expand", "space,version");
+
+		try {
+			const data = await fetchJson(url.toString(), { method: "GET", headers }, signal);
+			const rawResults = Array.isArray(data?.results) ? data.results : [];
+			const pages: RecentConfluencePage[] = rawResults.map((item: any) => normalizeRecentConfluencePage(item));
+
+			if (includeChangeSummary) {
+				for (const page of pages) {
+					try {
+						page.change_summary = await buildRecentConfluencePageChangeSummary(page, signal);
+					} catch (e: any) {
+						page.change_summary = {
+							from_version: page.version_number && page.version_number > 1 ? page.version_number - 1 : null,
+							to_version: page.version_number ?? null,
+							previous_modified: null,
+							previous_modifier: null,
+							title_changed: false,
+							current_text_length: null,
+							previous_text_length: null,
+							text_length_delta: null,
+							added_excerpt: `[change summary failed: ${String(e?.message ?? e)}]`,
+						};
+					}
+				}
+			}
+
+			return {
+				endpoint,
+				cql,
+				count: rawResults.length,
+				pages,
+				text: requestedFormat === "markdown" ? renderRecentConfluencePagesMarkdown(pages) : JSON.stringify({ endpoint, cql, count: rawResults.length, pages }, null, 2),
+			};
+		} catch (e) {
+			lastError = e;
+		}
+	}
+
+	throw lastError instanceof Error ? lastError : new Error(String(lastError));
+}
+
+type ConfluencePageHistoryVersion = {
+	version_number: number | null;
+	modified: string | null;
+	friendly_modified: string | null;
+	modifier: string | null;
+	message: string | null;
+	minor_edit: boolean | null;
+};
+
+type ConfluencePageVersionDiff = {
+	from_version: number | null;
+	to_version: number | null;
+	from_modified: string | null;
+	to_modified: string | null;
+	from_modifier: string | null;
+	to_modifier: string | null;
+	title_changed: boolean;
+	current_text_length: number | null;
+	previous_text_length: number | null;
+	text_length_delta: number | null;
+	added_excerpt: string | null;
+};
+
+async function fetchConfluencePageMetadata(pageId: string, signal?: AbortSignal): Promise<{
+	page_id: string | null;
+	title: string | null;
+	space: { id: string | null; key: string | null; name: string | null } | null;
+	current_version: number | null;
+	updated: string | null;
+	url: string | null;
+}> {
+	const { email, apiToken } = requireEnv();
+	const baseUrl = DEFAULT_CONFLUENCE_BASE_URL;
+	const url = new URL(`${baseUrl}/wiki/rest/api/content/${encodeURIComponent(pageId)}`);
+	url.searchParams.set("expand", "space,version");
+
+	const data = await fetchJson(
+		url.toString(),
+		{
+			method: "GET",
+			headers: {
+				accept: "application/json",
+				authorization: basicAuthHeader(email, apiToken),
+			},
+		},
+		signal
+	);
+
+	const webui = data?._links?.webui ?? null;
+	return {
+		page_id: data?.id ?? null,
+		title: data?.title ?? null,
+		space: data?.space ? { id: data.space.id ?? null, key: data.space.key ?? null, name: data.space.name ?? null } : null,
+		current_version: typeof data?.version?.number === "number" ? data.version.number : null,
+		updated: data?.version?.when ?? null,
+		url: webui ? new URL(webui, `${baseUrl}/wiki`).toString() : null,
+	};
+}
+
+async function fetchConfluencePageHistoryVersions(pageId: string, limit: number, signal?: AbortSignal): Promise<ConfluencePageHistoryVersion[]> {
+	const { email, apiToken } = requireEnv();
+	const baseUrl = DEFAULT_CONFLUENCE_BASE_URL;
+	const url = new URL(`${baseUrl}/wiki/rest/api/content/${encodeURIComponent(pageId)}/version`);
+	url.searchParams.set("limit", String(limit));
+
+	const data = await fetchJson(
+		url.toString(),
+		{
+			method: "GET",
+			headers: {
+				accept: "application/json",
+				authorization: basicAuthHeader(email, apiToken),
+			},
+		},
+		signal
+	);
+
+	const results = Array.isArray(data?.results) ? data.results : [];
+	return results.map((item: any) => ({
+		version_number: typeof item?.number === "number" ? item.number : null,
+		modified: item?.when ?? null,
+		friendly_modified: item?.friendlyWhen ?? null,
+		modifier: item?.by?.displayName ?? null,
+		message: item?.message ?? null,
+		minor_edit: typeof item?.minorEdit === "boolean" ? item.minorEdit : null,
+	}));
+}
+
+async function buildConfluencePageVersionDiff(pageId: string, fromVersion: number, toVersion: number, signal?: AbortSignal): Promise<ConfluencePageVersionDiff> {
+	const [from, to] = await Promise.all([
+		fetchConfluencePageVersionPayload(pageId, fromVersion, signal),
+		fetchConfluencePageVersionPayload(pageId, toVersion, signal),
+	]);
+
+	const fromText = stripHtml(from.body_storage);
+	const toText = stripHtml(to.body_storage);
+
+	return {
+		from_version: from.version_number,
+		to_version: to.version_number,
+		from_modified: from.modified,
+		to_modified: to.modified,
+		from_modifier: from.modifier,
+		to_modifier: to.modifier,
+		title_changed: (from.title ?? "") !== (to.title ?? ""),
+		current_text_length: toText.length,
+		previous_text_length: fromText.length,
+		text_length_delta: toText.length - fromText.length,
+		added_excerpt: findAddedExcerpt(from.body_storage, to.body_storage),
+	};
+}
+
+function renderConfluencePageHistoryMarkdown(data: {
+	page_id: string | null;
+	title: string | null;
+	space: { id: string | null; key: string | null; name: string | null } | null;
+	current_version: number | null;
+	updated: string | null;
+	url: string | null;
+	versions: ConfluencePageHistoryVersion[];
+	diff: ConfluencePageVersionDiff | null;
+}): string {
+	const lines: string[] = [];
+	lines.push(`# ${data.title ?? "Confluence page"}`);
+	lines.push("");
+	lines.push(`- Page ID: ${data.page_id ?? "?"}`);
+	lines.push(`- Space: ${data.space?.key ?? "?"}${data.space?.name ? ` (${data.space.name})` : ""}`);
+	lines.push(`- Current version: ${data.current_version ?? "?"}`);
+	lines.push(`- Updated: ${data.updated ?? "?"}`);
+	if (data.url) lines.push(`- URL: ${data.url}`);
+	lines.push("");
+	lines.push("## Versions");
+	lines.push("");
+
+	if (data.versions.length === 0) {
+		lines.push("No versions returned.");
+	} else {
+		lines.push("| Version | Modified | By | Minor | Message |",
+			"|---:|---|---|---|---|");
+		for (const version of data.versions) {
+			lines.push(`| ${escapeMarkdownCell(version.version_number)} | ${escapeMarkdownCell(version.modified ?? version.friendly_modified)} | ${escapeMarkdownCell(version.modifier)} | ${escapeMarkdownCell(version.minor_edit)} | ${escapeMarkdownCell(version.message)} |`);
+		}
+	}
+
+	if (data.diff) {
+		lines.push("", "## Diff summary", "");
+		lines.push(`- Versions: v${data.diff.from_version ?? "?"} → v${data.diff.to_version ?? "?"}`);
+		lines.push(`- Modified: ${data.diff.from_modified ?? "?"} → ${data.diff.to_modified ?? "?"}`);
+		lines.push(`- Editors: ${data.diff.from_modifier ?? "?"} → ${data.diff.to_modifier ?? "?"}`);
+		lines.push(`- Text length delta: ${data.diff.text_length_delta ?? "?"}`);
+		lines.push(`- Title changed: ${data.diff.title_changed}`);
+		if (data.diff.added_excerpt) lines.push(`- Added excerpt: ${data.diff.added_excerpt}`);
+	}
+
+	return lines.join("\n");
+}
+
+async function fetchConfluencePageHistoryImpl(
+	pageId: string,
+	limit: number | undefined,
+	format: string | undefined,
+	includeDiff: boolean | undefined,
+	fromVersion: number | undefined,
+	toVersion: number | undefined,
+	signal?: AbortSignal
+) {
+	const maxResults = typeof limit === "number" && limit > 0 ? limit : 10;
+	const requestedFormat = format === "markdown" ? "markdown" : "json";
+	const metadata = await fetchConfluencePageMetadata(pageId, signal);
+	const versions = await fetchConfluencePageHistoryVersions(pageId, maxResults, signal);
+
+	let diff: ConfluencePageVersionDiff | null = null;
+	if (includeDiff) {
+		let resolvedTo = typeof toVersion === "number" && toVersion > 0 ? toVersion : undefined;
+		let resolvedFrom = typeof fromVersion === "number" && fromVersion > 0 ? fromVersion : undefined;
+
+		if (resolvedTo === undefined && versions.length > 0 && typeof versions[0]?.version_number === "number") {
+			resolvedTo = versions[0].version_number as number;
+		}
+		if (resolvedFrom === undefined) {
+			if (resolvedTo !== undefined && resolvedTo > 1) {
+				resolvedFrom = resolvedTo - 1;
+			} else if (versions.length > 1 && typeof versions[1]?.version_number === "number") {
+				resolvedFrom = versions[1].version_number as number;
+			}
+		}
+
+		if (resolvedFrom === undefined || resolvedTo === undefined) {
+			throw new Error(`Could not resolve diff versions for page ${pageId}. Provide from_version/to_version or request a page with at least two versions.`);
+		}
+		if (resolvedFrom >= resolvedTo) {
+			throw new Error(`from_version (${resolvedFrom}) must be less than to_version (${resolvedTo}).`);
+		}
+
+		diff = await buildConfluencePageVersionDiff(pageId, resolvedFrom, resolvedTo, signal);
+	}
+
+	const result = {
+		page_id: metadata.page_id,
+		title: metadata.title,
+		space: metadata.space,
+		current_version: metadata.current_version,
+		updated: metadata.updated,
+		url: metadata.url,
+		versions,
+		diff,
+	};
+
+	return {
+		...result,
+		text: requestedFormat === "markdown" ? renderConfluencePageHistoryMarkdown(result) : JSON.stringify(result, null, 2),
+	};
+}
+
 export default function atlassianReaderExtension(pi: ExtensionAPI) {
 	pi.registerTool({
 		name: "atlassian_chat",
@@ -561,6 +1124,72 @@ export default function atlassianReaderExtension(pi: ExtensionAPI) {
 				};
 			} catch (e: any) {
 				log(ctx, "ERROR", "fetch_confluence_page failed", String(e?.message ?? e));
+				throw e;
+			}
+		},
+	});
+
+	pi.registerTool({
+		name: "fetch_recent_confluence_pages",
+		label: "Fetch recent Confluence pages",
+		description: "List recently updated Confluence pages visible to the authenticated user, optionally filtered by time or space.",
+		parameters: Type.Object({
+			limit: Type.Optional(Type.Number({ description: "Maximum number of pages to return (default: 25)" })),
+			since: Type.Optional(Type.String({ description: "Only include pages modified since this ISO timestamp (e.g. 2026-03-10T00:00:00Z)" })),
+			space_keys: Type.Optional(Type.Array(Type.String(), { description: "Optional Confluence space keys to restrict the search." })),
+			format: Type.Optional(Type.String({ description: "Output format: 'markdown' or 'json' (default: json)" })),
+			include_change_summary: Type.Optional(Type.Boolean({ description: "Include a lightweight previous-vs-current change summary per page (default: false)." })),
+		}),
+		async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+			try {
+				const res = await fetchRecentConfluencePagesImpl(
+					params.limit,
+					params.since,
+					params.space_keys,
+					params.format,
+					params.include_change_summary,
+					signal
+				);
+				return {
+					content: [{ type: "text", text: res.text }],
+					details: { endpoint: res.endpoint, count: String(res.count), cql: res.cql },
+				};
+			} catch (e: any) {
+				log(ctx, "ERROR", "fetch_recent_confluence_pages failed", String(e?.message ?? e));
+				throw e;
+			}
+		},
+	});
+
+	pi.registerTool({
+		name: "fetch_confluence_page_history",
+		label: "Fetch Confluence page history",
+		description: "Fetch version history for a Confluence page, with optional compare/diff summary between two versions.",
+		parameters: Type.Object({
+			page_id: Type.String({ description: "Confluence page id" }),
+			limit: Type.Optional(Type.Number({ description: "Maximum number of history entries to return (default: 10)" })),
+			format: Type.Optional(Type.String({ description: "Output format: 'markdown' or 'json' (default: json)" })),
+			include_diff: Type.Optional(Type.Boolean({ description: "Include a lightweight diff summary between two page versions (default: false)." })),
+			from_version: Type.Optional(Type.Number({ description: "Optional source version for diff comparison." })),
+			to_version: Type.Optional(Type.Number({ description: "Optional target version for diff comparison." })),
+		}),
+		async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+			try {
+				const res = await fetchConfluencePageHistoryImpl(
+					params.page_id,
+					params.limit,
+					params.format,
+					params.include_diff,
+					params.from_version,
+					params.to_version,
+					signal
+				);
+				return {
+					content: [{ type: "text", text: res.text }],
+					details: { page_id: String(res.page_id ?? params.page_id), current_version: String(res.current_version ?? ""), versions: String(res.versions.length) },
+				};
+			} catch (e: any) {
+				log(ctx, "ERROR", "fetch_confluence_page_history failed", String(e?.message ?? e));
 				throw e;
 			}
 		},
