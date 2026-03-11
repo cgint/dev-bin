@@ -11,6 +11,7 @@ skills = [
   "diagrams",
   "sub-agent-handoff",
   "my-tools-toolbox",
+  "google-workspace-cli",
   "openspec-apply-change",
   "openspec-propose"
 ]
