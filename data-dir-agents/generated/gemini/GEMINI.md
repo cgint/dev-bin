@@ -208,7 +208,9 @@ Stick to the architect mode (or talk mode or ask mode) until the following is cl
 
 ## The Architect Handshake Protocol
 
-The Handshake is a **scope/risk boundary**, not a per-edit approval loop.
+The Handshake approves a **scope/risk boundary** for a change package.
+It is **not** a per-edit, per-file, or per-step approval loop.
+Once the scope is approved, the agent should execute autonomously within that scope until done or blocked.
 
 ### When a Handshake is required
 
