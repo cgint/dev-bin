@@ -48,7 +48,7 @@
 
 ### Mode B — Implementation ("Execute")
 
-**Goal:** implement the agreed approach efficiently and safely.
+**Goal:** implement the agreed approach efficiently, safely, and autonomously within approved scope.
 
 **Typical activities**
 
@@ -59,7 +59,9 @@
 
 **Default constraints**
 
-- Stay within the approved plan; if new information changes the plan materially, switch back to Planning.
+- Once the user has approved the plan, proceed autonomously on all in-scope, non-destructive work.
+- Do not ask for additional permission for routine implementation steps within the approved scope (reading related files, editing agreed files, running tests/verification, updating status or other approved artifacts).
+- Pause and switch back to Planning if new information materially changes scope/approach/risk, a meaningful product/technical decision is required, or a real blocker prevents progress.
 
 ### Mode switching
 

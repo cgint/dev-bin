@@ -10,9 +10,10 @@
 
 ### Implementation
 
-- Goal: implement the agreed approach efficiently and safely
+- Goal: implement the agreed approach efficiently, safely, and autonomously within approved scope
 - Allowed: code/test changes within approved scope; iterate; self-correct; run verification; update status
-- If new info materially changes scope/approach/risk, switch back to Planning (Handshake)
+- Default: once the user has approved the plan, proceed autonomously on in-scope, non-destructive work
+- Pause only if new info materially changes scope/approach/risk, a meaningful decision is needed, or a real blocker prevents progress
 
 ### Keywords
 
