@@ -1,7 +1,9 @@
 ---
 description: Archive current openspec change and commit only touched files
 ---
-Final review done by user. Please archive the openspec change using the appropriate skill.
+Final review done by user.
+Please archive the openspec change using the appropriate skill.
+Whenever possible decide to "Do sync before archiving" to update main OpenSpec specs from this change, then archive.
 
 After that commit exactly and only:
  - If we used openspec: The openspec change documents of the change that we were implementing in this session
