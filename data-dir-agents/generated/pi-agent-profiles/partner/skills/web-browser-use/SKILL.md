@@ -93,6 +93,10 @@ Use `agent-browser` when you need to:
 - **Use snapshots for discoverability**: `agent-browser snapshot -i -c` helps find actionable refs/selectors quickly.
 - **Screenshots**: Use `browsershot.sh` for URL-to-PNG capture; it's reliable and avoids chaining issues.
 - **Single steps**: Run one agent-browser command at a time; chaining click/type often hangs the session.
+- **Close named sessions when finished**: If you used `agent-browser --session <name> ...` for a temporary workflow, end with `agent-browser --session <name> close`.
+- **Only create named sessions when continuity is needed**: Reuse a named session for a multi-step flow; avoid creating throwaway named sessions for one-off screenshots or checks.
+- **Prefer auto-cleanup helpers for one-off captures**: Use `browsershot.sh` for simple screenshots because it avoids leaving browser sessions behind.
+- **Interrupted runs can leave stale sessions**: If a workflow crashes or is aborted, check `agent-browser session list` and close stale sessions explicitly.
 - **Viewport management**: Set viewport before interactions (e.g., `1024 768` or `2048 1080`).
 - **Screenshot naming**: Use descriptive names like `homepage.png`, `checkout-flow.png`, `login-success.png`.
 - **Documentation**: Use screenshots as evidence for user acceptance testing or documentation.
