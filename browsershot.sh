@@ -74,10 +74,22 @@ fi
 echo "Browsing $URL..."
 echo "Target: $OUTPUT"
 
-# Execute agent-browser commands
-# We set the viewport first to ensure consistent rendering
-agent-browser set viewport "$WIDTH" "$HEIGHT"
-agent-browser open "$URL"
-agent-browser screenshot $FULL "$OUTPUT"
+SESSION="browsershot-$$-$(date +%s)"
+
+cleanup() {
+    agent-browser --session "$SESSION" close >/dev/null 2>&1 || true
+}
+
+trap cleanup EXIT INT TERM
+
+# Execute agent-browser commands in an isolated temporary session
+# and always close it afterwards.
+agent-browser --session "$SESSION" set viewport "$WIDTH" "$HEIGHT"
+agent-browser --session "$SESSION" open "$URL"
+if [[ -n "$FULL" ]]; then
+    agent-browser --session "$SESSION" screenshot --full "$OUTPUT"
+else
+    agent-browser --session "$SESSION" screenshot "$OUTPUT"
+fi
 
 echo "Screenshot saved to $OUTPUT"
