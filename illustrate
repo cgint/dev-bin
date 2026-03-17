@@ -1,0 +1,42 @@
+#!/bin/bash
+# Text input → image output
+# Usage: ./script.sh <file>  |  ./script.sh -c "text"  [ -o out.webp ]
+
+set -euo pipefail
+
+GEN_BIN="${HOME}/.local/bin/genai_image_gen.py"
+[[ -x "${GEN_BIN}" ]] || { echo "genai_image_gen.py not found" >&2; exit 1; }
+
+CONTENT=""
+OUT=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -c) CONTENT="$2"; shift 2 ;;
+    -o) OUT="$2"; shift 2 ;;
+    *)
+      if [[ -f "$1" ]]; then
+        CONTENT=$(<"$1")
+        [[ -z "$OUT" ]] && OUT="$(basename "$1" | sed 's/\.[^.]*$//').webp"
+      else
+        echo "Usage: $0 <file>  |  $0 -c \"text\" [ -o out.webp ]" >&2
+        exit 2
+      fi
+      shift
+      ;;
+  esac
+done
+
+[[ -z "$CONTENT" ]] && { echo "Usage: $0 <file>  |  $0 -c \"text\"" >&2; exit 2; }
+[[ -z "$OUT" ]] && OUT="illustration.webp"
+
+TMP=$(mktemp -t prompt.XXXXXX)
+trap 'rm -f "$TMP"' EXIT
+
+printf 'Illustrate this. No text in the image. Clean, expressive style.\n\n---\n%s\n---' \
+  "$(printf '%s' "$CONTENT" | head -c 8000)" > "$TMP"
+
+"${GEN_BIN}" --prompt-file "$TMP" --out-dir . --basename _tmp --count 1 --model gemini-3.1-flash-image-preview --size 1024 >/dev/null 2>&1
+
+mv _tmp_1.webp "$OUT"
+echo "$OUT"
