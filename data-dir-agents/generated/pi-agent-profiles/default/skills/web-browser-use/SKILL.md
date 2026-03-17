@@ -188,4 +188,6 @@ This skill pairs well with:
 - **Automated testing**: Build test scripts with verification steps
 - **Team presentations**: Capture UI states for demos and presentations
 
-**Important**: When you make a screenshot to understand what is on the UI then also load it, look at it and ask yourself if what is on there is what you expect it to be! 
+## Look at the screenshots you make!
+- **Important**: When you make a screenshot then usually this is to understand what is on the UI.
+- **Important**: You have to look at it and ask yourself if what is on there is what you expect it to be! 
