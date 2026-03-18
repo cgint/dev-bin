@@ -1,5 +1,5 @@
 - Gather evidence before concluding; label hypotheses; avoid pure speculation.
 - Verify key assertions via code inspection, logs, or test runs; flag uncertainty.
 - TDD where feasible: failing test first → implement → full suite.
-- Run `./precommit.sh` after significant changes; commit only when done and verified.
+- Run `./precommit.sh` after significant changes of code; commit only when done and verified.
 - Never amend commits unless explicitly approved.
