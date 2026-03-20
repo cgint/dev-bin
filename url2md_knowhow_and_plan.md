@@ -399,6 +399,17 @@ Each iteration follows this process:
 
 ---
 
+## Implemented enhancements (HexDocs + generic)
+
+- **HexDocs (`hexdocs.pm` URLs):** strip `.top-search`, `a.copy-markdown`, View Source links, `<footer>` (package/ExDoc chrome); narrow to `<main id="main">` via `decode_contents()` (sidebar excluded without re-including siblings); remove **empty** `<a>` nodes (view-source icon links).
+- **Generic HTML:** unwrap `div`/`span`/`small`/`section`; strip `data-*`, `aria-*`, `translate`, `role`, etc.; strip attrs on the **root** node (not only descendants); remove `<wbr>` with **`unwrap()`** (not `replace_with("")` — lxml can parse `<wbr>Text</wbr>` and deleting the node would drop `Text`).
+- **Pandoc:** `--wrap=none`, `--markdown-headings=atx`.
+- **Post-clean:** HTML comments; **by default** strip residual HTML in prose (fence-aware); `--no-strip-residual-html` to disable.
+- **CLI:** `--no-extract-main`, `--extract-main`, `--no-strip-residual-html`.
+- **`pypandoc`:** lazy-imported so tests can import cleaning helpers without Pandoc at import time.
+
+---
+
 ## References
 
 - [Mozilla Readability](https://github.com/mozilla/readability) - Firefox Reader Mode algorithm
