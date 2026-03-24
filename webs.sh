@@ -119,11 +119,11 @@ full_prompt="Use google_web_search to research the following and provide a compr
 
 $prompt"
 
-# Execute gemini via gem.sh
+# Execute gemini via gem.sh (--allowed-mcp-server-names '' = no MCP servers; see gemini -h)
 if [[ -n "$output_file" ]]; then
     echo "Searching the web..." >&2
-    echo "$full_prompt" | "$SCRIPT_DIR/gem.sh" "$model" -o "$output_format" > "$output_file"
+    echo "$full_prompt" | "$SCRIPT_DIR/gem.sh" "$model" -o "$output_format" --allowed-mcp-server-names '' > "$output_file"
     echo "Results written to: $output_file" >&2
 else
-    echo "$full_prompt" | "$SCRIPT_DIR/gem.sh" "$model" -o "$output_format"
+    echo "$full_prompt" | "$SCRIPT_DIR/gem.sh" "$model" -o "$output_format" --allowed-mcp-server-names ''
 fi
