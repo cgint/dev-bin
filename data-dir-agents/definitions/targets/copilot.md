@@ -17,7 +17,7 @@
 ## Notes (concept mapping)
 
 - Persistent instructions: Copilot CLI supports a personal instructions file at `~/.copilot/copilot-instructions.md` and repository instructions under `.github/copilot-instructions.md`.
-- Skills: Copilot CLI discovers **Agent Skills** as folders under `~/.copilot/skills/<skill>/...` (or project skills under `.github/skills/<skill>/...`). Each skill must contain a `SKILL.md` with YAML frontmatter (`name`, `description`, ...).
+- Skills: Copilot CLI discovers **Agent Skills** as folders under `~/.copilot/skills/<skill>/...` (or project skills under `.github/skills/<skill>/...`). Each skill must contain a `SKILL.md` with YAML frontmatter (`name`, `description`, ...). All skills under `definitions/skills/` are propagated here by default; when using a **Gemini** model, the `gemini-model-rules` skill carries the Gemini-specific model-ID guidance that generic instructions omit.
 
 ## Skill structure
 
