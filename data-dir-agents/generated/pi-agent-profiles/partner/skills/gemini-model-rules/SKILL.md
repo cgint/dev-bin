@@ -4,18 +4,7 @@ description: >-
   For any Google Gemini model (all variants): read this skill before tools, file edits, or substantive work, then follow the rules below—including the two-phase Clarity First protocol and the Firewall (no Phase 1→2 without explicit user approval). If the active model is not Gemini, skip unless the user asks about Gemini. Use model id/name (e.g. contains "gemini") or harness labeling—not the host app—to decide.
 ---
 
-# Gemini model rules
-
-## Decision (harness / LLM)
-
-From the skill index, decide **only** from **model identity** (not IDE/CLI):
-
-| Situation | Action |
-|-----------|--------|
-| **Gemini** (any Google Gemini model) | Read this skill first, then apply the rules below. |
-| **Not Gemini** | Do not apply; ignore unless the user asks about Gemini. |
-
-The sections below mirror guidance from `GEMINI.md` and the **Clarity First** / **Firewall** rules when generic `AGENTS.md` / `copilot-instructions.md` omit them.
+# Gemini model rules to enforce even more the two-phase Clarity First protocol and the Firewall
 
 ## Clarity First protocol and the Firewall
 
