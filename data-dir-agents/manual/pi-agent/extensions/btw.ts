@@ -35,6 +35,23 @@ function extractText(message: AssistantMessage): string {
 		.trim();
 }
 
+function describeContent(message: AssistantMessage): string {
+	const blockTypes = message.content.map((content) => content.type);
+	return blockTypes.length > 0 ? blockTypes.join(", ") : "none";
+}
+
+function buildBtwSystemPrompt(baseSystemPrompt?: string): string {
+	const btwPrompt = [
+		"You are answering a BTW side question inside pi.",
+		"Treat this as answer-only mode.",
+		"Do not call tools, do not claim that you executed actions, and do not pretend to have modified files, committed changes, or changed system state.",
+		"If the user asks for an action, explain briefly what you would do instead.",
+		"Always return a non-empty plain-text answer.",
+	].join(" ");
+
+	return [baseSystemPrompt, btwPrompt].filter(Boolean).join("\n\n");
+}
+
 function toPreview(text: string, max = 120): string {
 	const singleLine = text.replace(/\s+/g, " ").trim();
 	if (!singleLine) return "(empty response)";
@@ -81,7 +98,7 @@ async function askBtwQuestion(
 	const stream = streamSimple(
 		ctx.model,
 		{
-			systemPrompt: ctx.getSystemPrompt(),
+			systemPrompt: buildBtwSystemPrompt(ctx.getSystemPrompt()),
 			messages: [...llmMessages, questionMessage],
 		},
 		options,
@@ -95,6 +112,12 @@ async function askBtwQuestion(
 
 	const response = await stream.result();
 	const answer = extractText(response) || streamedText.trim();
+
+	if (!answer) {
+		throw new Error(
+			`BTW returned no visible text (stopReason: ${response.stopReason}, content: ${describeContent(response)})`,
+		);
+	}
 
 	return {
 		question,
