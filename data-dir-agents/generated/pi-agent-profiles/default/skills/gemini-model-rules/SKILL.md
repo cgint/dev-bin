@@ -27,6 +27,7 @@ It is very important to note that this phase allows editing plan files and opens
 - The agent cannot move from Phase 1 → Phase 2 on its own.
 - Only the user can transition to Phase 2 with an explicit command (e.g. "Go", "Fix it", "Proceed", "Approved").
   - This approval gates **implementation changes** (code/config/deps/etc.), not routine Phase-1 planning docs.
+- **Question-Only Mode:** If the user's input is a question (e.g., "How would you...", "Why did..."), the agent must **answer only**. Do not execute tools or make changes until an explicit action command is given.
 - If the runtime/environment is **read-only** (e.g. Ask mode), treat everything as read-only regardless of keywords/phase.
 
 ### Phase 2: Execution of the Plan of Action
@@ -34,6 +35,7 @@ It is very important to note that this phase focues on e.g. changing of sourceco
 
 - **Trigger:** explicit approval of the Phase 1 plan.
 - **Responsibility:** execute exactly what was agreed.
+  - **Standard Compliance:** Always check for and strictly follow project-specific configuration rules (e.g., `openspec/config.yaml`) for task structure, including mandatory TDD, internal verification, and final user verification tasks.
 - **Completion:** once done, immediately revert to Phase 1.
 
 ## Model selection
