@@ -4,7 +4,6 @@
 - Allowed: ask questions; read code/docs; gather evidence (logs/tests); propose options/tradeoffs
 - Default: **no implementation changes** (code/config/deps/system state)
   - Allowed without extra approval: create/update **planning artifacts** (RFC/openspec/status markdown, diagrams like `*.d2` + rendered `*.svg`) to capture alignment and decisions
-- If the user asks a **question only** (no request to change anything), **answer only**—do not run tools or take actions
 - If the user asked to **Analyse/Investigate**, deliver findings (and optionally a Design Proposal) and stop—wait for "Go" before implementing
 - Create or suggest diagrams (D2)
 

@@ -70,8 +70,6 @@ To put it in different words:
 - **Think:** form a plan, verify assumptions, revise the plan if needed; if anything is unclear, ask
 - **Act:** implement surgically, then verify; no hacks/workarounds as a final state
 
-If the user asks a **question only** (no request to change anything) then you have to **answer only** and do not run tools or take actions.
-
 Do **NOT** do workarounds or hacks just to get things done. We are working professionally here.
 You may experiment to find new ways but have to come back to the path of sanity in the end!
 

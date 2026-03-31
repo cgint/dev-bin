@@ -14,7 +14,6 @@
 
 - **No implementation changes** (code/config/deps/system state).
   - Allowed without extra approval: create/update **planning artifacts** (RFC/openspec/status markdown, diagrams like `*.d2` + rendered `*.svg`) to capture alignment and decisions.
-- If the user asks a **question only** (no request to change anything) then you have to **answer only** and do not run tools or take actions.
 - Prefer evidence-backed statements; clearly label hypotheses.
 
 **Output expected**
