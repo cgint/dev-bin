@@ -119,11 +119,17 @@ full_prompt="Use google_web_search to research the following and provide a compr
 
 $prompt"
 
-# Execute gemini via gem.sh (--allowed-mcp-server-names '' = no MCP servers; see gemini -h)
+# Execute gemini via gem.sh
+#
+# Intent: disallow all MCP servers.
+# Gemini CLI's Policy Engine rejects an empty mcpName, so we pass an allowlist
+# entry that (practically) matches no server.
+DISABLE_ALL_MCP_NAME="__DISABLE_ALL_MCP__"
+
 if [[ -n "$output_file" ]]; then
     echo "Searching the web..." >&2
-    echo "$full_prompt" | "$SCRIPT_DIR/gem.sh" "$model" -o "$output_format" --allowed-mcp-server-names '' > "$output_file"
+    echo "$full_prompt" | "$SCRIPT_DIR/gem.sh" "$model" -o "$output_format" --allowed-mcp-server-names "$DISABLE_ALL_MCP_NAME" > "$output_file"
     echo "Results written to: $output_file" >&2
 else
-    echo "$full_prompt" | "$SCRIPT_DIR/gem.sh" "$model" -o "$output_format" --allowed-mcp-server-names ''
+    echo "$full_prompt" | "$SCRIPT_DIR/gem.sh" "$model" -o "$output_format" --allowed-mcp-server-names "$DISABLE_ALL_MCP_NAME"
 fi
