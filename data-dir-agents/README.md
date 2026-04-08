@@ -29,7 +29,7 @@ Skills overview (managed here)
 - pi-agent/skills/web-search
   - SKILL.md: Guidance for webs.sh (Gemini grounded web-search)
   - Tool referenced: webs.sh
-  - Notes: Use focused queries, optionally pass local files for combined local+web analysis (webs.sh <file> "<prompt>"). Save results with redirect when you need evidence.
+  - Notes: Use focused queries, optionally pass local files for combined local+web analysis (webs.sh <file> "<prompt>"). Save results with redirect when you need evidence. Allow at least **180s** per run for grounded search; on timeout retry with a higher limit before giving up.
 
 - pi-agent/skills/read-code-structure
   - SKILL.md: Guidance for ctags_symbol_map.py
@@ -55,6 +55,7 @@ Quick usage snippets
 - Guidance: By default prefer D2 for explanatory/human-facing visuals; prefer PlantUML for technical UML diagrams.
 
 2) Web search (webs.sh)
+- Timeouts: grounded search is slow; use at least **180 seconds** (or **180000 ms** where the harness uses milliseconds). If a run times out, retry with a longer limit—do not treat a short timeout as “search unavailable.”
 - Simple search:
   webs.sh "latest AI news"
 

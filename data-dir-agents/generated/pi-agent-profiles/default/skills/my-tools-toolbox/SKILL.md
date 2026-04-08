@@ -8,7 +8,7 @@ description: The toolbox (webs.sh for web-search, asks.sh for documentation- and
 --- AI & LLM TOOLS ---
 
 - gem.sh              Wrapper for Gemini CLI with model shortcuts (flash/pro/lite) ::: Example: gem.sh -p "analyse file and extract relevant information" (use as sub agent)
-- webs.sh             Web search via Gemini with grounding; accepts file + prompt, outputs to stdout or file ::: Example: webs.sh "latest AI news"
+- webs.sh             Web search via Gemini with grounding; accepts file + prompt, outputs to stdout or file ::: Example: webs.sh "latest AI news" ::: Allow at least **180s** (180000 ms) per run; on timeout retry with a higher limit before giving up
 - asks.sh             Query documentation using BM25 search and generate answers by topic ::: Example: asks.sh my-sourcecode "Where doe we use Gemini Live API" ::: list of topics by simply running asks.sh
 - codegiant.py        Orchestrates context collection and LLM interaction for code tasks ::: Example: codegiant.py -y -o diff_review.md -t "review the diff.txt - Only reports real issues" -e py,js,txt,html
 - codecollector.py    Gathers project context into a single markdown file for LLM consumption ::: Example: codecollector.py -y -o context.md

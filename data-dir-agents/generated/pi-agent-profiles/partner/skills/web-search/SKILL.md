@@ -83,6 +83,16 @@ Do NOT use `url2md.py` for github.com: GitHub UI HTML converts poorly to Markdow
 
 ---  
 
+## Timeouts and retries (important)
+
+Grounded web search is slow (fetching sources plus model work). Short shell or tool timeouts (for example **60s**) often fail even when the command would have succeeded.
+
+- **Default budget**: When your environment lets you set how long a command may run, use at least **180 seconds** for `webs.sh` (in millisecond-based UIs, that is **180000 ms**).
+- **If the run ends with a timeout**: Treat it as “not enough time,” not as “search is broken.” **Retry once** with a **longer** limit (for example **300s** / **300000 ms**) before abandoning web search or telling the user search is unavailable.
+- **Do not** give up on the user’s request only because the first run hit a low timeout.
+
+---  
+
 ## Tips
 
 - Check `webs.sh -h` for detailed usage information
