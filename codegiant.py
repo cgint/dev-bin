@@ -21,7 +21,6 @@ LLM_API_KEY = os.environ.get("GEMINI_API_KEY")
 # Model definitions matching codegiant.sh
 LLM_MODEL_DEFAULT = "gemini-3.1-pro-preview" # Default in python script
 LLM_MODEL_FLASH = "gemini-3-flash-preview"
-LLM_MODEL_PRO_25 = "gemini-2.5-pro"
 LLM_MODEL_FLASH_THINKING_BUDGET = -1
 
 # Default configuration
@@ -338,10 +337,7 @@ def main():
         sys.exit(1)
     
     llm_model = LLM_MODEL_DEFAULT
-    if args.pro25:
-        llm_model = LLM_MODEL_PRO_25
-        print_err(f"[INFO] Using pro-2.5 model: {llm_model}")
-    elif args.flash25:
+    if args.flash25:
         llm_model = LLM_MODEL_FLASH
         print_err(f"[INFO] Using flash model: {llm_model}")
 
