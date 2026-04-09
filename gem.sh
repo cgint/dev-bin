@@ -8,11 +8,6 @@
 #
 # Usage: ./gem.sh [flash|pro] [gemini_args...]
 #
-# Options:
-#   flash: Uses the gemini-3-flash-preview model.
-#   lite:  Uses the gemini-2.5-flash-lite model.
-#   pro:   Uses the gemini-3.1-pro-preview model.
-#
 # If no model is specified, it defaults to the 'gemini' command's default model.
 
 # Load environment variables from local .env file
@@ -29,13 +24,13 @@ unset GOOGLE_CLOUD_LOCATION
 
 model=""
 if [[ "$1" == "flash" ]]; then
-  model="-m gemini-3-flash-preview"
+  model="-m gemini-3.1-flash-preview"
   shift
 elif [[ "$1" == "pro" ]]; then
   model="-m gemini-3.1-pro-preview"
   shift
 elif [[ "$1" == "lite" ]]; then
-  model="-m gemini-2.5-flash-lite"
+  model="-m gemini-3.1-flash-lite-preview"
   shift
 fi
 
