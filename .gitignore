@@ -4,6 +4,7 @@
 .env
 agent
 cursor-agent
+droid
 *_codegiant_*
 neo4j_export/
 
