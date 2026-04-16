@@ -4,7 +4,7 @@
 
 ALL_MODE="false"
 # Base npm packages
-NPM_PACKAGES="@google/gemini-cli @fission-ai/openspec@latest @mariozechner/pi-coding-agent"
+NPM_PACKAGES="@google/gemini-cli @fission-ai/openspec pi-coding-agent"
 NPM_PACKAGES_ALL_ADDON="@openai/codex @googleworkspace/cli agent-browser"
 # disabled from all_addon "@anthropic-ai/claude-code opencode-ai"
 # @github/copilot now installed via brew
