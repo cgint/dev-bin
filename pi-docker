@@ -1,0 +1,13 @@
+#!/bin/bash
+set -euo pipefail
+
+# Convenience wrapper for ~/dev/pi-agent-docker/run.sh
+
+RUNNER="$HOME/dev/pi-agent-docker/run.sh"
+if [[ ! -x "$RUNNER" ]]; then
+  echo "Runner not found/executable: $RUNNER" >&2
+  echo "Did you clone/create pi-agent-docker at ~/dev/pi-agent-docker ?" >&2
+  exit 1
+fi
+
+exec "$RUNNER" "$@"
