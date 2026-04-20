@@ -10,7 +10,9 @@ import pytest
 # Import the module under test (same directory)
 sys.path.insert(0, str(Path(__file__).parent))
 from propagate_definitions import (
+    load_copilot_profiles,
     load_pi_agent_profiles,
+    plan_copilot_profile,
     plan_pi_agent_profile,
 )
 
@@ -76,6 +78,31 @@ class TestLoadPiAgentProfiles:
         profiles = load_pi_agent_profiles(tmp_path)
         assert "skills" not in profiles[0]
         assert "prompts" not in profiles[0]
+
+
+class TestLoadCopilotProfiles:
+    def test_returns_empty_for_missing_dir(self, tmp_path):
+        assert load_copilot_profiles(tmp_path / "nonexistent") == []
+
+    def test_loads_single_profile(self, tmp_path):
+        toml_file = tmp_path / "minimal.toml"
+        toml_file.write_text(
+            'name = "minimal"\ntarget_dir = "~/.copilot/profiles/minimal"\nagents_file = "AGENTS_AUTONOMOUS.md"\n',
+            encoding="utf-8",
+        )
+        profiles = load_copilot_profiles(tmp_path)
+        assert len(profiles) == 1
+        assert profiles[0]["name"] == "minimal"
+        assert profiles[0]["target_dir"] == "~/.copilot/profiles/minimal"
+        assert profiles[0]["agents_file"] == "AGENTS_AUTONOMOUS.md"
+
+    def test_skills_are_optional(self, tmp_path):
+        (tmp_path / "p.toml").write_text(
+            'name = "p"\ntarget_dir = "~/.copilot/p"\nagents_file = "AGENTS_GPT52.md"\n',
+            encoding="utf-8",
+        )
+        profiles = load_copilot_profiles(tmp_path)
+        assert "skills" not in profiles[0]
 
 
 # ---------------------------------------------------------------------------
@@ -190,3 +217,93 @@ class TestPlanPiAgentProfile:
         profile = {"name": "p", "target_dir": "~/.pi/p", "agents_file": "AGENTS_NONEXISTENT.md"}
         with pytest.raises(FileNotFoundError, match="AGENTS_NONEXISTENT"):
             plan_pi_agent_profile(profile, spec_root, out_root)
+
+
+class TestPlanCopilotProfile:
+    def _make_spec_root(self, tmp_path: Path) -> Path:
+        spec_root = tmp_path / "definitions"
+        agents_dir = spec_root / "agents"
+        _write(agents_dir / "AGENTS_GPT52.md", "# GPT52\n")
+        _write(agents_dir / "AGENTS_AUTONOMOUS.md", "# AUTONOMOUS\n")
+        skills_root = spec_root / "skills"
+        _make_skill(skills_root, "codebase-search")
+        _make_skill(skills_root, "web-search")
+        _make_skill(skills_root, "diagrams")
+        profiles_dir = spec_root / "profiles" / "copilot"
+        _write(profiles_dir / "default.toml", "")
+        return spec_root
+
+    def _dest_names(self, planned, subdir: str) -> list[str]:
+        return [
+            item[2].name
+            for item in planned
+            if len(item) >= 3 and item[2].parent.name == subdir
+        ]
+
+    def test_target_file_written(self, tmp_path):
+        spec_root = self._make_spec_root(tmp_path)
+        out_root = tmp_path / "generated"
+        profile = {"name": "default", "target_dir": "~/.copilot", "agents_file": "AGENTS_GPT52.md"}
+        planned = plan_copilot_profile(profile, spec_root, out_root)
+        target_items = [i for i in planned if i[2].name == ".target"]
+        assert len(target_items) == 1
+        assert target_items[0][3] == "~/.copilot"
+
+    def test_instructions_use_correct_template(self, tmp_path):
+        spec_root = self._make_spec_root(tmp_path)
+        out_root = tmp_path / "generated"
+        profile = {
+            "name": "minimal",
+            "target_dir": "~/.copilot/profiles/minimal",
+            "agents_file": "AGENTS_AUTONOMOUS.md",
+        }
+        planned = plan_copilot_profile(profile, spec_root, out_root)
+        instructions_items = [i for i in planned if i[2].name == "copilot-instructions.md"]
+        assert len(instructions_items) == 1
+        assert "# AUTONOMOUS" in instructions_items[0][3]
+
+    def test_all_skills_included_when_no_key(self, tmp_path):
+        spec_root = self._make_spec_root(tmp_path)
+        out_root = tmp_path / "generated"
+        profile = {"name": "default", "target_dir": "~/.copilot", "agents_file": "AGENTS_GPT52.md"}
+        planned = plan_copilot_profile(profile, spec_root, out_root)
+        skill_names = self._dest_names(planned, "skills")
+        assert set(skill_names) == {"codebase-search", "web-search", "diagrams"}
+
+    def test_skill_filtering(self, tmp_path):
+        spec_root = self._make_spec_root(tmp_path)
+        out_root = tmp_path / "generated"
+        profile = {
+            "name": "minimal",
+            "target_dir": "~/.copilot/profiles/minimal",
+            "agents_file": "AGENTS_AUTONOMOUS.md",
+            "skills": ["codebase-search", "web-search"],
+        }
+        planned = plan_copilot_profile(profile, spec_root, out_root)
+        skill_names = self._dest_names(planned, "skills")
+        assert set(skill_names) == {"codebase-search", "web-search"}
+        assert "diagrams" not in skill_names
+
+    def test_empty_skills_list_produces_no_skills(self, tmp_path):
+        spec_root = self._make_spec_root(tmp_path)
+        out_root = tmp_path / "generated"
+        profile = {"name": "p", "target_dir": "~/.copilot/p", "agents_file": "AGENTS_GPT52.md", "skills": []}
+        planned = plan_copilot_profile(profile, spec_root, out_root)
+        skill_names = self._dest_names(planned, "skills")
+        assert skill_names == []
+
+    def test_output_placed_under_copilot_profiles(self, tmp_path):
+        spec_root = self._make_spec_root(tmp_path)
+        out_root = tmp_path / "generated"
+        profile = {"name": "myprofile", "target_dir": "~/.copilot/p", "agents_file": "AGENTS_GPT52.md"}
+        planned = plan_copilot_profile(profile, spec_root, out_root)
+        for item in planned:
+            dest: Path = item[2]
+            assert "copilot-profiles/myprofile" in str(dest)
+
+    def test_missing_agents_file_raises(self, tmp_path):
+        spec_root = self._make_spec_root(tmp_path)
+        out_root = tmp_path / "generated"
+        profile = {"name": "p", "target_dir": "~/.copilot/p", "agents_file": "AGENTS_NONEXISTENT.md"}
+        with pytest.raises(FileNotFoundError, match="AGENTS_NONEXISTENT"):
+            plan_copilot_profile(profile, spec_root, out_root)

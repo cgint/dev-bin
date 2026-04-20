@@ -68,6 +68,11 @@ See: [`definitions/targets/`](../definitions/targets/README.md)
   → `generated/copilot/skills/<skill>/...`
   → `~/.copilot/skills/<skill>/...`
 
+- `definitions/profiles/copilot/<name>.toml`
+  → `generated/copilot-profiles/<name>/copilot-instructions.md`
+  → `generated/copilot-profiles/<name>/skills/<skill>/...`
+  → `~/.copilot/profiles/<name>/...`
+
 ### pi-agent
 - `definitions/agents/AGENTS_GPT52.md`
   → `generated/pi-agent/AGENTS.md`

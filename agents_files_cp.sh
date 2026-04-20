@@ -101,6 +101,29 @@ if [ -d "$GENERATED_DIR" ]; then
     fi
   fi
 
+  # Copilot profiles: deploy each generated profile to its configured target dir
+  COPILOT_PROFILES_GENERATED="$GENERATED_DIR/copilot-profiles"
+  if [ -d "$COPILOT_PROFILES_GENERATED" ]; then
+    for profile_dir in "$COPILOT_PROFILES_GENERATED"/*/; do
+      profile_name=$(basename "$profile_dir")
+      target_dir=$(cat "$profile_dir/.target" 2>/dev/null || true)
+      target_dir="${target_dir/#\~/$HOME}"
+      if [ -z "$target_dir" ]; then
+        echo " -- Skipping Copilot profile '$profile_name': target dir is empty"
+        continue
+      fi
+      if [ ! -d "$target_dir" ]; then
+        echo " -- Creating target dir for Copilot profile '$profile_name': $target_dir"
+        mkdir -p "$target_dir"
+      fi
+      echo " -- Deploying Copilot profile '$profile_name' -> $target_dir ... (if no output then everything is up to date)"
+      [ -f "$profile_dir/copilot-instructions.md" ] && cp -v "$profile_dir/copilot-instructions.md" "$target_dir/copilot-instructions.md"
+      [ -d "$profile_dir/skills" ] && rsync_copy_dir "$profile_dir/skills" "$target_dir/skills"
+      [ -f "$profile_dir/config.json" ] && cp -v "$profile_dir/config.json" "$target_dir/config.json"
+      [ -f "$profile_dir/mcp-config.json" ] && cp -v "$profile_dir/mcp-config.json" "$target_dir/mcp-config.json"
+    done
+  fi
+
   # Cursor: copy Agent Skills into ~/.cursor/skills/
   CURSOR_SKILLS_DIR="$USER_HOME_DIR/.cursor/skills"
   if [ -d "$GENERATED_DIR/cursor/skills" ]; then

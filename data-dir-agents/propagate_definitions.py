@@ -15,6 +15,7 @@ Canonical sources in this repo:
   - definitions/skills/<skill>/...                  (full pi-agent skill directories)
   - definitions/prompts/*.md                        (pi-agent prompt templates)
   - definitions/profiles/pi-agent/<name>.toml       (pi-agent profile configs)
+  - definitions/profiles/copilot/<name>.toml        (Copilot profile configs)
 
 Generated output (ephemeral build artifacts):
   - generated/README.md                    (copied from definitions/STRUCTURE.md)
@@ -28,6 +29,10 @@ Generated output (ephemeral build artifacts):
 
   - generated/copilot/copilot-instructions.md
   - generated/copilot/skills/<skill>/...
+
+  - generated/copilot-profiles/<name>/.target              (deploy target path, read by agents_files_cp.sh)
+  - generated/copilot-profiles/<name>/copilot-instructions.md
+  - generated/copilot-profiles/<name>/skills/...           (subset or all skills per profile config)
 
   - generated/cursor/skills/<skill>/...
 
@@ -173,8 +178,8 @@ def plan_prompt_copies(spec_root: Path, out_root: Path):
     return planned
 
 
-def load_pi_agent_profiles(profiles_dir: Path) -> list[dict]:
-    """Load all *.toml profile configs from definitions/profiles/pi-agent/."""
+def load_agent_profiles(profiles_dir: Path) -> list[dict]:
+    """Load all *.toml profile configs from a profiles directory."""
     if not profiles_dir.exists():
         return []
     profiles = []
@@ -187,18 +192,36 @@ def load_pi_agent_profiles(profiles_dir: Path) -> list[dict]:
     return profiles
 
 
-def plan_pi_agent_profile(profile: dict, spec_root: Path, out_root: Path) -> list[tuple]:
-    """Plan generation of a single pi-agent profile into generated/pi-agent-profiles/<name>/."""
+def load_pi_agent_profiles(profiles_dir: Path) -> list[dict]:
+    """Load all *.toml profile configs from definitions/profiles/pi-agent/."""
+    return load_agent_profiles(profiles_dir)
+
+
+def load_copilot_profiles(profiles_dir: Path) -> list[dict]:
+    """Load all *.toml profile configs from definitions/profiles/copilot/."""
+    return load_agent_profiles(profiles_dir)
+
+
+def plan_profile(
+    profile: dict,
+    spec_root: Path,
+    out_root: Path,
+    *,
+    profile_kind: str,
+    instructions_filename: str,
+    include_prompts: bool,
+) -> list[tuple]:
+    """Plan generation of a single tool profile into generated/<kind>-profiles/<name>/."""
     planned = []
     profile_name = profile["name"]
-    profile_out = out_root / "pi-agent-profiles" / profile_name
+    profile_out = out_root / f"{profile_kind}-profiles" / profile_name
 
     agents_root = spec_root / "agents"
     blocks_dir = agents_root / "blocks"
 
     # .target file (deploy destination, read by agents_files_cp.sh)
     planned.append(plan_write_file(
-        spec_root / "profiles" / "pi-agent" / f"{profile_name}.toml",
+        spec_root / "profiles" / profile_kind / f"{profile_name}.toml",
         profile_out / ".target",
         profile["target_dir"],
     ))
@@ -210,7 +233,7 @@ def plan_pi_agent_profile(profile: dict, spec_root: Path, out_root: Path) -> lis
     text = agents_src.read_text(encoding="utf-8")
     if blocks_dir.exists():
         text = resolve_placeholders(text, blocks_dir)
-    planned.append(plan_write_file(agents_src, profile_out / "AGENTS.md", text))
+    planned.append(plan_write_file(agents_src, profile_out / instructions_filename, text))
 
     # Skills: all if key absent, filtered list if present, none if empty list
     skills_root = spec_root / "skills"
@@ -220,15 +243,40 @@ def plan_pi_agent_profile(profile: dict, spec_root: Path, out_root: Path) -> lis
             if skills_allowlist is None or skill_dir.name in skills_allowlist:
                 planned.append(plan_dir_copy(skill_dir, profile_out / "skills" / skill_dir.name))
 
-    # Prompts: all if key absent, filtered list if present, none if empty list
-    prompts_root = spec_root / "prompts"
-    prompts_allowlist = profile.get("prompts", None)  # None = all
-    if prompts_root.exists() and prompts_allowlist != []:
-        for prompt_file in sorted(prompts_root.glob("*.md")):
-            if prompts_allowlist is None or prompt_file.name in prompts_allowlist:
-                planned.append(plan_file_copy(prompt_file, profile_out / "prompts" / prompt_file.name))
+    if include_prompts:
+        # Prompts: all if key absent, filtered list if present, none if empty list
+        prompts_root = spec_root / "prompts"
+        prompts_allowlist = profile.get("prompts", None)  # None = all
+        if prompts_root.exists() and prompts_allowlist != []:
+            for prompt_file in sorted(prompts_root.glob("*.md")):
+                if prompts_allowlist is None or prompt_file.name in prompts_allowlist:
+                    planned.append(plan_file_copy(prompt_file, profile_out / "prompts" / prompt_file.name))
 
     return planned
+
+
+def plan_pi_agent_profile(profile: dict, spec_root: Path, out_root: Path) -> list[tuple]:
+    """Plan generation of a single pi-agent profile into generated/pi-agent-profiles/<name>/."""
+    return plan_profile(
+        profile,
+        spec_root,
+        out_root,
+        profile_kind="pi-agent",
+        instructions_filename="AGENTS.md",
+        include_prompts=True,
+    )
+
+
+def plan_copilot_profile(profile: dict, spec_root: Path, out_root: Path) -> list[tuple]:
+    """Plan generation of a single Copilot profile into generated/copilot-profiles/<name>/."""
+    return plan_profile(
+        profile,
+        spec_root,
+        out_root,
+        profile_kind="copilot",
+        instructions_filename="copilot-instructions.md",
+        include_prompts=False,
+    )
 
 
 def plan_gemini_command_files(spec_root: Path, out_root: Path):
@@ -399,6 +447,11 @@ def main(argv=None):
         for p in [agents_root / "AGENTS_GEMINI.md", agents_root / "AGENTS_GPT52.md", agents_root / "AGENTS_LONG.md", agents_root / "AGENTS_SHORT.md"]:
             if p.exists():
                 print(" -", p.relative_to(REPO_ROOT))
+        print("\nCopilot profiles:")
+        copilot_profiles_dir = spec_root / "profiles" / "copilot"
+        for profile in load_copilot_profiles(copilot_profiles_dir):
+            skills_info = profile.get("skills", "all")
+            print(f" - {profile['name']} -> {profile['target_dir']}  (agents_file={profile['agents_file']}, skills={skills_info})")
         print("\npi-agent profiles:")
         pi_profiles_dir = spec_root / "profiles" / "pi-agent"
         for profile in load_pi_agent_profiles(pi_profiles_dir):
@@ -433,6 +486,12 @@ def main(argv=None):
     planned += plan_gemini_skill_copies(spec_root, out_root)
     planned += plan_copilot_skill_copies(spec_root, out_root)
     planned += plan_cursor_skill_copies(spec_root, out_root)
+
+    # Copilot profiles (each profile controls agents_file and skills subset)
+    copilot_profiles_dir = spec_root / "profiles" / "copilot"
+    copilot_profiles = load_copilot_profiles(copilot_profiles_dir)
+    for profile in copilot_profiles:
+        planned += plan_copilot_profile(profile, spec_root, out_root)
 
     # pi-agent profiles (each profile controls agents_file, skills subset, prompts subset)
     pi_profiles_dir = spec_root / "profiles" / "pi-agent"

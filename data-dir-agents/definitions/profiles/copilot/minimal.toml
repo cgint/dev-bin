@@ -1,0 +1,4 @@
+name = "minimal"
+target_dir = "~/.copilot/profiles/minimal"
+agents_file = "AGENTS_AUTONOMOUS.md"
+skills = ["codebase-search", "diagrams", "gemini-model-rules", "web-search", "web-browser-use", "openspec-apply-change", "openspec-propose"]

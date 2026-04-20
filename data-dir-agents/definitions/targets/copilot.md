@@ -4,11 +4,15 @@
 
 - `generated/copilot/copilot-instructions.md`
 - `generated/copilot/skills/<skill>/...`
+- `generated/copilot-profiles/<name>/copilot-instructions.md`
+- `generated/copilot-profiles/<name>/skills/<skill>/...`
 
 ## What it deploys to
 
 - `~/.copilot/copilot-instructions.md`
 - `~/.copilot/skills/<skill>/...`
+- `~/.copilot/profiles/<name>/copilot-instructions.md`
+- `~/.copilot/profiles/<name>/skills/<skill>/...`
 
 ## Source of truth
 
@@ -18,6 +22,7 @@
 
 - Persistent instructions: Copilot CLI supports a personal instructions file at `~/.copilot/copilot-instructions.md` and repository instructions under `.github/copilot-instructions.md`.
 - Skills: Copilot CLI discovers **Agent Skills** as folders under `~/.copilot/skills/<skill>/...` (or project skills under `.github/skills/<skill>/...`). Each skill must contain a `SKILL.md` with YAML frontmatter (`name`, `description`, ...). All skills under `definitions/skills/` are propagated here by default; when using a **Gemini** model, the `gemini-model-rules` skill carries the Gemini-specific model-ID guidance that generic instructions omit.
+- Profiles: `copilot --config-dir <dir>` lets us keep multiple isolated Copilot config trees. In this repo those trees are generated from `definitions/profiles/copilot/*.toml` and launched via `copilot-profile <name>`.
 
 ## Skill structure
 

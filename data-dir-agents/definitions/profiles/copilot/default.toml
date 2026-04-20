@@ -1,0 +1,4 @@
+name = "default"
+target_dir = "~/.copilot"
+agents_file = "AGENTS_GPT52.md"
+# skills key absent = all included

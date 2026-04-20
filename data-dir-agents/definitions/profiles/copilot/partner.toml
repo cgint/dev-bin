@@ -1,0 +1,18 @@
+name = "partner"
+target_dir = "~/.copilot/profiles/partner"
+agents_file = "AGENTS_PARTNER.md"
+
+skills = [
+  "codebase-search",
+  "tldr",
+  "read-code-structure",
+  "web-search",
+  "web-browser-use",
+  "diagrams",
+  "gemini-model-rules",
+  "sub-agent-handoff",
+  "my-tools-toolbox",
+  "google-workspace-cli",
+  "openspec-apply-change",
+  "openspec-propose"
+]

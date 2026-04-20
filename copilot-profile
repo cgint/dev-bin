@@ -1,0 +1,68 @@
+#!/bin/bash
+# copilot-profile [profile] [copilot args...]
+#   profile: default, minimal, partner, etc.
+#
+# Usage:
+#   copilot-profile --list
+#   copilot-profile default
+#   copilot-profile minimal -p "Summarize this repo" --allow-all-tools
+
+set -euo pipefail
+
+COPILOT_BASE="$HOME/.copilot"
+
+usage() {
+  echo "Usage: $0 [--list] <profile> [copilot args...]"
+  echo
+  echo "Examples:"
+  echo "  $0 --list"
+  echo "  $0 default"
+  echo "  $0 minimal -p \"Summarize this repo\" --allow-all-tools"
+}
+
+list_profiles() {
+  echo "Deployed Copilot profiles:"
+  if [ -d "$COPILOT_BASE" ]; then
+    echo "  default  -> $COPILOT_BASE"
+  fi
+  if [ -d "$COPILOT_BASE/profiles" ]; then
+    for d in "$COPILOT_BASE"/profiles/*/; do
+      [ -d "$d" ] || continue
+      name=$(basename "$d")
+      echo "  $name  -> $d"
+    done
+  fi
+}
+
+if [ $# -eq 0 ]; then
+  list_profiles
+  exit 0
+fi
+
+case "$1" in
+  --list|-l)
+    list_profiles
+    exit 0
+    ;;
+  --help|-h)
+    usage
+    exit 0
+    ;;
+esac
+
+PROFILE="$1"
+shift
+
+if [ "$PROFILE" = "default" ]; then
+  COPILOT_CONFIG_DIR="$COPILOT_BASE"
+else
+  COPILOT_CONFIG_DIR="$COPILOT_BASE/profiles/$PROFILE"
+fi
+
+if [ ! -d "$COPILOT_CONFIG_DIR" ]; then
+  echo "Profile '$PROFILE' not found at $COPILOT_CONFIG_DIR" >&2
+  echo "Run agents_files_cp.sh to deploy profiles. Use 'copilot-profile --list' to see available profiles." >&2
+  exit 1
+fi
+
+exec copilot --config-dir "$COPILOT_CONFIG_DIR" "$@"
