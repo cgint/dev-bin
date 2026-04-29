@@ -42,6 +42,12 @@ def infer_metadata(model_id):
     """
     model_lower = model_id.lower()
 
+    # --- Embedding models: signal to skip ---
+    if any(prefix in model_lower for prefix in [
+        "text-embedding", "nomic-embed", "embed-",
+    ]):
+        return {"__embedding__": True}
+
     # Context window heuristics based on known model families
     context_window = 32768  # sensible default for unknown models
 
@@ -51,16 +57,19 @@ def infer_metadata(model_id):
         context_window = 262144
     elif "glm-ocr" in model_lower:
         context_window = 32768
-    elif "nomic" in model_lower:
-        context_window = 8192
 
     # Max tokens — reasonable default for local models
     max_tokens = 8192
 
-    # Reasoning detection: "thinking" in name, or known reasoning models
+    # Reasoning detection: "thinking" in name, or known reasoning model families
     reasoning = False
     if any(marker in model_lower for marker in [
         "thinking", "reason"
+    ]):
+        reasoning = True
+    # Qwen3.x, Qwen3.5/3.6, Gemma4 (hyphenated or not), glm-4.7, gpt-oss are reasoning-capable
+    elif any(prefix in model_lower for prefix in [
+        "qwen3", "gemma4", "gemma-4", "glm-4.7", "gpt-oss"
     ]):
         reasoning = True
 
@@ -107,9 +116,11 @@ def build_model_entry(model_id):
         model_id: The model identifier string
 
     Returns:
-        dict with all fields matching the models.json schema
+        dict with all fields matching the models.json schema, or None for embedding models
     """
     meta = infer_metadata(model_id)
+    if meta.get("__embedding__"):
+        return None
 
     # Detect multimodal models from the model ID suffix.
     # LM Studio's /v1/models exposes no modality metadata, so we
@@ -253,7 +264,13 @@ def main():
             continue
 
         # Build full model entries with inferred metadata
-        models = [build_model_entry(mid) for mid in model_ids]
+        models = []
+        for mid in model_ids:
+            entry = build_model_entry(mid)
+            if entry is None:
+                print(f"  [SKIP] {mid} — embedding model")
+                continue
+            models.append(entry)
 
         # Deduplicate by id (preserve order of first occurrence)
         seen = set()
