@@ -128,8 +128,8 @@ DISABLE_ALL_MCP_NAME="__DISABLE_ALL_MCP__"
 
 if [[ -n "$output_file" ]]; then
     echo "Searching the web..." >&2
-    echo "$full_prompt" | "$SCRIPT_DIR/gem.sh" "$model" -o "$output_format" --allowed-mcp-server-names "$DISABLE_ALL_MCP_NAME" > "$output_file"
+    echo "$full_prompt" | GEMINI_CLI_TRUST_WORKSPACE=true "$SCRIPT_DIR/gem.sh" "$model" -o "$output_format" --allowed-mcp-server-names "$DISABLE_ALL_MCP_NAME" > "$output_file"
     echo "Results written to: $output_file" >&2
 else
-    echo "$full_prompt" | "$SCRIPT_DIR/gem.sh" "$model" -o "$output_format" --allowed-mcp-server-names "$DISABLE_ALL_MCP_NAME"
+    echo "$full_prompt" | GEMINI_CLI_TRUST_WORKSPACE=true "$SCRIPT_DIR/gem.sh" "$model" -o "$output_format" --allowed-mcp-server-names "$DISABLE_ALL_MCP_NAME"
 fi
