@@ -13,7 +13,7 @@ description: The toolbox (webs.sh for web-search, asks.sh for documentation- and
 - codegiant.py        Orchestrates context collection and LLM interaction for code tasks ::: Example: codegiant.py -y -o diff_review.md -t "review the diff.txt - Only reports real issues" -e py,js,txt,html
 - codecollector.py    Gathers project context into a single markdown file for LLM consumption ::: Example: codecollector.py -y -o context.md
 - aider.sh            Launches aider AI coding assistant with preconfigured environment ::: Example: aider.sh
-- speaks.sh           Text-to-speech using AI; reads text or files aloud ::: Example: speaks.sh "Hi" ::: Allow at least **180s** per run
+- speaks.sh           Text-to-speech using AI; reads text or files aloud (default: Live streaming playback). Supports `--wav out.wav` to write a WAV via GenerateContent TTS ::: Example: speaks.sh "Hi" ::: Example: speaks.sh --wav out.wav "Hi" ::: Allow at least **180s** per run
 
 --- CODE & PROJECT SEARCH ---
 

@@ -8,7 +8,7 @@ webs.sh             Web search via Gemini with grounding; accepts file + prompt,
 asks.sh             Query documentation using BM25 search and generate answers by topic ::: Example: asks.sh my-sourcecode "Where doe we use Gemini Live API" ::: list of topics by simply running asks.sh
 codegiant.py        Orchestrates context collection and LLM interaction for code tasks ::: Example: codegiant.py -y -o diff_review.md -t "review the diff.txt - Only reports real issues" -e py,js,txt,html
 codecollector.py    Gathers project context into a single markdown file for LLM consumption ::: Example: codecollector.py -y -o context.md
-speaks.sh           Text-to-speech using AI; reads text or files aloud ::: Example: speaks
+speaks.sh           Text-to-speech using AI (default: Live streaming playback). Also supports `--wav out.wav` to write a WAV via GenerateContent TTS ::: Example: speaks.sh "Hi" ::: Example: speaks.sh --wav out.wav "Hi"
 
 --- CODE & PROJECT SEARCH ---
 
