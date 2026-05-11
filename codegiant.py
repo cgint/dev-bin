@@ -13,15 +13,25 @@ import glob
 import re
 import shutil
 import signal
+from typing import Any
 
 # --- Configuration ---
 LLM_API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
 LLM_API_KEY = os.environ.get("GEMINI_API_KEY")
 
-# Model definitions matching codegiant.sh
-LLM_MODEL_DEFAULT = "gemini-3.1-pro-preview" # Default in python script
-LLM_MODEL_FLASH = "gemini-3-flash-preview"
-LLM_MODEL_FLASH_THINKING_BUDGET = -1
+# User-facing model presets map to the current provider model IDs.
+LLM_MODEL_PRESETS = {
+    "quality": {
+        "model": "gemini-3.1-pro-preview",
+        "thinking_budget": None,
+        "temperature": 1,
+    },
+    "fast": {
+        "model": "gemini-3-flash-preview",
+        "thinking_budget": None,
+        "temperature": 1,
+    },
+}
 
 # Default configuration
 LLM_CONFIG = {
@@ -136,27 +146,23 @@ def expand_globs(items):
                 expanded.append(part)
     return expanded
 
-def generate_config_json(model, thinking_budget):
+def generate_config_json(model_preset):
     """Generate the generationConfig JSON."""
     config = LLM_CONFIG.copy()
-    
-    # Remove thinking budget if -1 or not a 2.5 model
-    # Logic from bash script: if model is 2.5 AND budget != -1
-    is_2_5 = "gemini-2.5-" in model
-    is_3 = "gemini-3-" in model
-    
-    final_config = {
+
+    final_config: dict[str, Any] = {
         "temperature": config["temperature"],
         "maxOutputTokens": config["maxOutputTokens"]
     }
-    
-    if is_2_5 and thinking_budget != -1:
+
+    if model_preset["thinking_budget"] is not None:
         final_config["thinkingConfig"] = {
-            "thinkingBudget": thinking_budget
+            "thinkingBudget": model_preset["thinking_budget"]
         }
-    if is_3:
-        final_config["temperature"] = 1
-        
+
+    if model_preset["temperature"] is not None:
+        final_config["temperature"] = model_preset["temperature"]
+
     return final_config
 
 def process_grounding_info(raw_output_file, search_enabled):
@@ -303,8 +309,7 @@ def main():
     parser.add_argument('-c', metavar='context_file', help="Path to an existing context file")
     parser.add_argument('-o', metavar='output_file', help="Copy the formatted response to an additional file location")
     parser.add_argument('-r', metavar='prev_context', help="Path to previous context file for followup questions")
-    parser.add_argument('-F', '--flash25', action='store_true', help="Use the flash 2.5 model")
-    parser.add_argument('-P25', '--pro25', action='store_true', help="Use the pro 2.5 model")
+    parser.add_argument('-F', '--fast', action='store_true', help="Use the fast model preset")
     parser.add_argument('-D', '--dry-run', action='store_true', help="Generate context file only, do not call LLM")
     parser.add_argument('-S', '--search', action='store_true', help="Enable Google Search tool")
     parser.add_argument('-y', '--yes', action='store_true', help="Skip prompt for .codegiant directory creation")
@@ -332,14 +337,14 @@ def main():
         sys.exit(1)
 
     # Model Selection
-    if args.pro25 and args.flash25:
-        print_err("Error: Cannot use more than one of -F (flash-2.5) or -P25 (pro-2.5) options together.")
-        sys.exit(1)
-    
-    llm_model = LLM_MODEL_DEFAULT
-    if args.flash25:
-        llm_model = LLM_MODEL_FLASH
-        print_err(f"[INFO] Using flash model: {llm_model}")
+    model_preset_name = "quality"
+    if args.fast:
+        model_preset_name = "fast"
+
+    selected_model_preset = LLM_MODEL_PRESETS[model_preset_name]
+    llm_model = selected_model_preset["model"]
+    if args.fast:
+        print_err(f"[INFO] Using {model_preset_name} model preset: {llm_model}")
 
     # Request Validation
     user_request = ""
@@ -548,7 +553,7 @@ def main():
     # Build JSON Payload
     payload = {
         "contents": [{"role": "user", "parts": [{"text": full_prompt}]}],
-        "generationConfig": generate_config_json(llm_model, LLM_MODEL_FLASH_THINKING_BUDGET)
+        "generationConfig": generate_config_json(selected_model_preset)
     }
     
     if args.search:
