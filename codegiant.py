@@ -13,27 +13,18 @@ import glob
 import re
 import shutil
 import signal
-from typing import Any
 
 # --- Configuration ---
 LLM_API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
 LLM_API_KEY = os.environ.get("GEMINI_API_KEY")
 
-# User-facing model presets map to the current provider model IDs.
+# User-facing presets only choose the model. Generation settings stay global.
 LLM_MODEL_PRESETS = {
-    "quality": {
-        "model": "gemini-3.1-pro-preview",
-        "thinking_budget": None,
-        "temperature": 1,
-    },
-    "fast": {
-        "model": "gemini-3-flash-preview",
-        "thinking_budget": None,
-        "temperature": 1,
-    },
+    "quality": "gemini-3.1-pro-preview",
+    "fast": "gemini-3-flash-preview",
 }
 
-# Default configuration
+# Default generation settings shared by all presets.
 LLM_CONFIG = {
     "temperature": 1,
     "maxOutputTokens": 65536
@@ -146,24 +137,9 @@ def expand_globs(items):
                 expanded.append(part)
     return expanded
 
-def generate_config_json(model_preset):
+def generate_config_json():
     """Generate the generationConfig JSON."""
-    config = LLM_CONFIG.copy()
-
-    final_config: dict[str, Any] = {
-        "temperature": config["temperature"],
-        "maxOutputTokens": config["maxOutputTokens"]
-    }
-
-    if model_preset["thinking_budget"] is not None:
-        final_config["thinkingConfig"] = {
-            "thinkingBudget": model_preset["thinking_budget"]
-        }
-
-    if model_preset["temperature"] is not None:
-        final_config["temperature"] = model_preset["temperature"]
-
-    return final_config
+    return LLM_CONFIG.copy()
 
 def process_grounding_info(raw_output_file, search_enabled):
     """Extract and format grounding information from raw JSON response."""
@@ -341,8 +317,7 @@ def main():
     if args.fast:
         model_preset_name = "fast"
 
-    selected_model_preset = LLM_MODEL_PRESETS[model_preset_name]
-    llm_model = selected_model_preset["model"]
+    llm_model = LLM_MODEL_PRESETS[model_preset_name]
     if args.fast:
         print_err(f"[INFO] Using {model_preset_name} model preset: {llm_model}")
 
@@ -553,7 +528,7 @@ def main():
     # Build JSON Payload
     payload = {
         "contents": [{"role": "user", "parts": [{"text": full_prompt}]}],
-        "generationConfig": generate_config_json(selected_model_preset)
+        "generationConfig": generate_config_json()
     }
     
     if args.search:
