@@ -59,7 +59,16 @@ def extract_config(model_name):
         "contextWindow": context_window,
         "maxTokens": max_tokens
     }
-    
+
+    # Local OpenAI-compatible reasoning models commonly accept reasoning_effort.
+    # Map pi's off level to "none" so disabling thinking controls generation,
+    # not just display. Avoid LM-Studio/vLLM-specific chat_template_kwargs here.
+    if reasoning and any(p in model_name.lower() for p in [
+        "qwen3", "qwen2.5", "gemma4", "gemma-4", "glm-4.7", "gpt-oss",
+    ]):
+        model_config["thinkingLevelMap"] = {"off": "none"}
+        model_config["compat"] = {"thinkingFormat": "openai"}
+
     return model_config
 
 def update_models_json(new_models):

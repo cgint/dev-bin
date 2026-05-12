@@ -141,7 +141,7 @@ def build_model_entry(model_id):
 
     input_types = ["text", "image"] if is_multimodal else ["text"]
 
-    return {
+    entry = {
         "id": model_id,
         "name": model_id,
         "reasoning": meta["reasoning"],
@@ -155,6 +155,19 @@ def build_model_entry(model_id):
         "contextWindow": meta["contextWindow"],
         "maxTokens": meta["maxTokens"],
     }
+
+    # LM Studio exposes reasoning control through OpenAI-style reasoning_effort.
+    # In current LM Studio builds, chat_template_kwargs.enable_thinking is ignored
+    # by the OpenAI-compatible endpoint, while reasoning_effort="none" reliably
+    # disables actual reasoning generation for supported local reasoning models.
+    model_lower = model_id.lower()
+    if meta["reasoning"] and any(p in model_lower for p in [
+        "qwen3", "qwen2.5", "gemma4", "gemma-4", "glm-4.7", "gpt-oss",
+    ]):
+        entry["thinkingLevelMap"] = {"off": "none"}
+        entry["compat"] = {"thinkingFormat": "openai"}
+
+    return entry
 
 
 def update_models_json(provider_key, base_url, models):
