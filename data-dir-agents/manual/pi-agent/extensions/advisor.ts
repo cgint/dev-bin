@@ -11,7 +11,7 @@
  * the final user-facing answer.
  *
  * Recommended env for a local executor:
- *   export PI_ADVISOR_PROVIDER=github-copilot
+ *   export PI_ADVISOR_PROVIDER=openai-codex
  *   export PI_ADVISOR_MODEL=gemini-3-flash-preview
  *   # or override per preference, for example:
  *   export PI_ADVISOR_PROVIDER=openai
@@ -147,8 +147,8 @@ function getConfig(): AdvisorConfig {
     cacheRaw === "none" || cacheRaw === "long" ? cacheRaw : "short";
 
   return {
-    provider: env("PI_ADVISOR_PROVIDER", "github-copilot"),
-    model: env("PI_ADVISOR_MODEL", "gemini-3-flash-preview"),
+    provider: env("PI_ADVISOR_PROVIDER", "openai-codex"),
+    model: env("PI_ADVISOR_MODEL", "gpt-5.5"),
     requireAllow,
     allowed: boolEnv("PI_ADVISOR_ALLOWED", !requireAllow),
     redact: boolEnv("PI_ADVISOR_REDACT", true),
