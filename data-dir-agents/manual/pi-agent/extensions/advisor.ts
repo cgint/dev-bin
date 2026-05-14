@@ -147,14 +147,14 @@ function getConfig(): AdvisorConfig {
     cacheRaw === "none" || cacheRaw === "long" ? cacheRaw : "short";
 
   return {
-    provider: env("PI_ADVISOR_PROVIDER", "openai-codex"),
-    model: env("PI_ADVISOR_MODEL", "gpt-5.5"),
+    provider: env("PI_ADVISOR_PROVIDER", "google"),
+    model: env("PI_ADVISOR_MODEL", "gemini-3-flash-preview"),
     requireAllow,
     allowed: boolEnv("PI_ADVISOR_ALLOWED", !requireAllow),
     redact: boolEnv("PI_ADVISOR_REDACT", true),
     maxPerTurn: intEnv("PI_ADVISOR_MAX_PER_TURN", 2),
     defaultMaxWords: intEnv("PI_ADVISOR_MAX_WORDS", 600),
-    reasoningEffort: env("PI_ADVISOR_REASONING_EFFORT", "high"),
+    reasoningEffort: env("PI_ADVISOR_REASONING_EFFORT", "medium"),
     cacheRetention,
   };
 }
