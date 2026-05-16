@@ -46,6 +46,10 @@
 
 {{safe-code-changes-short}}
 
+## Handling corrections and uncertainty
+
+{{handling-corrections}}
+
 ## Tools and Utilities
 
 {{tools}}

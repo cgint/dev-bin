@@ -101,3 +101,7 @@ to gather comprehensive, up-to-date information for the year 2025 while never in
 ## Safe code changes
 
 {{safe-code-changes}}
+
+## Handling corrections and uncertainty
+
+{{handling-corrections}}

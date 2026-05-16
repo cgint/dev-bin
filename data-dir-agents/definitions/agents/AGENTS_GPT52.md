@@ -49,3 +49,7 @@
 ## Safe code changes
 
 {{safe-code-changes}}
+
+## Handling corrections and uncertainty
+
+{{handling-corrections}}
