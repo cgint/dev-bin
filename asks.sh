@@ -9,19 +9,20 @@ if [ ! -d "$DOC_AGENT_BM25_DIR" ]; then
     DOC_AGENT_BM25_DIR="$DOC_AGENT_BM25_DIR_OPTION_2"
 fi
 
-if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
-    echo "Usage: $0 <topic> <question>"
+usage() {
+    echo "Usage: $(basename "$0") <topic> <question>"
     echo
-    echo "Available topics: "
-    (cd $DOC_AGENT_BM25_DIR && $CMD_EXECUTE_PREFIX --list-topics)
+    echo "Available topics:"
+    (cd "$DOC_AGENT_BM25_DIR" && $CMD_EXECUTE_PREFIX --list-topics)
+}
+
+if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+    usage
     exit 0
 fi
 
 if [ "$#" -lt 2 ]; then
-    echo "Usage: $0 <topic> <question>"
-    echo
-    echo "Available topics: "
-    (cd $DOC_AGENT_BM25_DIR && $CMD_EXECUTE_PREFIX --list-topics)
+    usage
     exit 1
 fi
 
@@ -34,4 +35,4 @@ shift
 echo "Asking question in topic '$TOPIC': $@"
 echo
 
-(cd $DOC_AGENT_BM25_DIR && $CMD_EXECUTE_PREFIX "$TOPIC" "$@")
+(cd "$DOC_AGENT_BM25_DIR" && $CMD_EXECUTE_PREFIX "$TOPIC" "$@")
