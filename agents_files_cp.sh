@@ -3,18 +3,23 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: $0 [--delete]"
+  echo "Usage: $0 [--delete] [--openspec-config]"
   echo
   echo "Options:"
-  echo "  --delete    remove files in the target rsync dirs that are no longer in source"
-  echo "  -h, --help  show this help"
+  echo "  --delete           remove files in the target rsync dirs that are no longer in source"
+  echo "  --openspec-config  also roll out openspec/config.yaml to existing OpenSpec directories"
+  echo "  -h, --help         show this help"
 }
 
 DELETE_RSYNC=false
+ROLLOUT_OPENSPEC_CONFIG=false
 for arg in "$@"; do
   case "$arg" in
     --delete)
       DELETE_RSYNC=true
+      ;;
+    --openspec-config)
+      ROLLOUT_OPENSPEC_CONFIG=true
       ;;
     -h|--help)
       usage
@@ -159,8 +164,14 @@ fi
 # Canonical sources live under $AGENTS_SRC_DATA_DIR/definitions and are deployed via generated artifacts.
 
 
-# Rollout the openspec config.yaml
+# Rollout the openspec config.yaml only when explicitly requested.
 echo
+if [ "$ROLLOUT_OPENSPEC_CONFIG" != true ]; then
+  echo "Skipping openspec config.yaml rollout. Pass --openspec-config to enable it."
+  echo
+  exit 0
+fi
+
 DEV_HOME_ALL="$USER_HOME_DIR/dev*"
 SEARCH_ROOTS=()
 if [ -n "${SMEC_PRODUCTS_HOME:-}" ] && [ -d "${SMEC_PRODUCTS_HOME}" ]; then
