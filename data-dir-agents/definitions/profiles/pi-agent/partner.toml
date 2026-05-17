@@ -17,4 +17,4 @@ skills = [
   "openspec-propose"
 ]
 
-prompts = ["done-archived-commit-exact.md"]
+prompts = ["done-archived-commit-exact.md", "start-self-organising.md"]
