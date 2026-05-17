@@ -15,7 +15,8 @@ skills = [
   "google-workspace-cli",
   "openspec-apply-change",
   "openspec-propose",
-  "grill-with-docs"
+  "grill-with-docs",
+  "quality-discipline"
 ]
 
 prompts = ["done-archived-commit-exact.md", "start-self-organising.md"]
