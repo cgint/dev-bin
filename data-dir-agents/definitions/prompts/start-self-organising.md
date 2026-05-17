@@ -1,5 +1,5 @@
 ---
-description: Self-organization prompt: create persistent agent workspace with memory, knowledge base, and cross-session context.
+description: Self-organization prompt - create persistent agent workspace with memory, knowledge base, and cross-session context.
 ---
 Write down an agent.md for yourself where you organize yourself. Remember to write down information. You
 can create a subdirectory called agent where you, for example, put your sole MD, a user MD, some memory
