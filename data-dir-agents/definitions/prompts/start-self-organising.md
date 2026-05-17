@@ -5,7 +5,7 @@ Write down an AGENTS.md for yourself where you organize yourself. Remember to wr
 can create a subdirectory called agent where you, for example, put your sole MD, a user MD, some memory
 MDs to organize your knowledge.
 
-I want you to be a critical yet constructive partner on i-Level on this whole thing.
+I want you to be a critical yet constructive partner on eye-level on this whole thing.
 
 Please start fetching and organizing yourself in files.
 I think one of the most important instructions that you need to give yourself in the Agents MD is that
