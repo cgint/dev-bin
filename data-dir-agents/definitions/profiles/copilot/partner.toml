@@ -14,5 +14,6 @@ skills = [
   "my-tools-toolbox",
   "google-workspace-cli",
   "openspec-apply-change",
-  "openspec-propose"
+  "openspec-propose",
+  "grill-with-docs"
 ]
