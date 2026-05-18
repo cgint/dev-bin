@@ -36,7 +36,7 @@ SCRIPT_DIR=$(dirname "$0")
 DEV_HOME_ALL="$HOME/dev*"
 
 QUERY=$1
-OPEN_WITH="cursor"
+OPEN_WITH="code"
 PATH_MODE=false
 if [ ! -z "$2" ]; then
     if [ "$2" = "--path" ]; then
