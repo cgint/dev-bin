@@ -16,7 +16,8 @@ skills = [
   "openspec-apply-change",
   "openspec-propose",
   "grill-with-docs",
-  "quality-discipline"
+  "quality-discipline",
+  "critical-constructive-partner"
 ]
 
 prompts = ["done-archived-commit-exact.md", "start-self-organising.md"]
