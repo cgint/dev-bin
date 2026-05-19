@@ -9,6 +9,7 @@
  */
 
 import { existsSync, readFileSync } from "fs";
+import { homedir } from "os";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 // ── EcoLogits constants from ecologits/impacts/llm.py ───────────────────────
@@ -45,9 +46,16 @@ const DIESEL_L_PER_100KM = 5.0;
 const DIESEL_KWH_PER_KM = DIESEL_KWH_PER_LITER * DIESEL_L_PER_100KM / 100; // 0.49
 
 // ── EcoLogits model data ─────────────────────────────────────────────────────
-const ECOLOGITS_MODELS_JSON =
+function expandHome(path: string): string {
+  return path === "~" || path.startsWith("~/")
+    ? path.replace(/^~(?=$|\/)/, homedir())
+    : path;
+}
+
+const ECOLOGITS_MODELS_JSON = expandHome(
   process.env.ECOLOGITS_MODELS_JSON ||
-  "/Users/cgint/dev-external/ecologits/ecologits/data/models.json";
+  "~/dev-external/ecologits/ecologits/data/models.json",
+);
 
 type Range = { min: number; max: number };
 type SessionEntry = {
