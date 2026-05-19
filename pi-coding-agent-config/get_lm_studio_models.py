@@ -156,10 +156,11 @@ def build_model_entry(model_id):
         "maxTokens": meta["maxTokens"],
     }
 
-    # LM Studio exposes reasoning control through OpenAI-style reasoning_effort.
-    # In current LM Studio builds, chat_template_kwargs.enable_thinking is ignored
-    # by the OpenAI-compatible endpoint, while reasoning_effort="none" reliably
-    # disables actual reasoning generation for supported local reasoning models.
+    # NOTE: LM Studio's OpenAI-compatible endpoint typically accepts `reasoning_effort`,
+    # but many local runtimes do not actually honor it as a reliable control knob.
+    # We still add a minimal thinking mapping for UI/compat purposes, but rely on
+    # provider-level `compat.supportsReasoningEffort=false` (written by update_models_json)
+    # to prevent pi from sending `reasoning_effort`.
     model_lower = model_id.lower()
     if meta["reasoning"] and any(p in model_lower for p in [
         "qwen3", "qwen2.5", "gemma4", "gemma-4", "glm-4.7", "gpt-oss",
@@ -212,6 +213,16 @@ def update_models_json(provider_key, base_url, models):
     provider_obj["api"] = "openai-completions"
     if "apiKey" not in provider_obj:
         provider_obj["apiKey"] = "none"
+
+    # Provider compat defaults
+    # LM Studio's OpenAI-compatible server commonly accepts `reasoning_effort` but does not
+    # actually honor it as a control knob (and pi may warn when trying to translate levels).
+    # Treat reasoning-effort as unsupported to avoid noisy warnings and future strict-schema errors.
+    compat = provider_obj.get("compat")
+    if not isinstance(compat, dict):
+        compat = {}
+    compat.setdefault("supportsReasoningEffort", False)
+    provider_obj["compat"] = compat
 
     # Replace models list with discovered models
     provider_obj["models"] = models
