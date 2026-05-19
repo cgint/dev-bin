@@ -25,7 +25,10 @@ const SERVER_GPUS = 8;
 const SERVER_POWER_KW = 1.2;
 const BATCH_SIZE = 64;
 
-// EcoLogits data-center assumptions in this repository's methodology notes.
+// EcoLogits-derived provider PUE values.
+// Provenance: mirrored from EcoLogits `ecologits/tracers/utils.py` PROVIDER_CONFIG_MAP
+// as inspected on 2026-05-19. These are not local extension assumptions; keep in
+// sync with EcoLogits if that upstream config changes.
 const PROVIDER_PUE: Record<string, Range> = {
   anthropic: { min: 1.09, max: 1.14 },
   cohere: { min: 1.09, max: 1.09 },
@@ -566,9 +569,9 @@ export default function (pi: ExtensionAPI) {
         `    Source:        ${m.source}`,
       ].join("\n")).join("\n\n");
 
-      const dataNote = stats.modelDataLoaded
-        ? `EcoLogits model data: ${ECOLOGITS_MODELS_JSON}`
-        : `EcoLogits model data unavailable (${MODEL_INDEX.error || "unknown"}); using fallback when needed.`;
+      const modelDataNote = stats.modelDataLoaded
+        ? `Model metadata: ${ECOLOGITS_MODELS_JSON}`
+        : `Model metadata unavailable (${MODEL_INDEX.error || "unknown"}); using fallback when needed.`;
 
       ctx.ui.notify([
         "Diesel-KM: Model-Aware Energy × Distance",
@@ -584,8 +587,13 @@ export default function (pi: ExtensionAPI) {
         "    request_energy = PUE × (server_energy + gpu_required_count × gpu_energy)",
         "    server_energy uses generation latency from model TPS/TTFT when available.",
         "",
-        `  Assumptions: batch=${BATCH_SIZE}, quantization=${MODEL_QUANTIZATION_BITS}-bit, GPU=${GPU_MEMORY_GB}GB, server=${SERVER_GPUS} GPUs/${SERVER_POWER_KW}kW, diesel=0.49 kWh/km`,
-        `  ${dataNote}`,
+        "  EcoLogits-derived calculation inputs:",
+        `    ${modelDataNote}`,
+        "    Provider PUE: mirrored from EcoLogits ecologits/tracers/utils.py PROVIDER_CONFIG_MAP.",
+        `    Runtime constants: batch=${BATCH_SIZE}, quantization=${MODEL_QUANTIZATION_BITS}-bit, GPU=${GPU_MEMORY_GB}GB, server=${SERVER_GPUS} GPUs/${SERVER_POWER_KW}kW.`,
+        "",
+        "  Local comparison input:",
+        "    Diesel reference: 5L/100km × 9.8 kWh/L = 0.49 kWh/km.",
         "  Energy-content comparison only; not lifecycle CO₂ or tailpipe-emissions equivalence.",
       ].join("\n"), "info");
     },
