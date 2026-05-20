@@ -502,6 +502,15 @@ function formatDistance(meters: Range): string {
   });
 }
 
+function formatApproxFooterDistance(meters: Range): string {
+  const m = meters.max;
+  if (m < 1) return `~${Math.max(1, Math.round(m * 100))}cm`;
+  if (m < 1000) return `~${Math.round(m)}m`;
+  const km = m / 1000;
+  if (km < 10) return `~${km.toFixed(1)}km`;
+  return `~${Math.round(km)}km`;
+}
+
 function fmtToken(n: number): string {
   if (n < 1000) return String(n);
   if (n < 100_000) return `${(n / 1000).toFixed(1)}k`;
@@ -556,7 +565,9 @@ function updateDieselStatus(
   const entries = footerEntries(ctx);
   const fallback = currentModelFromBranch(entries) || contextModelRef(ctx) || getFallbackModel();
   const stats = computeStats(entries, fallback);
-  const dieselDisplay = stats.totalOutputTokens > 0 ? `🚗 ${stats.contextDisplay} ctx` : "🚗 --";
+  const dieselDisplay = stats.totalOutputTokens > 0
+    ? `🚗${formatApproxFooterDistance(stats.contextInclusiveMeters)}`
+    : "🚗--";
 
   // Use Pi's built-in extension status mechanism instead of replacing the whole footer.
   // This keeps Pi-owned model/thinking/context display in sync with core behavior.
