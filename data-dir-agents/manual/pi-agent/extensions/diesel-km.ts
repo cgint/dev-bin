@@ -43,6 +43,14 @@ const DEFAULT_PUE: Range = { min: 1.20, max: 1.20 };
 // Previous MVP fallback: 2024 EcoLogits baseline, 1200 output tokens → 0.004729 kWh.
 const FALLBACK_KWH_PER_OUTPUT_TOKEN = 0.004729 / 1200;
 
+// Experimental input/context-token adder.
+// EcoLogits currently models request energy from generated/output tokens only, but its
+// 2025 methodology update names input-token accounting as future work and cites Epoch AI:
+// ~10k input + 500 output ≈ 8× a basic 500-output-token query; 100k input + 500 output
+// ≈ 133×. Converted into rough output-token-equivalent factors, this is about 0.35–0.66
+// generated-token-equivalents per input token. This is intentionally labeled heuristic.
+const INPUT_TOKEN_OUTPUT_EQUIV_FACTOR: Range = { min: 0.35, max: 0.66 };
+
 // ── Diesel-car constants ─────────────────────────────────────────────────────
 const DIESEL_KWH_PER_LITER = 9.8;
 const DIESEL_L_PER_100KM = 5.0;
@@ -113,8 +121,12 @@ type DieselStats = {
   totalTokens: number;
   totalEnergyKwh: Range;
   totalMeters: Range;
+  contextInputEquivalentOutputTokens: Range;
+  contextInclusiveEnergyKwh: Range;
+  contextInclusiveMeters: Range;
   modelBreakdown: ModelStats[];
   display: string;
+  contextDisplay: string;
   modelDataLoaded: boolean;
 };
 
@@ -334,6 +346,10 @@ function divideRange(a: Range, divisor: number): Range {
   return { min: a.min / divisor, max: a.max / divisor };
 }
 
+function multiplyRange(a: Range, b: Range): Range {
+  return normalizeRange({ min: a.min * b.min, max: a.max * b.max });
+}
+
 function energyToMeters(kwh: Range): Range {
   return { min: (kwh.min / DIESEL_KWH_PER_KM) * 1000, max: (kwh.max / DIESEL_KWH_PER_KM) * 1000 };
 }
@@ -445,6 +461,16 @@ function computeStats(branch: SessionEntry[], fallback?: { provider?: string; mo
   }
 
   const totalMeters = energyToMeters(totalEnergyKwh);
+  const outputEnergyPerToken = totalOutputTokens > 0
+    ? divideRange(totalEnergyKwh, totalOutputTokens)
+    : scalarRange(FALLBACK_KWH_PER_OUTPUT_TOKEN);
+  const contextInputEquivalentOutputTokens = multiplyRange(
+    scalarRange(totalInputTokens),
+    INPUT_TOKEN_OUTPUT_EQUIV_FACTOR,
+  );
+  const contextInputEnergyKwh = multiplyRange(outputEnergyPerToken, contextInputEquivalentOutputTokens);
+  const contextInclusiveEnergyKwh = addRange(totalEnergyKwh, contextInputEnergyKwh);
+  const contextInclusiveMeters = energyToMeters(contextInclusiveEnergyKwh);
   const modelBreakdown = [...byModel.values()].sort((a, b) => mean(b.energyKwh) - mean(a.energyKwh));
 
   return {
@@ -453,8 +479,12 @@ function computeStats(branch: SessionEntry[], fallback?: { provider?: string; mo
     totalTokens,
     totalEnergyKwh,
     totalMeters,
+    contextInputEquivalentOutputTokens,
+    contextInclusiveEnergyKwh,
+    contextInclusiveMeters,
     modelBreakdown,
     display: formatDistance(totalMeters),
+    contextDisplay: formatDistance(contextInclusiveMeters),
     modelDataLoaded: MODEL_INDEX.loaded,
   };
 }
@@ -476,6 +506,10 @@ function fmtToken(n: number): string {
   if (n < 1000) return String(n);
   if (n < 100_000) return `${(n / 1000).toFixed(1)}k`;
   return `${(n / 1_000_000).toFixed(1)}M`;
+}
+
+function fmtTokenRange(range: Range): string {
+  return sameRange(range) ? fmtToken(mean(range)) : `${fmtToken(range.min)}–${fmtToken(range.max)}`;
 }
 
 function fmtEnergy(kwh: Range): string {
@@ -522,7 +556,7 @@ function updateDieselStatus(
   const entries = footerEntries(ctx);
   const fallback = currentModelFromBranch(entries) || contextModelRef(ctx) || getFallbackModel();
   const stats = computeStats(entries, fallback);
-  const dieselDisplay = stats.totalOutputTokens > 0 ? `🚗 ${stats.display}` : "🚗 --";
+  const dieselDisplay = stats.totalOutputTokens > 0 ? `🚗 ${stats.contextDisplay} ctx` : "🚗 --";
 
   // Use Pi's built-in extension status mechanism instead of replacing the whole footer.
   // This keeps Pi-owned model/thinking/context display in sync with core behavior.
@@ -577,8 +611,11 @@ export default function (pi: ExtensionAPI) {
         "Diesel-KM: Model-Aware Energy × Distance",
         "",
         `  Total tokens: ${fmtToken(stats.totalTokens)} (↑${fmtToken(stats.totalInputTokens)} / ↓${fmtToken(stats.totalOutputTokens)})`,
-        `  Total energy: ${fmtEnergy(stats.totalEnergyKwh)}`,
-        `  Diesel:       5L/100km car equivalent = ${stats.display}`,
+        `  Generated-token energy: ${fmtEnergy(stats.totalEnergyKwh)}`,
+        `  Generated-token diesel: ${stats.display}`,
+        `  Context-inclusive energy: ${fmtEnergy(stats.contextInclusiveEnergyKwh)} (experimental)`,
+        `  Context-inclusive diesel: ${stats.contextDisplay} (shown in footer as \"ctx\")`,
+        `  Context input adder: ↑${fmtToken(stats.totalInputTokens)} × ${formatRange(INPUT_TOKEN_OUTPUT_EQUIV_FACTOR)} output-token-equivalent = ${fmtTokenRange(stats.contextInputEquivalentOutputTokens)} generated-token-equivalent`,
         "",
         modelLines,
         "",
@@ -586,6 +623,8 @@ export default function (pi: ExtensionAPI) {
         "    gpu_energy = output_tokens × (α·e^(β·batch)·active_params + γ) / 1000",
         "    request_energy = PUE × (server_energy + gpu_required_count × gpu_energy)",
         "    server_energy uses generation latency from model TPS/TTFT when available.",
+        "    EcoLogits currently uses output tokens for energy; input tokens are telemetry/future work.",
+        "    The footer adds an experimental Epoch-derived context heuristic, cache-sensitive and rough.",
         "",
         "  EcoLogits-derived calculation inputs:",
         `    ${modelDataNote}`,
