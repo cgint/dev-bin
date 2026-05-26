@@ -75,11 +75,14 @@ def read_html_from_input(
     if input_arg.startswith(("http://", "https://")):
         parsed = urlparse(input_arg)
         host = (parsed.netloc or "").lower()
+        # Historically we rejected any github.com host because GitHub UI HTML converts poorly to Markdown.
+        # Allow docs.github.com (GitHub Docs) explicitly — its pages are more stable and convert reasonably well.
         if host == "github.com" or host.endswith(".github.com"):
-            _die(
-                "url2md does not support github.com: GitHub UI HTML converts poorly to Markdown. "
-                "For repo files use raw.githubusercontent.com or git clone."
-            )
+            if host != "docs.github.com":
+                _die(
+                    "url2md does not support github.com: GitHub UI HTML converts poorly to Markdown. "
+                    "For repo files use raw.githubusercontent.com or git clone."
+                )
         return fetch_html(input_arg, timeout=timeout, user_agent=user_agent)
     path = Path(input_arg)
     if not path.exists():
