@@ -174,6 +174,17 @@ If `uv.lock` exists always run python through `uv run python <file>.py`
 
 To get information on useful tools to consider using, execute `tools_agents.sh` (available in environment $PATH). This will display a catalog of available CLI tools.
 
+## Shell commands
+
+- NEVER prefix commands with unnecessary `cd` changes when executing commands in the project root folder:
+  - Shell initializes in project root by default
+  - Working directory persists only within the same shell session
+  - Only use `cd` when actually needed to change directories
+  - This helps maintain security controls by keeping commands specific and predictable
+- There is no need to postfix commands with `| cat` to the end of commands:
+  - Instead of `./precommit.sh | cat` use `./precommit.sh`
+- **Never write large/complex Python scripts as inline bash heredoc.** When Python code grows beyond a few lines, write it to a temp file on disk (e.g. `/tmp/...py`) and execute it with `python3 /tmp/...py`. Inline heredoc (`python3 - <<'PY' ...`) is fragile: a small typo forces a full rewrite of the entire block, which is slow, expensive, and generates excessive tokens. A file on disk can be inspected, edited, and re-run incrementally.
+
 ## See → Think → Act
 
 Please always follow the path: **See, think, act!**

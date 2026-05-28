@@ -5,3 +5,4 @@
   - This helps maintain security controls by keeping commands specific and predictable
 - There is no need to postfix commands with `| cat` to the end of commands:
   - Instead of `./precommit.sh | cat` use `./precommit.sh`
+- **Never write large/complex Python scripts as inline bash heredoc.** When Python code grows beyond a few lines, write it to a temp file on disk (e.g. `/tmp/...py`) and execute it with `python3 /tmp/...py`. Inline heredoc (`python3 - <<'PY' ...`) is fragile: a small typo forces a full rewrite of the entire block, which is slow, expensive, and generates excessive tokens. A file on disk can be inspected, edited, and re-run incrementally.

@@ -34,6 +34,10 @@
 
 {{tools}}
 
+## Shell commands
+
+{{shell-commands}}
+
 ## See → Think → Act
 
 {{see-think-act}}

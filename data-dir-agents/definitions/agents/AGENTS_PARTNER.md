@@ -53,3 +53,7 @@
 ## Tools and Utilities
 
 {{tools}}
+
+## Shell commands
+
+{{shell-commands}}
