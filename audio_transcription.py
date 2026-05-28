@@ -264,7 +264,7 @@ class UploadCache:
 class GeminiAudioTranscriber:
     """High-quality audio transcription using Gemini"""
     
-    def __init__(self, api_key: Optional[str] = None, model_name: str = "gemini-2.5-flash"):
+    def __init__(self, api_key: Optional[str] = None, model_name: str = "gemini-3.5-flash"):
         """Initialize the transcriber with API key."""
         self.api_key = api_key or os.getenv('GEMINI_API_KEY')
         if not self.api_key:
@@ -301,25 +301,30 @@ class GeminiAudioTranscriber:
         }
         
         # Pricing for cost estimation (USD per 1M tokens)
-        self.pricing = { 
-            'gemini-2.5-pro': {
-                'input_price_per_million': 1.25,  # For prompts <= 200K tokens
-                'input_price_per_million_high': 2.50,  # For prompts > 200K tokens
-                'output_price_per_million': 10.00,  # For outputs <= 200K tokens
-                'output_price_per_million_high': 15.00  # For outputs > 200K tokens
+        # Sources (official):
+        # - Gemini 3.5 Flash: https://cloud.google.com/vertex-ai/generative-ai/pricing
+        # - Gemini 3.1 Flash-Lite: https://ai.google.dev/pricing
+        self.pricing = {
+            "gemini-2.5-pro": {
+                "input_price_per_million": 1.25,  # <=200K
+                "input_price_per_million_high": 2.50,  # >200K
+                "output_price_per_million": 10.00,
+                "output_price_per_million_high": 15.00,
             },
-            'gemini-2.5-flash': {
-                'input_price_per_million': 0.3,  # For prompts <= 200K tokens
-                'input_price_per_million_high': 0.3,  # For prompts > 200K tokens
-                'output_price_per_million': 2.50,  # For outputs <= 200K tokens
-                'output_price_per_million_high': 2.50  # For outputs > 200K tokens
+            "gemini-3.5-flash": {
+                "input_price_per_million": 1.50,
+                "input_price_per_million_high": 1.50,
+                "output_price_per_million": 9.00,
+                "output_price_per_million_high": 9.00,
             },
-            'gemini-3-flash-preview': {
-                'input_price_per_million': 0.50,
-                'input_price_per_million_high': 0.50,
-                'output_price_per_million': 3.00,
-                'output_price_per_million_high': 3.00
-            }
+            # Note: Flash-Lite pricing differs for audio vs text; this tool is audio-oriented,
+            # so we use the audio input price.
+            "gemini-3.1-flash-lite": {
+                "input_price_per_million": 0.50,
+                "input_price_per_million_high": 0.50,
+                "output_price_per_million": 1.50,
+                "output_price_per_million_high": 1.50,
+            },
         }
 
     def validate_audio_file(self, file_path: Path) -> tuple[bool, str]:
@@ -756,8 +761,7 @@ def main() -> None:
         file_to_process = input_file_path
 
     # THINKING_MIN_FOR_PRO=128
-    # model_name = "gemini-2.5-flash"
-    model_name = "gemini-3-flash-preview"
+    model_name = "gemini-3.5-flash"
     TEMPERATURE = 1
     MAX_OUTPUT_TOKENS_SUMMARY = 8192
     MAX_OUTPUT_TOKENS_TRANSCRIPT = 16384
