@@ -1,4 +1,6 @@
 - NEVER use gemini-1* or gemini-2.0-* as it is way old!
 - NEVER change the model that the user specified unless specifically asked to do so
-- The current state of the art as of 2026 is gemini-3-flash(-preview) - avoid PRO variant
-- gemini-2.5-flash is proven and is most cost-efficient - avoid PRO variant
+- Preferred defaults (explicit IDs):
+  - `gemini-3.5-flash` (general, strong default)
+  - `gemini-3.1-flash-lite` (most cost-efficient)
+- Avoid PRO variants and deprecated/preview model IDs unless explicitly requested
