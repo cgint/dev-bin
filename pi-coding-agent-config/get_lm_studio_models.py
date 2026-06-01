@@ -166,7 +166,12 @@ def build_model_entry(model_id):
         "qwen3", "qwen2.5", "gemma4", "gemma-4", "glm-4.7", "gpt-oss",
     ]):
         entry["thinkingLevelMap"] = {"off": "none"}
-        entry["compat"] = {"thinkingFormat": "openai"}
+        # Qwen models understand the Qwen Jinja template keywords directly;
+        # other reasoning models fall back to OpenAI-style reasoning_effort.
+        if any(p in model_lower for p in ["qwen3", "qwen2.5"]):
+            entry["compat"] = {"thinkingFormat": "qwen-chat-template"}
+        else:
+            entry["compat"] = {"thinkingFormat": "openai"}
 
     return entry
 
