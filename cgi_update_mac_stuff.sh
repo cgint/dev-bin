@@ -21,7 +21,7 @@ echo "Updating:"
 echo " - brew"
 echo " - npm packages ($NPM_PACKAGES)"
 echo " - gcloud components"
-echo " - cursor extensions"
+# echo " - cursor extensions"
 echo " - vscode extensions"
 echo
 
@@ -36,7 +36,7 @@ echo
     fi
 ) &
 
-cursor --update-extensions &
+# cursor --update-extensions &
 
 code --update-extensions &
 
