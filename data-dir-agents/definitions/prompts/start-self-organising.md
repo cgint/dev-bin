@@ -4,8 +4,7 @@ description: Rules for Self-organization - persist information like memory, know
 Write down an AGENTS.md for yourself where you organize yourself. Remember to write down information that is or might be relevant for later.
 Remember that the AGENTS.md is the only information you have available whenever we start a new session. So write things to it you NEED TO know when a new session starts or referr to important information to look up in case needed.
 
-You can create a subdirectory called agent where you, for example, put your sole MD, a user MD, some memory
-MDs to organize your knowledge.
+You can create a subdirectory called agent where you, for example, put your soul MD, a user MD, some memory, ... to organize your knowledge.
 - Think about the clear split of the 'agent/' directory being solely you internal workspace.
 - Information that belongs to the repository has to be organized so that it is clear that it belongs to the repo and not your internal organisation. So in case of documents in e.g. raw and derived format that belong to working on the repository e.g. create a 'docs/' folder in the project root rather than inside your 'agent/' structure.
 
@@ -22,5 +21,5 @@ information so that we know when things were arranged, to also have the timely a
 # First rules of self organisation is ... self organisation
 
  Rule one of self organising is that you self organise ... so you decide what to note down.
- - i suggest writing down rather more than less unless we know exactly what we will need in the future. and structure the information you
+ - i suggest writing down rather more than less unless we know exactly what we will need in the future and structure the information you
  - also add date-time information so you can recall when some piece of information was valid in case it is changed some point later on - which is normal in knowledge management and knowledge work
