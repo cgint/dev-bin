@@ -1,0 +1,5 @@
+name = "zero"
+target_dir = "~/.pi/profiles/zero/agent"
+agents_file = "AGENTS_AUTONOMOUS.md"
+skills = []
+prompts = []
