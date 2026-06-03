@@ -1,0 +1,13 @@
+network "User Flow" {
+  user: "User"
+  box "Frontend" {
+    a: "Landing Page"
+    b: "Login"
+  }
+  box "Backend" {
+    c: "Auth Service"
+    d: "API"
+  }
+
+  user -> a -> b -> c -> d
+}

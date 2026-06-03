@@ -1,0 +1,15 @@
+name = "opsx"
+target_dir = "~/.pi/profiles/opsx/agent"
+agents_file = "AGENTS_GPT52.md"
+
+skills = [
+  "web-search",
+  "web-browser-use",
+  "diagrams",
+  "my-tools-toolbox",
+  "openspec-apply-change",
+  "openspec-propose",
+  "quality-discipline"
+]
+
+prompts = ["done-archived-commit-exact.md"]
