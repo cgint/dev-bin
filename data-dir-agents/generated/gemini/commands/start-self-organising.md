@@ -1,8 +1,10 @@
 ---
 description: Rules for Self-organization - persist information like memory, knowledge base, and cross-session context in a structured way including time-stamped entries.
 ---
-Write down an AGENTS.md for yourself where you organize yourself. Remember to write down information that is or might be relevant for later.
-Remember that the AGENTS.md is the only information you have available whenever we start a new session. So write things to it you NEED TO know when a new session starts or referr to important information to look up in case needed.
+Maintain (or create) the repository root **`AGENTS.md`** as the session memory for this project, and keep it updated with what you need to remember across sessions.
+When you need private/internal scratch notes, use an `agent/` directory, but do not put repository-relevant instructions only there.
+
+Remember that the root `AGENTS.md` is the most important cross-session source. Write down information you need to carry forward or re-find later.
 
 You can create a subdirectory called agent where you, for example, put your soul MD, a user MD, some memory, ... to organize your knowledge.
 - Think about the clear split of the 'agent/' directory being solely you internal workspace.
