@@ -1,0 +1,571 @@
+#!/usr/bin/env python3
+"""Discover local/remote models and update Pi's ~/.pi/agent/models.json.
+
+This replaces the older get_lm_studio_models.py / get_ollama_models.py split.
+
+Design goals:
+- One executable file in ~/.local/bin usable from any working directory.
+- Update ~/.pi/agent/models.json directly by default.
+- Keep backend-specific behavior explicit via provider kind:
+  - lmstudio: OpenAI-compatible /v1/models, LM Studio quirks
+  - llamacpp: OpenAI-compatible /v1/models, direct llama.cpp llama-server quirks
+  - ollama: native Ollama metadata API plus Pi OpenAI-compatible provider config
+  - openai-compatible: generic OpenAI-compatible /v1/models
+- Infer model metadata and thinking controls from provider kind + model name.
+
+Longer documentation:
+  ~/.local/bin/pi-coding-agent-config/pi-model-discovery README.md
+
+Usage:
+  pi-model-discovery
+  pi-model-discovery --dry-run
+  pi-model-discovery --provider llama-local=llamacpp:http://127.0.0.1:4321/v1 --dry-run
+  pi-model-discovery --only llama-local
+  pi-model-discovery --ollama-model qwen3:30b
+"""
+
+from __future__ import annotations
+
+import argparse
+import copy
+import difflib
+import json
+import os
+import re
+import shutil
+import sys
+import urllib.error
+import urllib.request
+from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
+from typing import Any
+
+MODELS_JSON = Path.home() / ".pi" / "agent" / "models.json"
+
+# Built-in fallbacks used when models.json has no matching providers yet.
+# The script also discovers existing providers in models.json and infers kind from
+# their key/baseUrl, so this list can stay small and obvious.
+DEFAULT_PROVIDERS = [
+    {"key": "lms-local", "kind": "lmstudio", "baseUrl": "http://127.0.0.1:1234/v1"},
+    {"key": "lms-twins", "kind": "lmstudio", "baseUrl": "http://twins:1234/v1"},
+    {"key": "lms-sparky", "kind": "lmstudio", "baseUrl": "http://sparky:1234/v1"},
+    {"key": "omlx-local", "kind": "llamacpp", "baseUrl": "http://127.0.0.1:4321/v1"},
+    {"key": "llama-local", "kind": "llamacpp", "baseUrl": "http://127.0.0.1:4322/v1"},
+    {"key": "ollama", "kind": "ollama", "baseUrl": "http://localhost:11434"},
+]
+
+REASONING_FAMILY_MARKERS = [
+    "qwen3",
+    "qwen-3",
+    "qwen/qwen3",
+    "qwen/qwen-3",
+    "gemma4",
+    "gemma-4",
+    "glm-4.7",
+    "gpt-oss",
+    "thinking",
+    "reason",
+]
+
+EMBEDDING_MARKERS = [
+    "text-embedding",
+    "nomic-embed",
+    "embed-",
+    "embedding",
+]
+
+
+@dataclass(frozen=True)
+class ProviderSpec:
+    key: str
+    kind: str
+    base_url: str
+
+
+def normalize_kind(kind: str) -> str:
+    k = kind.strip().lower().replace("_", "-")
+    aliases = {
+        "lms": "lmstudio",
+        "lm-studio": "lmstudio",
+        "lmstudio": "lmstudio",
+        "llama": "llamacpp",
+        "llama-cpp": "llamacpp",
+        "llama.cpp": "llamacpp",
+        "llamacpp": "llamacpp",
+        "cpp": "llamacpp",
+        "ollama": "ollama",
+        "openai": "openai-compatible",
+        "openai-compatible": "openai-compatible",
+        "generic-openai": "openai-compatible",
+    }
+    return aliases.get(k, k)
+
+
+def infer_kind(provider_key: str, base_url: str | None) -> str:
+    key = provider_key.lower()
+    url = (base_url or "").lower()
+
+    if key == "ollama" or "ollama" in key or ":11434" in url:
+        return "ollama"
+    if any(marker in key for marker in ["llamacpp", "llama-cpp", "llama.cpp", "llama-local"]):
+        return "llamacpp"
+    if key.startswith("cpp-") or key.startswith("cpp_") or key.startswith("llama-"):
+        return "llamacpp"
+    if any(marker in key for marker in ["lmstudio", "lm-studio", "lms-"]):
+        return "lmstudio"
+    if ":1234" in url:
+        return "lmstudio"
+    if any(port in url for port in [":4321", ":8080", ":8081", ":8085", ":8086", ":8087"]):
+        return "llamacpp"
+    return "openai-compatible"
+
+
+def open_json_url(url: str, *, timeout: float = 5, data: dict[str, Any] | None = None) -> dict[str, Any]:
+    body = None
+    headers = {"Accept": "application/json"}
+    if data is not None:
+        body = json.dumps(data).encode("utf-8")
+        headers["Content-Type"] = "application/json"
+    req = urllib.request.Request(url, data=body, headers=headers)
+    with urllib.request.urlopen(req, timeout=timeout) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
+def load_models_json(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        return {"providers": {}}
+    with path.open("r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def write_models_json(path: Path, data: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+        f.write("\n")
+
+
+def backup_models_json(path: Path) -> Path:
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    backup_path = path.with_name(f"{path.name}.backup.{timestamp}")
+    if path.exists():
+        shutil.copy2(path, backup_path)
+    else:
+        backup_path.write_text("{\n  \"providers\": {}\n}\n", encoding="utf-8")
+    return backup_path
+
+
+def unified_diff_paths(before: Path, after: Path) -> str:
+    before_lines = before.read_text(encoding="utf-8").splitlines(keepends=True) if before.exists() else []
+    after_lines = after.read_text(encoding="utf-8").splitlines(keepends=True) if after.exists() else []
+    return "".join(
+        difflib.unified_diff(
+            before_lines,
+            after_lines,
+            fromfile=str(before),
+            tofile=str(after),
+        )
+    )
+
+
+def provider_specs_from_models_json(data: dict[str, Any]) -> list[ProviderSpec]:
+    specs: list[ProviderSpec] = []
+    providers = data.get("providers", {})
+    if not isinstance(providers, dict):
+        return specs
+
+    for key, provider in providers.items():
+        if not isinstance(provider, dict):
+            continue
+        base_url = provider.get("baseUrl")
+        if not isinstance(base_url, str) or not base_url:
+            continue
+        api = provider.get("api", "openai-completions")
+        kind = infer_kind(key, base_url)
+        if kind == "ollama" or api == "openai-completions":
+            specs.append(ProviderSpec(key=key, kind=kind, base_url=base_url.rstrip("/")))
+    return specs
+
+
+def default_provider_specs() -> list[ProviderSpec]:
+    return [ProviderSpec(p["key"], normalize_kind(p["kind"]), p["baseUrl"].rstrip("/")) for p in DEFAULT_PROVIDERS]
+
+
+def parse_provider_arg(value: str) -> ProviderSpec:
+    # key=kind:url, e.g. llama-local=llamacpp:http://127.0.0.1:4321/v1
+    if "=" not in value or ":" not in value.split("=", 1)[1]:
+        raise argparse.ArgumentTypeError(
+            "provider must look like key=kind:http://host:port/v1, e.g. llama-local=llamacpp:http://127.0.0.1:4321/v1"
+        )
+    key, rest = value.split("=", 1)
+    kind, url = rest.split(":", 1)
+    return ProviderSpec(key=key.strip(), kind=normalize_kind(kind), base_url=(url.strip()).rstrip("/"))
+
+
+def is_embedding_model(model_id: str) -> bool:
+    lower = model_id.lower()
+    return any(marker in lower for marker in EMBEDDING_MARKERS)
+
+
+def is_qwen_model(model_id: str) -> bool:
+    lower = model_id.lower()
+    suffix = lower.rsplit("/", 1)[-1]
+    return (
+        lower.startswith("qwen")
+        or lower.startswith("qwen/")
+        or suffix.startswith("qwen")
+        or suffix.startswith("qwen3")
+        or suffix.startswith("qwen-3")
+    )
+
+
+def is_reasoning_model(model_id: str, ollama_info: dict[str, Any] | None = None) -> bool:
+    lower = model_id.lower()
+    if ollama_info and "thinking" in ollama_info.get("capabilities", []):
+        return True
+    return any(marker in lower for marker in REASONING_FAMILY_MARKERS)
+
+
+def infer_context_window(model_id: str, ollama_info: dict[str, Any] | None = None) -> int:
+    if ollama_info and isinstance(ollama_info.get("model_info"), dict):
+        for key, value in ollama_info["model_info"].items():
+            if key.endswith(".context_length"):
+                try:
+                    return int(value)
+                except (TypeError, ValueError):
+                    pass
+
+    lower = model_id.lower()
+    if any(marker in lower for marker in ["qwen3", "qwen-3", "qwen2.5", "gemma4", "gemma-4", "glm-4"]):
+        return 262144
+    if "nemotron" in lower:
+        return 1048576
+    return 32768
+
+
+def infer_max_tokens(model_id: str, context_window: int, ollama_info: dict[str, Any] | None = None) -> int:
+    max_tokens = 8192
+    if ollama_info and isinstance(ollama_info.get("parameters"), str):
+        for line in ollama_info["parameters"].splitlines():
+            parts = line.split()
+            if len(parts) >= 2 and parts[0] == "num_predict":
+                try:
+                    max_tokens = int(parts[1])
+                except ValueError:
+                    pass
+    return min(max_tokens, context_window)
+
+
+def infer_input_types(model_id: str, kind: str) -> list[str]:
+    lower = model_id.rsplit("/", 1)[-1].lower()
+    if any(marker in lower for marker in ["vl", "vision", "mm", "multimodal", "gemma-4", "phi-4"]):
+        return ["text", "image"]
+    # Local Qwen3.5/3.6 9B+ GGUFs commonly include vision/mmproj in this setup.
+    m = re.search(r"qwen3\.(?:5|6)[-_](\d+\.?\d*)b", lower)
+    if m:
+        try:
+            if float(m.group(1)) >= 9:
+                return ["text", "image"]
+        except ValueError:
+            pass
+    return ["text"]
+
+
+def infer_thinking_fields(kind: str, model_id: str, reasoning: bool) -> dict[str, Any]:
+    if not reasoning:
+        return {"reasoning": False}
+
+    fields: dict[str, Any] = {
+        "reasoning": True,
+        "thinkingLevelMap": {"off": "none"},
+    }
+
+    if is_qwen_model(model_id):
+        if kind == "llamacpp":
+            # Direct llama.cpp llama-server Qwen templates need chat_template_kwargs.enable_thinking.
+            fields["compat"] = {"thinkingFormat": "qwen-chat-template"}
+        elif kind == "lmstudio":
+            # LM Studio often accepts OpenAI-style controls but may not honor them for every GGUF.
+            # Keep this explicit so the transport is clear; use direct llama.cpp for reliable Qwen template control.
+            fields["compat"] = {"thinkingFormat": "openai"}
+        elif kind == "ollama":
+            fields["compat"] = {"thinkingFormat": "openai"}
+        else:
+            fields["compat"] = {"thinkingFormat": "qwen"}
+    elif kind == "llamacpp":
+        fields["compat"] = {"thinkingFormat": "openai"}
+    elif kind == "ollama":
+        fields["compat"] = {"thinkingFormat": "openai"}
+    elif kind == "lmstudio":
+        fields["compat"] = {"thinkingFormat": "openai"}
+    else:
+        fields["compat"] = {"thinkingFormat": "openai"}
+
+    return fields
+
+
+def merge_compat(*items: dict[str, Any] | None) -> dict[str, Any]:
+    merged: dict[str, Any] = {}
+    for item in items:
+        if isinstance(item, dict):
+            merged.update(item)
+    return merged
+
+
+def provider_default_compat(kind: str) -> dict[str, Any]:
+    if kind == "llamacpp":
+        return {
+            "supportsDeveloperRole": False,
+            "supportsReasoningEffort": False,
+            "maxTokensField": "max_tokens",
+            "requiresAssistantAfterToolResult": True,
+        }
+    if kind == "lmstudio":
+        return {
+            "supportsReasoningEffort": False,
+        }
+    if kind == "ollama":
+        return {
+            "supportsDeveloperRole": False,
+            "supportsReasoningEffort": False,
+            "maxTokensField": "max_tokens",
+        }
+    return {}
+
+
+def endpoint_props_url(base_url: str) -> str:
+    root = base_url.rstrip("/")
+    if root.endswith("/v1"):
+        root = root[:-3]
+    return f"{root}/props"
+
+
+def fetch_endpoint_props(base_url: str, *, kind: str, verbose: bool = False) -> dict[str, Any] | None:
+    try:
+        return open_json_url(endpoint_props_url(base_url), timeout=5)
+    except Exception as e:  # noqa: BLE001 - /props is optional evidence; /v1/models remains authoritative for reachability
+        if verbose or kind == "llamacpp":
+            print(f"  [WARN] endpoint props unavailable ({type(e).__name__}: {e})")
+        return None
+
+
+def endpoint_props_reasoning_format_none(props: dict[str, Any] | None) -> bool:
+    if not isinstance(props, dict):
+        return False
+
+    candidates: list[Any] = []
+    candidates.append(props.get("reasoning_format"))
+    settings = props.get("default_generation_settings")
+    if isinstance(settings, dict):
+        params = settings.get("params")
+        if isinstance(params, dict):
+            candidates.append(params.get("reasoning_format"))
+
+    return any(isinstance(value, str) and value.lower() == "none" for value in candidates)
+
+
+def append_nothink_name(name: str) -> str:
+    return name if name.lower().endswith("-nothink") else f"{name}-nothink"
+
+
+def build_model_entry(
+    kind: str,
+    model_id: str,
+    ollama_info: dict[str, Any] | None = None,
+    endpoint_props: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
+    if is_embedding_model(model_id):
+        return None
+
+    context_window = infer_context_window(model_id, ollama_info)
+    max_tokens = infer_max_tokens(model_id, context_window, ollama_info)
+    hard_off = endpoint_props_reasoning_format_none(endpoint_props)
+    reasoning = False if hard_off else is_reasoning_model(model_id, ollama_info)
+
+    entry: dict[str, Any] = {
+        "id": model_id,
+        "name": append_nothink_name(model_id) if hard_off else model_id,
+        "reasoning": reasoning,
+        "input": infer_input_types(model_id, kind),
+        "cost": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0},
+        "contextWindow": context_window,
+        "maxTokens": max_tokens,
+    }
+
+    if not hard_off:
+        thinking = infer_thinking_fields(kind, model_id, reasoning)
+        entry.update({k: v for k, v in thinking.items() if k != "compat"})
+        if "compat" in thinking:
+            entry["compat"] = thinking["compat"]
+    return entry
+
+
+def discover_openai_compatible_models(base_url: str) -> list[str]:
+    url = f"{base_url.rstrip('/')}/models"
+    data = open_json_url(url, timeout=5)
+    model_ids: list[str] = []
+    for entry in data.get("data", data.get("models", [])):
+        if isinstance(entry, dict):
+            mid = entry.get("id") or entry.get("model") or entry.get("name")
+            if isinstance(mid, str) and mid:
+                model_ids.append(mid)
+    return list(dict.fromkeys(model_ids))
+
+
+def ollama_base_for_native_api(base_url: str) -> str:
+    # Pi uses Ollama through /v1, but Ollama metadata lives at /api/show.
+    if base_url.rstrip("/").endswith("/v1"):
+        return base_url.rstrip("/")[:-3]
+    return base_url.rstrip("/")
+
+
+def discover_ollama_models(spec: ProviderSpec, explicit_models: list[str]) -> list[tuple[str, dict[str, Any] | None]]:
+    native_base = ollama_base_for_native_api(spec.base_url)
+
+    model_names = explicit_models
+    if not model_names:
+        try:
+            data = open_json_url(f"{native_base}/api/tags", timeout=5)
+            model_names = [m.get("name") for m in data.get("models", []) if isinstance(m, dict) and m.get("name")]
+        except Exception as e:  # noqa: BLE001 - CLI should continue provider by provider
+            print(f"  [SKIP] {spec.key} ({native_base}) — Ollama tags unreachable ({type(e).__name__}: {e})")
+            return []
+
+    out: list[tuple[str, dict[str, Any] | None]] = []
+    for name in list(dict.fromkeys(model_names)):
+        try:
+            info = open_json_url(f"{native_base}/api/show", timeout=10, data={"name": name})
+        except Exception as e:  # noqa: BLE001
+            print(f"  [WARN] {spec.key}: could not fetch Ollama metadata for {name} ({type(e).__name__}: {e})")
+            info = None
+        out.append((name, info))
+    return out
+
+
+def update_provider(data: dict[str, Any], spec: ProviderSpec, models: list[dict[str, Any]]) -> None:
+    providers = data.setdefault("providers", {})
+    existing = providers.get(spec.key)
+    provider_obj = copy.deepcopy(existing) if isinstance(existing, dict) else {}
+
+    if spec.kind == "ollama":
+        pi_base = spec.base_url.rstrip("/")
+        if not pi_base.endswith("/v1"):
+            pi_base = f"{pi_base}/v1"
+    else:
+        pi_base = spec.base_url.rstrip("/")
+
+    provider_obj["baseUrl"] = pi_base
+    provider_obj["api"] = "openai-completions"
+    provider_obj.setdefault("apiKey", "none" if spec.kind != "lmstudio" else "$OLLAMA_API_KEY")
+    provider_obj["compat"] = merge_compat(provider_default_compat(spec.kind), provider_obj.get("compat"))
+    provider_obj["models"] = models
+    providers[spec.key] = provider_obj
+
+
+def collect_specs(args: argparse.Namespace, data: dict[str, Any]) -> list[ProviderSpec]:
+    if args.provider:
+        specs = list(args.provider)
+    else:
+        specs = provider_specs_from_models_json(data)
+        seen = {s.key for s in specs}
+        for spec in default_provider_specs():
+            if spec.key not in seen:
+                specs.append(spec)
+                seen.add(spec.key)
+
+    if args.only:
+        wanted = set(args.only)
+        specs = [s for s in specs if s.key in wanted]
+    return specs
+
+
+def discover_for_provider(spec: ProviderSpec, explicit_ollama_models: list[str], *, verbose: bool = False) -> list[dict[str, Any]] | None:
+    print(f"\nScanning {spec.key} [{spec.kind}] ({spec.base_url})...")
+    try:
+        if spec.kind == "ollama":
+            discovered = discover_ollama_models(spec, explicit_ollama_models)
+            entries = [build_model_entry(spec.kind, name, info) for name, info in discovered]
+        else:
+            endpoint_props = fetch_endpoint_props(spec.base_url, kind=spec.kind, verbose=verbose)
+            model_ids = discover_openai_compatible_models(spec.base_url)
+            entries = [build_model_entry(spec.kind, mid, endpoint_props=endpoint_props) for mid in model_ids]
+    except (urllib.error.URLError, OSError, json.JSONDecodeError, TimeoutError) as e:
+        print(f"  [SKIP] {spec.key} — not reachable ({type(e).__name__}: {e})")
+        return None
+
+    models = [m for m in entries if m is not None]
+    if not models:
+        print("  No non-embedding models found — skipping provider update.")
+        return None
+
+    print(f"  [OK] Discovered {len(models)} models.")
+    for model in models:
+        compat = model.get("compat", {})
+        tf = compat.get("thinkingFormat") if isinstance(compat, dict) else None
+        think = f", thinkingFormat={tf}" if tf else ""
+        visible_name = f", name={model['name']}" if model.get("name") != model.get("id") else ""
+        print(f"    - {model['id']} (reasoning={model.get('reasoning')}{think}{visible_name})")
+    return models
+
+
+def parse_args(argv: list[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Discover models and update ~/.pi/agent/models.json")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--write", action="store_true", help="write updates to ~/.pi/agent/models.json (default)")
+    mode.add_argument("--dry-run", action="store_true", help="show what would change without writing")
+    parser.add_argument("--models-json", type=Path, default=MODELS_JSON, help="path to Pi models.json")
+    parser.add_argument("--provider", action="append", type=parse_provider_arg, help="scan an explicit provider: key=kind:http://host/v1")
+    parser.add_argument("--only", action="append", help="only scan provider key; may be repeated")
+    parser.add_argument("--ollama-model", action="append", default=[], help="specific Ollama model to inspect; may be repeated")
+    parser.add_argument("--verbose", action="store_true", help="show optional introspection failures such as missing /props")
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv or sys.argv[1:])
+    write = not bool(args.dry_run)
+    data = load_models_json(args.models_json)
+    specs = collect_specs(args, data)
+
+    if not specs:
+        print("No providers to scan.")
+        return 1
+
+    print("Pi model discovery")
+    print("=" * 40)
+    print(f"models.json: {args.models_json}")
+    print(f"mode: {'write' if write else 'dry-run'}")
+
+    new_data = copy.deepcopy(data)
+    touched: list[str] = []
+
+    for spec in specs:
+        models = discover_for_provider(spec, args.ollama_model, verbose=args.verbose)
+        if models is None:
+            continue
+        update_provider(new_data, spec, models)
+        touched.append(spec.key)
+
+    print("\n" + "=" * 40)
+    if not touched:
+        print("No reachable providers updated.")
+        return 0
+
+    if write:
+        backup_path = backup_models_json(args.models_json)
+        write_models_json(args.models_json, new_data)
+        print(f"Backup written: {backup_path}")
+        print(f"Updated {args.models_json} providers: {', '.join(touched)}")
+        diff = unified_diff_paths(backup_path, args.models_json)
+        print("\n=== Diff vs backup ===")
+        print(diff if diff else "No diff.", end="" if diff.endswith("\n") else "\n")
+    else:
+        print(f"Dry run only. Would update providers: {', '.join(touched)}")
+        print("Run without --dry-run to apply.")
+
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
