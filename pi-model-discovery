@@ -48,11 +48,12 @@ MODELS_JSON = Path.home() / ".pi" / "agent" / "models.json"
 # their key/baseUrl, so this list can stay small and obvious.
 DEFAULT_PROVIDERS = [
     {"key": "lms-local", "kind": "lmstudio", "baseUrl": "http://127.0.0.1:1234/v1"},
-    {"key": "lms-twins", "kind": "lmstudio", "baseUrl": "http://twins:1234/v1"},
-    {"key": "lms-sparky", "kind": "lmstudio", "baseUrl": "http://sparky:1234/v1"},
     {"key": "omlx-local", "kind": "llamacpp", "baseUrl": "http://127.0.0.1:4321/v1"},
     {"key": "llama-local", "kind": "llamacpp", "baseUrl": "http://127.0.0.1:4322/v1"},
-    {"key": "ollama", "kind": "ollama", "baseUrl": "http://localhost:11434"},
+    {"key": "ollama", "kind": "ollama", "baseUrl": "http://127.0.0.1:11434"},
+    {"key": "lms-sparky", "kind": "lmstudio", "baseUrl": "http://sparky:1234/v1"},
+    {"key": "8085-sparky", "kind": "llamacpp", "baseUrl": "http://sparky:8085/v1"},
+    {"key": "lms-twins", "kind": "lmstudio", "baseUrl": "http://twins:1234/v1"},
 ]
 
 REASONING_FAMILY_MARKERS = [
