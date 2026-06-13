@@ -11,6 +11,7 @@ Design goals:
   - llamacpp: OpenAI-compatible /v1/models, direct llama.cpp llama-server quirks
   - ollama: native Ollama metadata API plus Pi OpenAI-compatible provider config
   - openai-compatible: generic OpenAI-compatible /v1/models
+  - llamacpp-qwen-mtp: dedicated 8085-sparky Qwen MTP llama.cpp config
 - Infer model metadata and thinking controls from provider kind + model name.
 
 Longer documentation:
@@ -52,7 +53,11 @@ DEFAULT_PROVIDERS = [
     {"key": "llama-local", "kind": "llamacpp", "baseUrl": "http://127.0.0.1:4322/v1"},
     {"key": "ollama", "kind": "ollama", "baseUrl": "http://127.0.0.1:11434"},
     {"key": "lms-sparky", "kind": "lmstudio", "baseUrl": "http://sparky:1234/v1"},
-    {"key": "8085-sparky", "kind": "llamacpp", "baseUrl": "http://sparky:8085/v1"},
+    # Dedicated Qwen MTP llama.cpp endpoint. Keep this as its own kind so discovery
+    # regenerates the required qwen-chat-template thinking config without needing
+    # an explicit --provider override.
+    {"key": "8085-sparky", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://sparky:8085/v1"},
+    {"key": "8000-sparky-diff", "kind": "openai-compatible", "baseUrl": "http://sparky:8000/v1"},
     {"key": "lms-twins", "kind": "lmstudio", "baseUrl": "http://twins:1234/v1"},
 ]
 
@@ -94,6 +99,11 @@ def normalize_kind(kind: str) -> str:
         "llama-cpp": "llamacpp",
         "llama.cpp": "llamacpp",
         "llamacpp": "llamacpp",
+        "llamacpp-mtp": "llamacpp-mtp",
+        "llamacppmtp": "llamacpp-mtp",
+        "llamacpp-qwen-mtp": "llamacpp-qwen-mtp",
+        "llamacppqwenmtp": "llamacpp-qwen-mtp",
+        "qwen-mtp": "llamacpp-qwen-mtp",
         "cpp": "llamacpp",
         "ollama": "ollama",
         "openai": "openai-compatible",
@@ -109,6 +119,12 @@ def infer_kind(provider_key: str, base_url: str | None) -> str:
 
     if key == "ollama" or "ollama" in key or ":11434" in url:
         return "ollama"
+    if key == "8085-sparky" and "sparky:8085" in url:
+        return "llamacpp-qwen-mtp"
+    if any(marker in key for marker in ["llamacpp-qwen-mtp", "llamacppqwenmtp", "qwen-mtp"]):
+        return "llamacpp-qwen-mtp"
+    if any(marker in key for marker in ["llamacpp-mtp", "llamacppmtp"]):
+        return "llamacpp-mtp"
     if any(marker in key for marker in ["llamacpp", "llama-cpp", "llama.cpp", "llama-local"]):
         return "llamacpp"
     if key.startswith("cpp-") or key.startswith("cpp_") or key.startswith("llama-"):
@@ -117,7 +133,7 @@ def infer_kind(provider_key: str, base_url: str | None) -> str:
         return "lmstudio"
     if ":1234" in url:
         return "lmstudio"
-    if any(port in url for port in [":4321", ":8080", ":8081", ":8085", ":8086", ":8087"]):
+    if any(port in url for port in [":4321", ":8000", ":8080", ":8081", ":8085", ":8086", ":8087"]):
         return "llamacpp"
     return "openai-compatible"
 
@@ -263,7 +279,8 @@ def infer_input_types(model_id: str, kind: str) -> list[str]:
     if any(marker in lower for marker in ["vl", "vision", "mm", "multimodal", "gemma-4", "phi-4"]):
         return ["text", "image"]
     # Local Qwen3.5/3.6 9B+ GGUFs commonly include vision/mmproj in this setup.
-    m = re.search(r"qwen3\.(?:5|6)[-_](\d+\.?\d*)b", lower)
+    # Match both upstream-style qwen3.6-* and local alias style qwen36-*.
+    m = re.search(r"qwen3(?:\.|)(?:5|6)[-_](\d+\.?\d*)b", lower)
     if m:
         try:
             if float(m.group(1)) >= 9:
@@ -281,6 +298,26 @@ def infer_thinking_fields(kind: str, model_id: str, reasoning: bool) -> dict[str
         "reasoning": True,
         "thinkingLevelMap": {"off": "none"},
     }
+
+    # Dedicated Qwen MTP llama.cpp endpoint (8085-sparky). It needs
+    # chat_template_kwargs.enable_thinking (qwen-chat-template). Pi already
+    # supports low/medium/high for reasoning models; only map off explicitly.
+    if kind == "llamacpp-qwen-mtp":
+        fields["thinkingLevelMap"] = {"off": "none"}
+        fields["compat"] = {"supportsReasoningEffort": True, "thinkingFormat": "qwen-chat-template"}
+        return fields
+
+    # llamacpp-mtp: generic Mixture-of-Token-Probabilities models.
+    # Qwen-based MTP models need chat_template_kwargs.enable_thinking (qwen-chat-template),
+    # not OpenAI-style reasoning_effort. Non-Qwen MTP models would use openai format.
+    if kind == "llamacpp-mtp":
+        fields["compat"] = {"supportsReasoningEffort": True}
+        if is_qwen_model(model_id):
+            fields["thinkingLevelMap"] = {"off": "none"}
+            fields["compat"]["thinkingFormat"] = "qwen-chat-template"
+        else:
+            fields["compat"]["thinkingFormat"] = "openai"
+        return fields
 
     if is_qwen_model(model_id):
         if kind == "llamacpp":
@@ -315,6 +352,13 @@ def merge_compat(*items: dict[str, Any] | None) -> dict[str, Any]:
 
 
 def provider_default_compat(kind: str) -> dict[str, Any]:
+    if kind in {"llamacpp-mtp", "llamacpp-qwen-mtp"}:
+        # MTP baseline compat; thinkingFormat is set per-model in infer_thinking_fields.
+        return {
+            "supportsDeveloperRole": False,
+            "maxTokensField": "max_tokens",
+            "requiresAssistantAfterToolResult": True,
+        }
     if kind == "llamacpp":
         return {
             "supportsDeveloperRole": False,
@@ -382,11 +426,14 @@ def build_model_entry(
     context_window = infer_context_window(model_id, ollama_info)
     max_tokens = infer_max_tokens(model_id, context_window, ollama_info)
     hard_off = endpoint_props_reasoning_format_none(endpoint_props)
-    reasoning = False if hard_off else is_reasoning_model(model_id, ollama_info)
+    # MTP: never let endpoint props override reasoning status; MTP models always have
+    # reasoning/thinking capability regardless of what the server reports.
+    is_mtp = kind in {"llamacpp-mtp", "llamacpp-qwen-mtp"}
+    reasoning = False if (hard_off and not is_mtp) else is_reasoning_model(model_id, ollama_info)
 
     entry: dict[str, Any] = {
         "id": model_id,
-        "name": append_nothink_name(model_id) if hard_off else model_id,
+        "name": append_nothink_name(model_id) if (hard_off and not is_mtp) else model_id,
         "reasoning": reasoning,
         "input": infer_input_types(model_id, kind),
         "cost": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0},
@@ -394,7 +441,7 @@ def build_model_entry(
         "maxTokens": max_tokens,
     }
 
-    if not hard_off:
+    if not hard_off or is_mtp:
         thinking = infer_thinking_fields(kind, model_id, reasoning)
         entry.update({k: v for k, v in thinking.items() if k != "compat"})
         if "compat" in thinking:
