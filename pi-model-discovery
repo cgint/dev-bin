@@ -60,6 +60,7 @@ DEFAULT_PROVIDERS = [
     {"key": "8085-sparky", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://sparky:8085/v1"},
     {"key": "8000-sparky-diff", "kind": "openai-compatible", "baseUrl": "http://sparky:8000/v1"},
     {"key": "lms-twins", "kind": "lmstudio", "baseUrl": "http://twins:1234/v1"},
+    {"key": "8085-twins", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://twins:8085/v1"},
 ]
 
 REASONING_FAMILY_MARKERS = [
