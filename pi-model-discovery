@@ -9,6 +9,7 @@ Design goals:
 - Keep backend-specific behavior explicit via provider kind:
   - lmstudio: OpenAI-compatible /v1/models, LM Studio quirks
   - llamacpp: OpenAI-compatible /v1/models, direct llama.cpp llama-server quirks
+  - omlx: llama.cpp-like OpenAI server with template-driven thinking (chat_template_kwargs)
   - ollama: native Ollama metadata API plus Pi OpenAI-compatible provider config
   - openai-compatible: generic OpenAI-compatible /v1/models
   - llamacpp-qwen-mtp: dedicated 8085-sparky Qwen MTP llama.cpp config
@@ -99,6 +100,7 @@ def normalize_kind(kind: str) -> str:
         "llama-cpp": "llamacpp",
         "llama.cpp": "llamacpp",
         "llamacpp": "llamacpp",
+        "omlx": "omlx",
         "llamacpp-mtp": "llamacpp-mtp",
         "llamacppmtp": "llamacpp-mtp",
         "llamacpp-qwen-mtp": "llamacpp-qwen-mtp",
@@ -119,6 +121,8 @@ def infer_kind(provider_key: str, base_url: str | None) -> str:
 
     if key == "ollama" or "ollama" in key or ":11434" in url:
         return "ollama"
+    if key == "omlx-local" or "omlx" in key:
+        return "omlx"
     if key == "8085-sparky" and "sparky:8085" in url:
         return "llamacpp-qwen-mtp"
     if any(marker in key for marker in ["llamacpp-qwen-mtp", "llamacppqwenmtp", "qwen-mtp"]):
@@ -323,6 +327,9 @@ def infer_thinking_fields(kind: str, model_id: str, reasoning: bool) -> dict[str
         if kind == "llamacpp":
             # Direct llama.cpp llama-server Qwen templates need chat_template_kwargs.enable_thinking.
             fields["compat"] = {"thinkingFormat": "qwen-chat-template"}
+        elif kind == "omlx":
+            # OMLX uses template-driven thinking for all reasoning models (Gemma, etc.).
+            fields["compat"] = {"thinkingFormat": "qwen-chat-template"}
         elif kind == "lmstudio":
             # LM Studio often accepts OpenAI-style controls but may not honor them for every GGUF.
             # Keep this explicit so the transport is clear; use direct llama.cpp for reliable Qwen template control.
@@ -331,6 +338,9 @@ def infer_thinking_fields(kind: str, model_id: str, reasoning: bool) -> dict[str
             fields["compat"] = {"thinkingFormat": "openai"}
         else:
             fields["compat"] = {"thinkingFormat": "qwen"}
+    elif kind == "omlx":
+        # OMLX defaults to qwen-chat-template for non-Qwen reasoning models too.
+        fields["compat"] = {"thinkingFormat": "qwen-chat-template"}
     elif kind == "llamacpp":
         fields["compat"] = {"thinkingFormat": "openai"}
     elif kind == "ollama":
@@ -356,6 +366,15 @@ def provider_default_compat(kind: str) -> dict[str, Any]:
         # MTP baseline compat; thinkingFormat is set per-model in infer_thinking_fields.
         return {
             "supportsDeveloperRole": False,
+            "maxTokensField": "max_tokens",
+            "requiresAssistantAfterToolResult": True,
+        }
+    if kind == "omlx":
+        # OMLX: llama.cpp-like server with template-driven thinking (chat_template_kwargs).
+        # Does not support reasoning_effort; thinking toggled via enable_thinking.
+        return {
+            "supportsDeveloperRole": False,
+            "supportsReasoningEffort": False,
             "maxTokensField": "max_tokens",
             "requiresAssistantAfterToolResult": True,
         }
