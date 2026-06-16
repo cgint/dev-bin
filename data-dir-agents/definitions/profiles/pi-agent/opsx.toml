@@ -9,7 +9,8 @@ skills = [
   "my-tools-toolbox",
   "openspec-apply-change",
   "openspec-propose",
-  "quality-discipline"
+  "quality-discipline",
+  "criticalthink"
 ]
 
 prompts = ["done-archived-commit-exact.md"]
