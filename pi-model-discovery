@@ -52,17 +52,17 @@ DEFAULT_PROVIDERS = [
     {"key": "lms-local", "kind": "lmstudio", "baseUrl": "http://127.0.0.1:1234/v1"},
     {"key": "omlx-local", "kind": "llamacpp", "baseUrl": "http://127.0.0.1:4321/v1"},
     {"key": "llama-local", "kind": "llamacpp", "baseUrl": "http://127.0.0.1:4322/v1"},
-    {"key": "ollama", "kind": "ollama", "baseUrl": "http://127.0.0.1:11434"},
-    {"key": "lms-sparky", "kind": "lmstudio", "baseUrl": "http://sparky:1234/v1"},
+    # {"key": "ollama", "kind": "ollama", "baseUrl": "http://127.0.0.1:11434"},
+    # {"key": "lms-sparky", "kind": "lmstudio", "baseUrl": "http://sparky:1234/v1"},
     # Dedicated Qwen MTP llama.cpp endpoint. Keep this as its own kind so discovery
     # regenerates the required qwen-chat-template thinking config without needing
     # an explicit --provider override.
     {"key": "8085-sparky", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://sparky:8085/v1"},
-    {"key": "8000-sparky-diff", "kind": "openai-compatible", "baseUrl": "http://sparky:8000/v1"},
+    # {"key": "8000-sparky-diff", "kind": "openai-compatible", "baseUrl": "http://sparky:8000/v1"},
     {"key": "lms-twins", "kind": "lmstudio", "baseUrl": "http://twins:1234/v1"},
     {"key": "8085-twins", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://twins:8085/v1"},
     {"key": "8086-twins", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://twins:8086/v1"},
-    {"key": "8000-twins", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://twins:8000/v1"},
+    # {"key": "8000-twins", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://twins:8000/v1"},
 ]
 
 REASONING_FAMILY_MARKERS = [
@@ -447,6 +447,8 @@ def build_model_entry(
 
     context_window = infer_context_window(model_id, ollama_info)
     max_tokens = infer_max_tokens(model_id, context_window, ollama_info)
+    if kind in {"llamacpp-mtp", "llamacpp-qwen-mtp"}:
+        max_tokens = max(max_tokens, 16384)
     hard_off = endpoint_props_reasoning_format_none(endpoint_props)
     # MTP: never let endpoint props override reasoning status; MTP models always have
     # reasoning/thinking capability regardless of what the server reports.
@@ -537,12 +539,10 @@ def collect_specs(args: argparse.Namespace, data: dict[str, Any]) -> list[Provid
     if args.provider:
         specs = list(args.provider)
     else:
-        specs = provider_specs_from_models_json(data)
-        seen = {s.key for s in specs}
-        for spec in default_provider_specs():
-            if spec.key not in seen:
-                specs.append(spec)
-                seen.add(spec.key)
+        # Default: only scan providers listed in DEFAULT_PROVIDERS.
+        # Existing models.json entries are NOT auto-picked up (they won't be
+        # overwritten or removed — only DEFAULT_PROVIDERS keys are touched).
+        specs = default_provider_specs()
 
     if args.only:
         wanted = set(args.only)
