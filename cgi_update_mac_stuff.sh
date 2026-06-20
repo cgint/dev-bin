@@ -6,7 +6,7 @@ ALL_MODE="false"
 # Base npm packages
 NPM_PACKAGES="@google/gemini-cli @fission-ai/openspec @earendil-works/pi-coding-agent"
 NPM_PACKAGES_ALL_ADDON="@openai/codex @googleworkspace/cli agent-browser"
-CRAZY_ADDITIONAL_PI_UPDATE_AFTER_NPM="pi update"
+ADDITIONAL_PI_UPDATE_AFTER_NPM="pi update --all"
 # disabled from all_addon "@anthropic-ai/claude-code opencode-ai"
 # @github/copilot now installed via brew
 
@@ -28,7 +28,7 @@ echo
 # Run consolidated npm install in a single background process to avoid lock contention
 (
     echo "Starting consolidated npm install..."
-    npm i -g $NPM_PACKAGES && $CRAZY_ADDITIONAL_PI_UPDATE_AFTER_NPM
+    npm i -g $NPM_PACKAGES && $ADDITIONAL_PI_UPDATE_AFTER_NPM
     
     if [ "$ALL_MODE" == "true" ]; then
         echo "Running agent-browser post-install..."
