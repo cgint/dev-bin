@@ -6,7 +6,7 @@ ALL_MODE="false"
 # Base npm packages
 NPM_PACKAGES="@google/gemini-cli @fission-ai/openspec @earendil-works/pi-coding-agent"
 NPM_PACKAGES_ALL_ADDON="@openai/codex @googleworkspace/cli agent-browser"
-ADDITIONAL_PI_UPDATE_AFTER_NPM="pi update --all"
+ADDITIONAL_PI_UPDATE_AFTER_NPM="pi-profile --update-all"
 # disabled from all_addon "@anthropic-ai/claude-code opencode-ai"
 # @github/copilot now installed via brew
 

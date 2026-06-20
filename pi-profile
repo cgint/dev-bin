@@ -6,7 +6,8 @@
 # Usage:
 #   pi-profile              # run default profile
 #   pi-profile minimal      # run minimal profile
-#   pi-profile --list      # list deployed profiles
+#   pi-profile --list       # list deployed profiles
+#   pi-profile --update-all # run "pi update --all" on every profile
 
 set -euo pipefail
 
@@ -38,6 +39,42 @@ PROFILE="$1"
 if [ "$PROFILE" = "--list" ] || [ "$PROFILE" = "-l" ]; then
   list_profiles
   exit 0
+fi
+
+if [ "$PROFILE" = "--update-all" ]; then
+  update_all_done=0
+  update_all_failed=0
+
+  run_update() {
+    local label="$1"
+    local dir="$2"
+    echo "Updating $label ..."
+    if PI_CODING_AGENT_DIR="$dir" pi update --all; then
+      update_all_done=$((update_all_done + 1))
+    else
+      update_all_failed=$((update_all_failed + 1))
+    fi
+  }
+
+  # Update default profile
+  if [ -d "$PI_BASE/agent" ]; then
+    run_update "default" "$PI_BASE/agent"
+  fi
+
+  # Update each named profile
+  if [ -d "$PI_BASE/profiles" ]; then
+    for d in "$PI_BASE/profiles"/*/; do
+      [ -d "$d" ] || continue
+      name=$(basename "$d")
+      agent_dir="$d/agent"
+      [ -d "$agent_dir" ] || continue
+      run_update "$name" "$agent_dir"
+    done
+  fi
+
+  echo
+  echo "Done: $update_all_done succeeded, $update_all_failed failed"
+  [ "$update_all_failed" -eq 0 ] && exit 0 || exit 1
 fi
 
 shift
