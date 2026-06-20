@@ -53,6 +53,8 @@ DEFAULT_PROVIDERS = [
     {"key": "omlx-local", "kind": "llamacpp", "baseUrl": "http://127.0.0.1:4321/v1"},
     {"key": "llama-local", "kind": "llamacpp", "baseUrl": "http://127.0.0.1:4322/v1"},
     # {"key": "ollama", "kind": "ollama", "baseUrl": "http://127.0.0.1:11434"},
+    # {"key": "ollama-test", "kind": "ollama", "baseUrl": "https://ollama-test-583893817878.europe-west4.run.app"},
+    # {"key": "ollama-qwen36-27b-mtp-q8", "kind": "ollama", "baseUrl": "https://ollama-qwen36-27b-mtp-q8-583893817878.europe-west4.run.app"},
     # {"key": "lms-sparky", "kind": "lmstudio", "baseUrl": "http://sparky:1234/v1"},
     # Dedicated Qwen MTP llama.cpp endpoint. Keep this as its own kind so discovery
     # regenerates the required qwen-chat-template thinking config without needing
@@ -62,6 +64,7 @@ DEFAULT_PROVIDERS = [
     {"key": "lms-twins", "kind": "lmstudio", "baseUrl": "http://twins:1234/v1"},
     {"key": "8085-twins", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://twins:8085/v1"},
     {"key": "8086-twins", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://twins:8086/v1"},
+    {"key": "8087-twins", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://twins:8087/v1"},
     # {"key": "8000-twins", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://twins:8000/v1"},
 ]
 
@@ -448,7 +451,7 @@ def build_model_entry(
     context_window = infer_context_window(model_id, ollama_info)
     max_tokens = infer_max_tokens(model_id, context_window, ollama_info)
     if kind in {"llamacpp-mtp", "llamacpp-qwen-mtp"}:
-        max_tokens = max(max_tokens, 16384)
+        max_tokens = max(max_tokens, 8192*4)
     hard_off = endpoint_props_reasoning_format_none(endpoint_props)
     # MTP: never let endpoint props override reasoning status; MTP models always have
     # reasoning/thinking capability regardless of what the server reports.
@@ -498,7 +501,7 @@ def discover_ollama_models(spec: ProviderSpec, explicit_models: list[str]) -> li
     model_names = explicit_models
     if not model_names:
         try:
-            data = open_json_url(f"{native_base}/api/tags", timeout=5)
+            data = open_json_url(f"{native_base}/api/tags", timeout=30)
             model_names = [m.get("name") for m in data.get("models", []) if isinstance(m, dict) and m.get("name")]
         except Exception as e:  # noqa: BLE001 - CLI should continue provider by provider
             print(f"  [SKIP] {spec.key} ({native_base}) — Ollama tags unreachable ({type(e).__name__}: {e})")
@@ -507,7 +510,7 @@ def discover_ollama_models(spec: ProviderSpec, explicit_models: list[str]) -> li
     out: list[tuple[str, dict[str, Any] | None]] = []
     for name in list(dict.fromkeys(model_names)):
         try:
-            info = open_json_url(f"{native_base}/api/show", timeout=10, data={"name": name})
+            info = open_json_url(f"{native_base}/api/show", timeout=60, data={"name": name})
         except Exception as e:  # noqa: BLE001
             print(f"  [WARN] {spec.key}: could not fetch Ollama metadata for {name} ({type(e).__name__}: {e})")
             info = None
