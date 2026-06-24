@@ -542,7 +542,14 @@ export default function advisorExtension(pi: ExtensionAPI) {
       };
     }
 
-    if (!auth.apiKey) {
+    // Work around modelRegistry.getApiKeyAndHeaders() using a stricter auth
+    // path than normal model execution for some env-key setups (for example
+    // google/GEMINI_API_KEY). If the model-specific lookup yields no API key,
+    // retry with provider-level resolution, which includes the standard env
+    // fallback used elsewhere in Pi.
+    const apiKey = auth.apiKey ?? (await ctx.modelRegistry.getApiKeyForProvider(provider));
+
+    if (!apiKey) {
       return {
         ...base,
         ok: false,
@@ -583,7 +590,7 @@ export default function advisorExtension(pi: ExtensionAPI) {
     const cacheSessionId = `${baseSessionId}:${provider}:${modelId}`;
 
     const options: Record<string, unknown> = {
-      apiKey: auth.apiKey,
+      apiKey,
       headers: auth.headers,
       cacheRetention: cfg.cacheRetention,
       sessionId: cacheSessionId,
