@@ -1,0 +1,281 @@
+#!/usr/bin/env python3
+"""Convert a GitHub Copilot CLI session events.jsonl file to conversation-first Markdown.
+
+Input:
+- A Copilot CLI session transcript at ~/.copilot/session-state/<session-id>/events.jsonl
+
+Output:
+- Markdown focused on the conversation (USER + ASSISTANT)
+- Optional inclusion of system messages, timestamps, reasoning, and tool events
+"""
+
+from __future__ import annotations
+
+import argparse
+import dataclasses
+import datetime as _dt
+import json
+import os
+import sys
+from pathlib import Path
+from typing import Any, Dict, Iterable, List, Optional
+
+
+@dataclasses.dataclass
+class SessionMeta:
+    session_id: str = ""
+    cwd: str = ""
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    name: str = ""
+    repository: str = ""
+    branch: str = ""
+    source: str = ""
+
+
+def _parse_iso(ts: Any) -> Optional[_dt.datetime]:
+    if not isinstance(ts, str) or not ts:
+        return None
+    try:
+        if ts.endswith("Z"):
+            ts = ts[:-1] + "+00:00"
+        return _dt.datetime.fromisoformat(ts)
+    except Exception:
+        return None
+
+
+def _read_jsonl(path: str) -> Iterable[Dict[str, Any]]:
+    with open(path, "r", encoding="utf-8") as f:
+        for line_no, line in enumerate(f, start=1):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+            except json.JSONDecodeError as e:
+                raise RuntimeError(f"Invalid JSON on line {line_no}: {e}") from e
+            if isinstance(obj, dict):
+                yield obj
+
+
+def _read_workspace_yaml(session_dir: Path) -> Dict[str, str]:
+    path = session_dir / "workspace.yaml"
+    if not path.exists():
+        return {}
+    out: Dict[str, str] = {}
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or ":" not in line:
+            continue
+        key, value = line.split(":", 1)
+        out[key.strip()] = value.strip()
+    return out
+
+
+def _read_vscode_metadata(session_dir: Path) -> Dict[str, Any]:
+    path = session_dir / "vscode.metadata.json"
+    if not path.exists():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def _session_meta(input_jsonl: str) -> SessionMeta:
+    session_dir = Path(input_jsonl).resolve().parent
+    meta = SessionMeta(session_id=session_dir.name)
+
+    wy = _read_workspace_yaml(session_dir)
+    vm = _read_vscode_metadata(session_dir)
+
+    meta.cwd = wy.get("cwd", "")
+    meta.created_at = wy.get("created_at")
+    meta.updated_at = wy.get("updated_at")
+    meta.name = wy.get("name", "")
+    meta.repository = wy.get("repository", "")
+    meta.branch = wy.get("branch", "")
+    meta.source = str(vm.get("origin", "")) if vm.get("origin") else ""
+
+    if not meta.cwd:
+        workspace = vm.get("workspaceFolder")
+        if isinstance(workspace, dict):
+            folder = workspace.get("folderPath")
+            if isinstance(folder, str):
+                meta.cwd = folder
+
+    return meta
+
+
+def _truncate(text: str, max_chars: int) -> str:
+    if max_chars <= 0 or len(text) <= max_chars:
+        return text
+    return text[:max_chars].rstrip() + f"\n… *(truncated, {len(text)} chars total)*"
+
+
+def _blockquote(text: str) -> str:
+    out: List[str] = []
+    for line in text.splitlines():
+        out.append(">" if not line.strip() else f"> {line}")
+    return "\n".join(out)
+
+
+def _render_tool_event(event: Dict[str, Any], output_max: int, include_timestamps: bool) -> str:
+    etype = event.get("type", "")
+    data = event.get("data") or {}
+    parts: List[str] = [f"### SYSTEM (tool event: {etype})", ""]
+
+    ts = _parse_iso(event.get("timestamp"))
+    if include_timestamps and ts:
+        parts += [f"_timestamp: {ts.isoformat()}_", ""]
+
+    fields: List[str] = []
+    for key in ("toolName", "toolCallId", "success"):
+        if key in data:
+            fields.append(f"{key}: {data[key]}")
+    args = data.get("arguments")
+    if isinstance(args, dict) and args:
+        fields.append("arguments:")
+        for k, v in args.items():
+            fields.append(f"  {k}: {v}")
+    if fields:
+        parts += ["```", *fields, "```", ""]
+
+    result_text = ""
+    result = data.get("result")
+    if isinstance(result, dict):
+        content = result.get("content")
+        if isinstance(content, str):
+            result_text = content
+    if not result_text:
+        result_text = json.dumps(data, ensure_ascii=False, indent=2)
+    result_text = _truncate(result_text, output_max)
+    parts += ["<details>", "<summary>output</summary>", "", "```text", result_text.rstrip(), "```", "", "</details>"]
+    return "\n".join(parts).rstrip()
+
+
+def generate_markdown(
+    *,
+    input_jsonl: str,
+    include_system: bool,
+    include_reasoning: bool,
+    include_tools: bool,
+    include_timestamps: bool,
+    tool_output_max: int,
+) -> str:
+    meta = _session_meta(input_jsonl)
+    records = list(_read_jsonl(input_jsonl))
+
+    out: List[str] = []
+    out.append(f"# Copilot session — {meta.session_id}")
+    out.append("")
+    out.append(f"- id: `{meta.session_id}`")
+    if meta.name:
+        out.append(f"- name: `{meta.name}`")
+    if meta.created_at:
+        out.append(f"- created: `{meta.created_at}`")
+    if meta.updated_at:
+        out.append(f"- updated: `{meta.updated_at}`")
+    if meta.cwd:
+        out.append(f"- cwd: `{meta.cwd}`")
+    if meta.repository:
+        out.append(f"- repository: `{meta.repository}`")
+    if meta.branch:
+        out.append(f"- branch: `{meta.branch}`")
+    if meta.source:
+        out.append(f"- source: `{meta.source}`")
+    out.append(f"- transcript: `{input_jsonl}`")
+    out.append("")
+    out.append("---")
+    out.append("")
+
+    for event in records:
+        etype = event.get("type")
+        data = event.get("data") or {}
+        ts = _parse_iso(event.get("timestamp"))
+
+        if etype == "user.message":
+            out.append("### USER")
+            out.append("")
+            if include_timestamps and ts:
+                out.append(f"_timestamp: {ts.isoformat()}_")
+                out.append("")
+            text = data.get("content", "")
+            if isinstance(text, str) and text.strip():
+                out.append(text.rstrip())
+                out.append("")
+            continue
+
+        if etype == "assistant.message":
+            out.append("### ASSISTANT")
+            out.append("")
+            if include_timestamps and ts:
+                out.append(f"_timestamp: {ts.isoformat()}_")
+                out.append("")
+            text = data.get("content", "")
+            if isinstance(text, str) and text.strip():
+                out.append(text.rstrip())
+                out.append("")
+            if include_reasoning:
+                reasoning = data.get("reasoningText", "")
+                if isinstance(reasoning, str) and reasoning.strip():
+                    out.append("<details>")
+                    out.append("<summary>thinking</summary>")
+                    out.append("")
+                    out.append(_blockquote(reasoning.rstrip()))
+                    out.append("")
+                    out.append("</details>")
+                    out.append("")
+            continue
+
+        if include_system and etype == "system.message":
+            text = data.get("content", "")
+            if isinstance(text, str) and text.strip():
+                out.append("### SYSTEM")
+                out.append("")
+                if include_timestamps and ts:
+                    out.append(f"_timestamp: {ts.isoformat()}_")
+                    out.append("")
+                out.append(text.rstrip())
+                out.append("")
+            continue
+
+        if include_tools and etype in {"tool.execution_start", "tool.execution_complete"}:
+            out.append(_render_tool_event(event, tool_output_max, include_timestamps))
+            out.append("")
+
+    return "\n".join(out).rstrip() + "\n"
+
+
+def main(argv: Optional[List[str]] = None) -> int:
+    p = argparse.ArgumentParser(description="Convert a Copilot session events.jsonl file to Markdown")
+    p.add_argument("input", help="Path to events.jsonl")
+    p.add_argument("-o", "--output", default="-", help="Output file path (default: stdout)")
+    p.add_argument("--include-system", action="store_true", help="Include system.message events")
+    p.add_argument("--include-reasoning", action="store_true", help="Include assistant reasoningText blocks")
+    p.add_argument("--include-tools", action="store_true", help="Include tool execution events when present")
+    p.add_argument("--tool-output-max", type=int, default=12000, help="Max chars of tool output to include (0 = unlimited)")
+    p.add_argument("--timestamps", action="store_true", help="Include timestamps")
+    args = p.parse_args(argv)
+
+    md = generate_markdown(
+        input_jsonl=args.input,
+        include_system=bool(args.include_system),
+        include_reasoning=bool(args.include_reasoning),
+        include_tools=bool(args.include_tools),
+        include_timestamps=bool(args.timestamps),
+        tool_output_max=int(args.tool_output_max),
+    )
+
+    if args.output == "-":
+        sys.stdout.write(md)
+    else:
+        os.makedirs(os.path.dirname(os.path.abspath(args.output)) or ".", exist_ok=True)
+        with open(args.output, "w", encoding="utf-8") as f:
+            f.write(md)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
