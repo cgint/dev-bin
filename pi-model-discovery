@@ -11,6 +11,8 @@ Design goals:
   - llamacpp: OpenAI-compatible /v1/models, direct llama.cpp llama-server quirks
   - omlx: llama.cpp-like OpenAI server with template-driven thinking (chat_template_kwargs)
   - ollama: native Ollama metadata API plus Pi OpenAI-compatible provider config
+  - vllm: vLLM OpenAI-compatible server using OpenAI-style reasoning/thinking fields
+  - vllm-mtp: vLLM with speculative decoding/MTP metrics; OpenAI-style thinking fields
   - openai-compatible: generic OpenAI-compatible /v1/models
   - llamacpp-qwen-mtp: dedicated 8085-sparky Qwen MTP llama.cpp config
 - Infer model metadata and thinking controls from provider kind + model name.
@@ -65,9 +67,10 @@ DEFAULT_PROVIDERS = [
     # {"key": "8088-sparky", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://sparky:8088/v1"},
     # {"key": "8089-sparky", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://sparky:8089/v1"},
     {"key": "8890-sparky", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://sparky:8890/v1"},
+    {"key": "8888-sparky", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://sparky:8888/v1"},
     # {"key": "8000-sparky-diff", "kind": "openai-compatible", "baseUrl": "http://sparky:8000/v1"},
     # {"key": "lms-twins", "kind": "lmstudio", "baseUrl": "http://twins:1234/v1"},
-    # {"key": "8083-twins", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://twins:8083/v1"},
+    {"key": "8083-twins", "kind": "vllm-mtp", "baseUrl": "http://twins:8083/v1"},
     # {"key": "8085-twins", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://twins:8085/v1"},
     # {"key": "8086-twins", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://twins:8086/v1"},
     # {"key": "8000-twins", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://twins:8000/v1"},
@@ -117,6 +120,10 @@ def normalize_kind(kind: str) -> str:
         "llamacpp-qwen-mtp": "llamacpp-qwen-mtp",
         "llamacppqwenmtp": "llamacpp-qwen-mtp",
         "qwen-mtp": "llamacpp-qwen-mtp",
+        "vllm": "vllm",
+        "vllm-openai": "vllm",
+        "vllm-mtp": "vllm-mtp",
+        "vllmmtp": "vllm-mtp",
         "cpp": "llamacpp",
         "ollama": "ollama",
         "openai": "openai-compatible",
@@ -136,6 +143,12 @@ def infer_kind(provider_key: str, base_url: str | None) -> str:
         return "omlx"
     if key == "8085-sparky" and "sparky:8085" in url:
         return "llamacpp-qwen-mtp"
+    if key == "8083-twins" and "twins:8083" in url:
+        return "vllm-mtp"
+    if any(marker in key for marker in ["vllm-mtp", "vllmmtp"]):
+        return "vllm-mtp"
+    if "vllm" in key:
+        return "vllm"
     if any(marker in key for marker in ["llamacpp-qwen-mtp", "llamacppqwenmtp", "qwen-mtp"]):
         return "llamacpp-qwen-mtp"
     if any(marker in key for marker in ["llamacpp-mtp", "llamacppmtp"]):
@@ -259,7 +272,11 @@ def is_reasoning_model(model_id: str, ollama_info: dict[str, Any] | None = None)
     return any(marker in lower for marker in REASONING_FAMILY_MARKERS)
 
 
-def infer_context_window(model_id: str, ollama_info: dict[str, Any] | None = None) -> int:
+def infer_context_window(
+    model_id: str,
+    kind: str = "",
+    ollama_info: dict[str, Any] | None = None,
+) -> int:
     if ollama_info and isinstance(ollama_info.get("model_info"), dict):
         for key, value in ollama_info["model_info"].items():
             if key.endswith(".context_length"):
@@ -267,6 +284,9 @@ def infer_context_window(model_id: str, ollama_info: dict[str, Any] | None = Non
                     return int(value)
                 except (TypeError, ValueError):
                     pass
+
+    if kind == "vllm-mtp":
+        return 131072
 
     lower = model_id.lower()
     if any(marker in lower for marker in ["qwen3", "qwen-3", "qwen2.5", "gemma4", "gemma-4", "glm-4"]):
@@ -347,6 +367,8 @@ def infer_thinking_fields(kind: str, model_id: str, reasoning: bool) -> dict[str
             fields["compat"] = {"thinkingFormat": "openai"}
         elif kind == "ollama":
             fields["compat"] = {"thinkingFormat": "openai"}
+        elif kind in {"vllm", "vllm-mtp"}:
+            fields["compat"] = {"thinkingFormat": "openai"}
         else:
             fields["compat"] = {"thinkingFormat": "qwen"}
     elif kind == "omlx":
@@ -355,6 +377,8 @@ def infer_thinking_fields(kind: str, model_id: str, reasoning: bool) -> dict[str
     elif kind == "llamacpp":
         fields["compat"] = {"thinkingFormat": "openai"}
     elif kind == "ollama":
+        fields["compat"] = {"thinkingFormat": "openai"}
+    elif kind in {"vllm", "vllm-mtp"}:
         fields["compat"] = {"thinkingFormat": "openai"}
     elif kind == "lmstudio":
         fields["compat"] = {"thinkingFormat": "openai"}
@@ -453,14 +477,14 @@ def build_model_entry(
     if is_embedding_model(model_id):
         return None
 
-    context_window = infer_context_window(model_id, ollama_info)
+    context_window = infer_context_window(model_id, kind, ollama_info)
     max_tokens = infer_max_tokens(model_id, context_window, ollama_info)
-    if kind in {"llamacpp-mtp", "llamacpp-qwen-mtp"}:
+    if kind in {"llamacpp-mtp", "llamacpp-qwen-mtp", "vllm-mtp"}:
         max_tokens = max(max_tokens, 8192*4)
     hard_off = endpoint_props_reasoning_format_none(endpoint_props)
     # MTP: never let endpoint props override reasoning status; MTP models always have
     # reasoning/thinking capability regardless of what the server reports.
-    is_mtp = kind in {"llamacpp-mtp", "llamacpp-qwen-mtp"}
+    is_mtp = kind in {"llamacpp-mtp", "llamacpp-qwen-mtp", "vllm-mtp"}
     reasoning = False if (hard_off and not is_mtp) else is_reasoning_model(model_id, ollama_info)
 
     entry: dict[str, Any] = {

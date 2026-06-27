@@ -68,6 +68,8 @@ Supported kinds:
 | `llamacpp` | OpenAI-compatible `/v1/models` plus optional root `/props` | Direct `llama-server`; endpoint props can override reasoning heuristics. |
 | `lmstudio` | OpenAI-compatible `/v1/models` plus optional root `/props` | LM Studio may accept reasoning params but not honor them for every GGUF. |
 | `ollama` | Native `/api/tags` and `/api/show` | Pi provider is still configured as OpenAI-compatible `/v1`. |
+| `vllm` | OpenAI-compatible `/v1/models`; optional `/version` evidence | vLLM uses OpenAI-style reasoning/thinking fields, including for Qwen. |
+| `vllm-mtp` | OpenAI-compatible `/v1/models`; vLLM speculative-decoding/MTP logs | Same thinking handling as `vllm`, with MTP-sized generation defaults. |
 | `openai-compatible` | OpenAI-compatible `/v1/models` plus optional root `/props` | Generic fallback. |
 
 ## Reasoning/thinking rules
@@ -79,6 +81,18 @@ endpoint evidence > model-name heuristic
 ```
 
 The script first infers rough model capability from the model ID/name, then lets endpoint evidence override it.
+
+### Qwen + vLLM
+
+For Qwen models on vLLM endpoints, Pi should use OpenAI-style thinking/reasoning handling:
+
+```json
+"compat": {
+  "thinkingFormat": "openai"
+}
+```
+
+Do not use `qwen-chat-template` for vLLM; that format is for template-driven llama.cpp-style endpoints. If vLLM logs show speculative-decoding/MTP metrics, use `kind=vllm-mtp`: it is still vLLM/OpenAI-style for thinking, but keeps MTP-sized generation defaults.
 
 ### Qwen + direct llama.cpp
 
