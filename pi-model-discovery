@@ -68,12 +68,18 @@ DEFAULT_PROVIDERS = [
     # {"key": "8089-sparky", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://sparky:8089/v1"},
     {"key": "8890-sparky", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://sparky:8890/v1"},
     {"key": "8888-sparky", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://sparky:8888/v1"},
+    {"key": "8889-sparky", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://sparky:8889/v1"},
     # {"key": "8000-sparky-diff", "kind": "openai-compatible", "baseUrl": "http://sparky:8000/v1"},
     # {"key": "lms-twins", "kind": "lmstudio", "baseUrl": "http://twins:1234/v1"},
     {"key": "8083-twins", "kind": "vllm-mtp", "baseUrl": "http://twins:8083/v1"},
+    {"key": "8083-sparky", "kind": "vllm-mtp", "baseUrl": "http://sparky:8083/v1"},
     # {"key": "8085-twins", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://twins:8085/v1"},
     # {"key": "8086-twins", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://twins:8086/v1"},
     # {"key": "8000-twins", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://twins:8000/v1"},
+    {"key": "8000-twins", "kind": "vllm-mtp", "baseUrl": "http://twins:8000/v1"},
+    {"key": "8001-twins", "kind": "vllm-mtp", "baseUrl": "http://twins:8001/v1"},
+    {"key": "8001-sparky", "kind": "vllm-mtp", "baseUrl": "http://sparky:8001/v1"},
+    {"key": "8000-sparky-vllm", "kind": "vllm-mtp", "baseUrl": "http://sparky:8000/v1"},
 ]
 
 REASONING_FAMILY_MARKERS = [
@@ -87,6 +93,7 @@ REASONING_FAMILY_MARKERS = [
     "gpt-oss",
     "thinking",
     "reason",
+    "aeon",
 ]
 
 EMBEDDING_MARKERS = [
