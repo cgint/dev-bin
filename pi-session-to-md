@@ -31,6 +31,12 @@ Tool inclusion (--include-tools):
 - Use --tool-output-max to cap output length and avoid bloated exports when large files were read.
 - Arguments (e.g. the bash command, or the file path for read/edit) are always shown in full;
   only the tool *output* is subject to truncation via --tool-output-max.
+
+Custom records (--include-custom):
+- Extensions can append `type=custom` entries to the session JSONL (e.g. deliberation results,
+  supervisor guidance).  Each carries a `customType` label and an arbitrary `data` dict.
+- Rendered as SYSTEM blocks with `key: value` pairs — no schema assumptions.
+  Scalar values appear inline; nested objects/arrays collapse into JSON `<details>`.
 """
 
 from __future__ import annotations
@@ -223,6 +229,56 @@ def _format_tool_block(
     return "\n".join(parts).rstrip()
 
 
+def _format_custom_block(
+    *,
+    custom_type: str,
+    data: Dict[str, Any],
+    include_timestamps: bool,
+    ts: Optional[_dt.datetime],
+) -> str:
+    """Render a type=custom record as a SYSTEM block with key:value pairs.
+
+    No assumptions about schema — every extension defines its own keys.
+    Short scalar values render inline; nested structures collapse into JSON.
+    """
+    parts: List[str] = []
+    parts.append(f"### SYSTEM (custom: {custom_type})")
+    parts.append("")
+
+    if include_timestamps and ts:
+        parts.append(f"_timestamp: {ts.isoformat()}_")
+        parts.append("")
+
+    if not data:
+        parts.append("(no data)")
+        parts.append("")
+        return "\n".join(parts).rstrip()
+
+    for key, value in data.items():
+        if isinstance(value, (str, int, float, bool)):
+            v_str = str(value)
+            # Long strings (>200 chars) get truncated inline
+            if isinstance(value, str) and len(v_str) > 200:
+                v_str = v_str[:200].rstrip() + "… (truncated)"
+            parts.append(f"_{key}: {v_str}_")
+        elif isinstance(value, (dict, list)):
+            # Nested structures → collapsible JSON
+            json_str = json.dumps(value, indent=2, ensure_ascii=False)
+            parts.append(
+                "<details>\n"
+                f"<summary>{key}</summary>\n\n"
+                "```json\n"
+                f"{json_str}\n"
+                "```\n\n"
+                "</details>"
+            )
+        else:
+            parts.append(f"_{key}: {value!r}_")
+
+    parts.append("")
+    return "\n".join(parts).rstrip()
+
+
 def _blockquote(text: str) -> str:
     """Render text as a Markdown blockquote, preserving blank lines *within* the text."""
 
@@ -386,6 +442,7 @@ def generate_markdown(
     thinking_style: str,
     include_tools: Optional[Set[str]],
     tool_output_max: int,
+    include_custom: Optional[bool],
     include_timestamps: bool,
     group_turns: bool,
 ) -> str:
@@ -432,6 +489,8 @@ def generate_markdown(
         out.append(f"- include_tools: `{tools_label}`")
         max_label = str(tool_output_max) if tool_output_max > 0 else "unlimited"
         out.append(f"- tool_output_max: `{max_label}`")
+    if include_custom is not None:
+        out.append(f"- include_custom: `{'on' if include_custom else 'off'}`")
     out.append("")
     out.append("---")
     out.append("")
@@ -477,6 +536,19 @@ def generate_markdown(
         cur_ts_last = None
 
     for rec in selected_records:
+        # Handle type=custom records (extension-delivered entries like deliberation)
+        if rec.get("type") == "custom" and include_custom:
+            flush()
+            block = _format_custom_block(
+                custom_type=rec.get("customType") or "unknown",
+                data=rec.get("data") or {},
+                include_timestamps=include_timestamps,
+                ts=_parse_iso(rec.get("timestamp")),
+            )
+            out.append(block)
+            out.append("")
+            continue
+
         if rec.get("type") != "message":
             continue
         msg = rec.get("message")
@@ -601,6 +673,12 @@ def main(argv: Optional[List[str]] = None) -> int:
         ),
     )
     p.add_argument(
+        "--include-custom",
+        action="store_true",
+        default=None,
+        help="Include type=custom records (extension entries like deliberation) as SYSTEM blocks with key:value pairs.",
+    )
+    p.add_argument(
         "--tool-output-max",
         type=int,
         default=0,
@@ -640,6 +718,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         thinking_style=("omit" if args.no_thinking else "details"),
         include_tools=include_tools,
         tool_output_max=args.tool_output_max,
+        include_custom=args.include_custom,
         include_timestamps=bool(args.timestamps),
         group_turns=bool(args.group_turns),
     )
