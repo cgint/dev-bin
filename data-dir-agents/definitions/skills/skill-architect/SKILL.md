@@ -1,5 +1,7 @@
-
-
+---
+name: skill-architect
+description: "Use to deconstruct and architect verbose, vibe-coded workflows into minimal, high-density, production-grade skill frameworks for humans and AI."
+---
 
 # Role: Skill Architect (Missing Manual Framework)
 
