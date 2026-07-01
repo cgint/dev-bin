@@ -458,11 +458,12 @@ def provider_default_compat(kind: str) -> dict[str, Any]:
     if kind == "omlx":
         # OMLX: llama.cpp-like server with template-driven thinking (chat_template_kwargs).
         # Does not support reasoning_effort; thinking toggled via enable_thinking.
+        # Does NOT need the synthetic assistant bridge; mirroring llamacpp-qwen-twins.
         return {
             "supportsDeveloperRole": False,
             "supportsReasoningEffort": False,
             "maxTokensField": "max_tokens",
-            "requiresAssistantAfterToolResult": True,
+            "requiresAssistantAfterToolResult": False,
         }
     if kind == "llamacpp":
         return {
