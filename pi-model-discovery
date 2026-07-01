@@ -52,7 +52,7 @@ MODELS_JSON = Path.home() / ".pi" / "agent" / "models.json"
 # their key/baseUrl, so this list can stay small and obvious.
 DEFAULT_PROVIDERS = [
     {"key": "lms-local", "kind": "lmstudio", "baseUrl": "http://127.0.0.1:1234/v1"},
-    {"key": "omlx-local", "kind": "llamacpp", "baseUrl": "http://127.0.0.1:4321/v1"},
+    {"key": "omlx-local", "kind": "omlx", "baseUrl": "http://127.0.0.1:4321/v1"},
     {"key": "llama-local", "kind": "llamacpp", "baseUrl": "http://127.0.0.1:4322/v1"},
     # {"key": "ollama", "kind": "ollama", "baseUrl": "http://127.0.0.1:11434"},
     # {"key": "ollama-test", "kind": "ollama", "baseUrl": "https://ollama-test-583893817878.europe-west4.run.app"},
@@ -99,6 +99,7 @@ REASONING_FAMILY_MARKERS = [
     "thinking",
     "reason",
     "aeon",
+    "ornith",
 ]
 
 EMBEDDING_MARKERS = [
@@ -281,18 +282,34 @@ def is_qwen_model(model_id: str) -> bool:
     )
 
 
-def is_reasoning_model(model_id: str, ollama_info: dict[str, Any] | None = None) -> bool:
-    lower = model_id.lower()
+def is_reasoning_model(
+    model_id: str,
+    ollama_info: dict[str, Any] | None = None,
+    model_info: dict[str, Any] | None = None,
+) -> bool:
+    # First source: server-reported reasoning capability (non-Ollama)
+    if model_info and model_info.get("reasoning"):
+        return True
+    # Second source: Ollama capabilities
     if ollama_info and "thinking" in ollama_info.get("capabilities", []):
         return True
-    return any(marker in lower for marker in REASONING_FAMILY_MARKERS)
+    # Fallback: hand-crafted model-name markers
+    return any(marker in model_id.lower() for marker in REASONING_FAMILY_MARKERS)
 
 
 def infer_context_window(
     model_id: str,
     kind: str = "",
     ollama_info: dict[str, Any] | None = None,
+    model_info: dict[str, Any] | None = None,
 ) -> int:
+    # First source: server-reported max_model_len (non-Ollama providers)
+    if model_info and isinstance(model_info.get("max_model_len"), (int, float)):
+        try:
+            return int(model_info["max_model_len"])
+        except (TypeError, ValueError):
+            pass
+    # Second source: Ollama model_info (flat dict, checked via .context_length)
     if ollama_info and isinstance(ollama_info.get("model_info"), dict):
         for key, value in ollama_info["model_info"].items():
             if key.endswith(".context_length"):
@@ -300,15 +317,18 @@ def infer_context_window(
                     return int(value)
                 except (TypeError, ValueError):
                     pass
-
+    # Kind-specific defaults
     if kind == "vllm-mtp":
         return 131072
-
+    # Hand-crafted fallbacks for models whose max_model_len was not reported
     lower = model_id.lower()
     if any(marker in lower for marker in ["qwen3", "qwen-3", "qwen2.5", "gemma4", "gemma-4", "glm-4"]):
         return 262144
     if "nemotron" in lower:
         return 1048576
+    # OMLX: most llama.cpp builds handle 4k well, which is a safe floor.
+    if kind == "omlx":
+        return 4096
     return 32768
 
 
@@ -504,11 +524,12 @@ def build_model_entry(
     model_id: str,
     ollama_info: dict[str, Any] | None = None,
     endpoint_props: dict[str, Any] | None = None,
+    model_info: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     if is_embedding_model(model_id):
         return None
 
-    context_window = infer_context_window(model_id, kind, ollama_info)
+    context_window = infer_context_window(model_id, kind, ollama_info, model_info)
     max_tokens = infer_max_tokens(model_id, context_window, ollama_info)
     if kind in {"llamacpp-mtp", "llamacpp-qwen-mtp", "vllm-mtp"}:
         max_tokens = max(max_tokens, 8192*4)
@@ -516,7 +537,7 @@ def build_model_entry(
     # MTP: never let endpoint props override reasoning status; MTP models always have
     # reasoning/thinking capability regardless of what the server reports.
     is_mtp = kind in {"llamacpp-mtp", "llamacpp-qwen-mtp", "vllm-mtp", "llamacpp-qwen-twins"}
-    reasoning = False if (hard_off and not is_mtp) else is_reasoning_model(model_id, ollama_info)
+    reasoning = False if (hard_off and not is_mtp) else is_reasoning_model(model_id, ollama_info, model_info)
 
     entry: dict[str, Any] = {
         "id": model_id,
@@ -536,16 +557,43 @@ def build_model_entry(
     return entry
 
 
-def discover_openai_compatible_models(base_url: str) -> list[str]:
+def discover_openai_compatible_models(base_url: str) -> dict[str, Any]:
+    """Return (model_ids, model_info) from /v1/models.
+
+    model_ids: deduplicated list of model IDs in discovery order.
+    model_info: dict mapping model_id -> {"max_model_len": int, "reasoning": bool}.
+    The max_model_len and reasoning fields come directly from the server response
+    (which includes a "reasoning" capability flag on most modern OMLX builds).
+    Falls back to hand-crafted reasoning markers when the server omits the flag.
+    """
     url = f"{base_url.rstrip('/')}/models"
     data = open_json_url(url, timeout=5)
     model_ids: list[str] = []
+    model_info: dict[str, Any] = {}
     for entry in data.get("data", data.get("models", [])):
-        if isinstance(entry, dict):
-            mid = entry.get("id") or entry.get("model") or entry.get("name")
-            if isinstance(mid, str) and mid:
-                model_ids.append(mid)
-    return list(dict.fromkeys(model_ids))
+        if not isinstance(entry, dict):
+            continue
+        mid = entry.get("id") or entry.get("model") or entry.get("name")
+        if not isinstance(mid, str) or not mid:
+            continue
+        model_ids.append(mid)
+        # Extract the server-reported max_model_len
+        max_len = entry.get("max_model_len")
+        reasoning = False
+        if isinstance(max_len, int):
+            # Check the capabilities list for a reasoning flag.
+            # Most OpenAI-compatible reasoning servers include "reasoning" here.
+            capabilities = entry.get("capabilities", [])
+            if isinstance(capabilities, list):
+                reasoning = "reasoning" in capabilities
+            # If no explicit capability flag, fall back to name-based markers.
+            elif not reasoning:
+                reasoning = any(
+                    marker in mid.lower()
+                    for marker in REASONING_FAMILY_MARKERS
+                )
+        model_info[mid] = {"max_model_len": max_len, "reasoning": reasoning}
+    return dict.fromkeys(model_ids), model_info
 
 
 def ollama_base_for_native_api(base_url: str) -> str:
@@ -621,8 +669,19 @@ def discover_for_provider(spec: ProviderSpec, explicit_ollama_models: list[str],
             entries = [build_model_entry(spec.kind, name, info) for name, info in discovered]
         else:
             endpoint_props = fetch_endpoint_props(spec.base_url, kind=spec.kind, verbose=verbose)
-            model_ids = discover_openai_compatible_models(spec.base_url)
-            entries = [build_model_entry(spec.kind, mid, endpoint_props=endpoint_props) for mid in model_ids]
+            # discover_openai_compatible_models now returns a dict with two keys:
+            #   - a deduplicated list of model IDs
+            #   - a model_info dict mapping model_id -> {"max_model_len": int, "reasoning": bool}
+            model_ids, model_info = discover_openai_compatible_models(spec.base_url)
+            entries = [
+                build_model_entry(
+                    spec.kind,
+                    mid,
+                    endpoint_props=endpoint_props,
+                    model_info=model_info.get(mid, {}),
+                )
+                for mid in model_ids
+            ]
     except (urllib.error.URLError, OSError, json.JSONDecodeError, TimeoutError) as e:
         print(f"  [SKIP] {spec.key} — not reachable ({type(e).__name__}: {e})")
         return None
