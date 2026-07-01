@@ -76,6 +76,11 @@ DEFAULT_PROVIDERS = [
     # {"key": "8085-twins", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://twins:8085/v1"},
     # {"key": "8086-twins", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://twins:8086/v1"},
     # {"key": "8000-twins", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://twins:8000/v1"},
+    # Dedicated Qwen reasoning model on twins:8087. Needs its own kind so
+    # discovery sets requiresAssistantAfterToolResult=false and retains
+    # qwen-chat-template thinking (the server reports reasoning_format=none
+    # but the model is a reasoning-capable Qwen).
+    {"key": "8087-twins", "kind": "llamacpp-qwen-twins", "baseUrl": "http://twins:8087/v1"},
     {"key": "8000-twins", "kind": "vllm-mtp", "baseUrl": "http://twins:8000/v1"},
     {"key": "8001-twins", "kind": "vllm-mtp", "baseUrl": "http://twins:8001/v1"},
     {"key": "8001-sparky", "kind": "vllm-mtp", "baseUrl": "http://sparky:8001/v1"},
@@ -127,6 +132,8 @@ def normalize_kind(kind: str) -> str:
         "llamacpp-qwen-mtp": "llamacpp-qwen-mtp",
         "llamacppqwenmtp": "llamacpp-qwen-mtp",
         "qwen-mtp": "llamacpp-qwen-mtp",
+        "llamacpp-qwen-twins": "llamacpp-qwen-twins",
+        "llamacppqwintwins": "llamacpp-qwen-twins",
         "vllm": "vllm",
         "vllm-openai": "vllm",
         "vllm-mtp": "vllm-mtp",
@@ -152,6 +159,8 @@ def infer_kind(provider_key: str, base_url: str | None) -> str:
         return "llamacpp-qwen-mtp"
     if key == "8083-twins" and "twins:8083" in url:
         return "vllm-mtp"
+    if key == "8087-twins" and "twins:8087" in url:
+        return "llamacpp-qwen-twins"
     if any(marker in key for marker in ["vllm-mtp", "vllmmtp"]):
         return "vllm-mtp"
     if "vllm" in key:
@@ -349,6 +358,12 @@ def infer_thinking_fields(kind: str, model_id: str, reasoning: bool) -> dict[str
         fields["compat"] = {"supportsReasoningEffort": True, "thinkingFormat": "qwen-chat-template"}
         return fields
 
+    if kind == "llamacpp-qwen-twins":
+        # Qwen reasoning model on twins:8087 uses qwen-chat-template.
+        fields["thinkingLevelMap"] = {"off": "none"}
+        fields["compat"] = {"supportsReasoningEffort": True, "thinkingFormat": "qwen-chat-template"}
+        return fields
+
     # llamacpp-mtp: generic Mixture-of-Token-Probabilities models.
     # Qwen-based MTP models need chat_template_kwargs.enable_thinking (qwen-chat-template),
     # not OpenAI-style reasoning_effort. Non-Qwen MTP models would use openai format.
@@ -410,6 +425,15 @@ def provider_default_compat(kind: str) -> dict[str, Any]:
             "supportsDeveloperRole": False,
             "maxTokensField": "max_tokens",
             "requiresAssistantAfterToolResult": True,
+        }
+    if kind == "llamacpp-qwen-twins":
+        # Qwen reasoning model on twins:8087. Does NOT need the synthetic
+        # assistant bridge; setting it to true causes the model to echo
+        # "I have processed the tool results." and terminate turns prematurely.
+        return {
+            "supportsDeveloperRole": False,
+            "maxTokensField": "max_tokens",
+            "requiresAssistantAfterToolResult": False,
         }
     if kind == "omlx":
         # OMLX: llama.cpp-like server with template-driven thinking (chat_template_kwargs).
@@ -491,7 +515,7 @@ def build_model_entry(
     hard_off = endpoint_props_reasoning_format_none(endpoint_props)
     # MTP: never let endpoint props override reasoning status; MTP models always have
     # reasoning/thinking capability regardless of what the server reports.
-    is_mtp = kind in {"llamacpp-mtp", "llamacpp-qwen-mtp", "vllm-mtp"}
+    is_mtp = kind in {"llamacpp-mtp", "llamacpp-qwen-mtp", "vllm-mtp", "llamacpp-qwen-twins"}
     reasoning = False if (hard_off and not is_mtp) else is_reasoning_model(model_id, ollama_info)
 
     entry: dict[str, Any] = {
