@@ -83,6 +83,7 @@ DEFAULT_PROVIDERS = [
     {"key": "8087-twins", "kind": "llamacpp-qwen-twins", "baseUrl": "http://twins:8087/v1"},
     {"key": "8000-twins", "kind": "vllm-mtp", "baseUrl": "http://twins:8000/v1"},
     {"key": "8001-twins", "kind": "vllm-mtp-256k", "baseUrl": "http://twins:8001/v1"},
+    {"key": "8081-twins", "kind": "vllm-mtp-256k", "baseUrl": "http://twins:8081/v1"},
     {"key": "8001-sparky", "kind": "vllm-mtp-256k", "baseUrl": "http://sparky:8001/v1"},
     {"key": "8000-sparky-vllm", "kind": "vllm-mtp", "baseUrl": "http://sparky:8000/v1"},
 ]
@@ -185,7 +186,7 @@ def infer_kind(provider_key: str, base_url: str | None) -> str:
         return "lmstudio"
     if ":1234" in url:
         return "lmstudio"
-    if any(port in url for port in [":4321", ":8000", ":8080", ":8081", ":8085", ":8086", ":8087"]):
+    if any(port in url for port in [":4321", ":8000", ":8080", ":8085", ":8086", ":8087"]):
         return "llamacpp"
     return "openai-compatible"
 
