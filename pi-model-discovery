@@ -83,7 +83,7 @@ DEFAULT_PROVIDERS = [
     {"key": "8087-twins", "kind": "llamacpp-qwen-twins", "baseUrl": "http://twins:8087/v1"},
     {"key": "8000-twins", "kind": "vllm-mtp", "baseUrl": "http://twins:8000/v1"},
     {"key": "8001-twins", "kind": "vllm-mtp", "baseUrl": "http://twins:8001/v1"},
-    {"key": "8001-sparky", "kind": "vllm-mtp", "baseUrl": "http://sparky:8001/v1"},
+    {"key": "8001-sparky", "kind": "vllm-mtp-256k", "baseUrl": "http://sparky:8001/v1"},
     {"key": "8000-sparky-vllm", "kind": "vllm-mtp", "baseUrl": "http://sparky:8000/v1"},
 ]
 
@@ -140,6 +140,8 @@ def normalize_kind(kind: str) -> str:
         "vllm-openai": "vllm",
         "vllm-mtp": "vllm-mtp",
         "vllmmtp": "vllm-mtp",
+        "vllm-mtp-256k": "vllm-mtp-256k",
+        "vllmmtp256k": "vllm-mtp-256k",
         "cpp": "llamacpp",
         "ollama": "ollama",
         "openai": "openai-compatible",
@@ -165,6 +167,10 @@ def infer_kind(provider_key: str, base_url: str | None) -> str:
         return "llamacpp-qwen-twins"
     if any(marker in key for marker in ["vllm-mtp", "vllmmtp"]):
         return "vllm-mtp"
+    if any(marker in key for marker in ["vllm-mtp", "vllmmtp"]):
+        return "vllm-mtp"
+    if any(marker in key for marker in ["vllm-mtp-256k", "vllmmtp256k"]):
+        return "vllm-mtp-256k"
     if "vllm" in key:
         return "vllm"
     if any(marker in key for marker in ["llamacpp-qwen-mtp", "llamacppqwenmtp", "qwen-mtp"]):
@@ -322,6 +328,8 @@ def infer_context_window(
     # Kind-specific defaults
     if kind == "vllm-mtp":
         return 131072
+    if kind == "vllm-mtp-256k":
+        return 262144
     # agents-a1 has 128K context
     if "agents-a1" in model_id.lower():
         return 128000
@@ -417,7 +425,7 @@ def infer_thinking_fields(kind: str, model_id: str, reasoning: bool) -> dict[str
             fields["compat"] = {"thinkingFormat": "openai"}
         elif kind == "ollama":
             fields["compat"] = {"thinkingFormat": "openai"}
-        elif kind in {"vllm", "vllm-mtp"}:
+        elif kind in {"vllm", "vllm-mtp", "vllm-mtp-256k"}:
             fields["compat"] = {"thinkingFormat": "openai"}
         else:
             fields["compat"] = {"thinkingFormat": "qwen"}
@@ -428,7 +436,7 @@ def infer_thinking_fields(kind: str, model_id: str, reasoning: bool) -> dict[str
         fields["compat"] = {"thinkingFormat": "openai"}
     elif kind == "ollama":
         fields["compat"] = {"thinkingFormat": "openai"}
-    elif kind in {"vllm", "vllm-mtp"}:
+    elif kind in {"vllm", "vllm-mtp", "vllm-mtp-256k"}:
         fields["compat"] = {"thinkingFormat": "openai"}
     elif kind == "lmstudio":
         fields["compat"] = {"thinkingFormat": "openai"}
@@ -540,12 +548,12 @@ def build_model_entry(
 
     context_window = infer_context_window(model_id, kind, ollama_info, model_info)
     max_tokens = infer_max_tokens(model_id, context_window, ollama_info)
-    if kind in {"llamacpp-mtp", "llamacpp-qwen-mtp", "vllm-mtp"}:
+    if kind in {"llamacpp-mtp", "llamacpp-qwen-mtp", "vllm-mtp", "vllm-mtp-256k"}:
         max_tokens = max(max_tokens, 8192*4)
     hard_off = endpoint_props_reasoning_format_none(endpoint_props)
     # MTP: never let endpoint props override reasoning status; MTP models always have
     # reasoning/thinking capability regardless of what the server reports.
-    is_mtp = kind in {"llamacpp-mtp", "llamacpp-qwen-mtp", "vllm-mtp", "llamacpp-qwen-twins"}
+    is_mtp = kind in {"llamacpp-mtp", "llamacpp-qwen-mtp", "vllm-mtp", "vllm-mtp-256k", "llamacpp-qwen-twins"}
     reasoning = False if (hard_off and not is_mtp) else is_reasoning_model(model_id, ollama_info, model_info)
 
     entry: dict[str, Any] = {
