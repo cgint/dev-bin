@@ -152,7 +152,7 @@ function getConfig(): AdvisorConfig {
     requireAllow,
     allowed: boolEnv("PI_ADVISOR_ALLOWED", !requireAllow),
     redact: boolEnv("PI_ADVISOR_REDACT", true),
-    maxPerTurn: intEnv("PI_ADVISOR_MAX_PER_TURN", 2),
+    maxPerTurn: intEnv("PI_ADVISOR_MAX_PER_TURN", 10),
     defaultMaxWords: intEnv("PI_ADVISOR_MAX_WORDS", 600),
     reasoningEffort: env("PI_ADVISOR_REASONING_EFFORT", "medium"),
     cacheRetention,
