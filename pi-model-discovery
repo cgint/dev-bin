@@ -62,7 +62,7 @@ DEFAULT_PROVIDERS = [
     # regenerates the required qwen-chat-template thinking config without needing
     # an explicit --provider override.
     {"key": "8085-sparky", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://sparky:8085/v1"},
-    # {"key": "8086-sparky", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://sparky:8086/v1"},
+    {"key": "8086-sparky", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://sparky:8086/v1"},
     # {"key": "8087-sparky", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://sparky:8087/v1"},
     # {"key": "8088-sparky", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://sparky:8088/v1"},
     # {"key": "8089-sparky", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://sparky:8089/v1"},
@@ -100,6 +100,7 @@ REASONING_FAMILY_MARKERS = [
     "reason",
     "aeon",
     "ornith",
+    "agents-a1",
 ]
 
 EMBEDDING_MARKERS = [
@@ -279,6 +280,7 @@ def is_qwen_model(model_id: str) -> bool:
         or suffix.startswith("qwen")
         or suffix.startswith("qwen3")
         or suffix.startswith("qwen-3")
+        or suffix.startswith("agents-a1")
     )
 
 
@@ -320,6 +322,9 @@ def infer_context_window(
     # Kind-specific defaults
     if kind == "vllm-mtp":
         return 131072
+    # agents-a1 has 128K context
+    if "agents-a1" in model_id.lower():
+        return 128000
     # Hand-crafted fallbacks for models whose max_model_len was not reported
     lower = model_id.lower()
     if any(marker in lower for marker in ["qwen3", "qwen-3", "qwen2.5", "gemma4", "gemma-4", "glm-4"]):
@@ -348,6 +353,9 @@ def infer_max_tokens(model_id: str, context_window: int, ollama_info: dict[str, 
 def infer_input_types(model_id: str, kind: str) -> list[str]:
     lower = model_id.rsplit("/", 1)[-1].lower()
     if any(marker in lower for marker in ["vl", "vision", "mm", "multimodal", "gemma-4", "phi-4"]):
+        return ["text", "image"]
+    # agents-a1 has image capability
+    if "agents-a1" in lower:
         return ["text", "image"]
     # Local Qwen3.5/3.6 9B+ GGUFs commonly include vision/mmproj in this setup.
     # Match both upstream-style qwen3.6-* and local alias style qwen36-*.
