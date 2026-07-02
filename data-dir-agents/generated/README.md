@@ -16,6 +16,7 @@ Layout:
   - `AGENTS_SHORT.md`, `AGENTS_LONG.md` → optional variants (currently not used by the generator)
 - `definitions/skills/<skill>/...`
   - Full **pi-agent skill directories** (must remain directories; can include scripts/subfolders)
+  - See [skills/README.md](./skills/README.md) for the full taxonomy, naming conventions, and how skills attach to profiles.
 - `definitions/prompts/*.md`
   - pi-agent prompt templates copied 1:1
 

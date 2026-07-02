@@ -17,7 +17,7 @@ skills = [
   "openspec-propose",
   "grill-with-docs",
   "grounded-pairing-discipline",
-  "criticalthink"
+  "criticalthink-retro"
 ]
 
 prompts = ["done-archived-commit-exact.md"]
