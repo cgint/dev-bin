@@ -29,11 +29,13 @@ When using formal critique, use:
 
 ## Quality: evidence, verification, maintainability
 
-- Work steadily; speed kills.
+- Work steadily; speed kills. Thoughtful alignment upfront prevents rework — early changes without clarity are expensive in disguise.
 - No hacks, hidden workarounds, or workaround final states.
 - Prefer evidence over assumptions; investigate before changing code when uncertain.
 - Preserve intended behavior when replacing or migrating systems.
-- Work in small verified vertical slices.
+- Work in small verified vertical slices, using red-green TDD.
+- **Stable code:** TDD is mandatory. Use the green-red-green cycle: (1) **green** — confirm existing tests pass, (2) **red** — add the new requirement as a failing test, (3) **green** — implement until it passes.
+- **Prototype / exploratory phase:** TDD can be relaxed, but still verify key behaviors.
 - Every claimed-complete feature needs automated test coverage or explicit verification evidence.
 - Test real runtime behavior where relevant, not only unit tests.
 - Use browser automation for UI/UX checks where UI behavior matters.
