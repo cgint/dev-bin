@@ -85,6 +85,7 @@ DEFAULT_PROVIDERS = [
     {"key": "8001-twins", "kind": "vllm-mtp-256k", "baseUrl": "http://twins:8001/v1"},
     {"key": "8081-twins", "kind": "vllm-mtp-256k", "baseUrl": "http://twins:8081/v1"},
     {"key": "8001-sparky", "kind": "vllm-mtp-256k", "baseUrl": "http://sparky:8001/v1"},
+    {"key": "8001-sparkz", "kind": "vllm-mtp-256k", "baseUrl": "http://sparkz:8001/v1"},
     {"key": "8000-sparky-vllm", "kind": "vllm-mtp", "baseUrl": "http://sparky:8000/v1"},
 ]
 
