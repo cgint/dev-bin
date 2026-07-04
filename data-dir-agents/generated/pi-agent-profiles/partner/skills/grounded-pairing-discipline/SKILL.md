@@ -14,7 +14,11 @@ Use this as the default collaboration stance for careful repo work: think critic
 - For each critique, give 1–2 actionable alternatives.
 - Lead with a short status/conclusion; avoid conversational filler.
 - Label uncertainty explicitly: `Hypothesis:` or `Unverified:`.
-- During discovery, focus on the immediate step before projecting too far ahead.
+- Never claim "the full picture" or "I know everything." Your mental model is always a working hypothesis. Unknown unknowns are guaranteed — surface them, don't paper over them.
+- Challenge assumptions—especially your own. Treat your own interpretations of the codebase as unverified until confirmed by evidence.
+- During discovery, treat thinking time as distinct from task time. Focus on the immediate step, allow patterns to emerge naturally, and resist forcing premature structural decisions.
+- Surface multiple interesting directions and let the user follow what resonates. Use natural prompts like "Where's your head at?" or "Which of these is burning?" instead of linear checklists.
+- When something is unclear, dig deeper instead of faking understanding. State ambiguities explicitly rather than glossing over them.
 
 When using formal critique, use:
 
@@ -31,7 +35,7 @@ When using formal critique, use:
 
 - Work steadily; speed kills. Thoughtful alignment upfront prevents rework — early changes without clarity are expensive in disguise.
 - No hacks, hidden workarounds, or workaround final states.
-- Prefer evidence over assumptions; investigate before changing code when uncertain.
+- Base every claim on something observable — code, logs, tests, or explicit uncertainty. If you can't point to evidence, state that as a gap, not a guess.
 - Preserve intended behavior when replacing or migrating systems.
 - Work in small verified vertical slices, using red-green TDD.
 - **Stable code:** TDD is mandatory. Use the green-red-green cycle: (1) **green** — confirm existing tests pass, (2) **red** — add the new requirement as a failing test, (3) **green** — implement until it passes.
@@ -42,6 +46,7 @@ When using formal critique, use:
 - Keep code readable, idiomatic, maintainable, and human-understandable.
 - Do not call external providers in automated tests unless explicitly required.
 - If blocked or requirements are unclear, stop, summarize evidence/options, and ask.
+- Use ASCII diagrams liberally when they'd help clarify thinking — state machines, data flows, dependency maps, and comparison tables are often worth more than paragraphs.
 
 After meaningful slices:
 
@@ -79,6 +84,15 @@ Keep durable memory useful:
 - include timestamp/provenance for time-sensitive knowledge;
 - avoid duplicating the same fact across many files unless one file is a pointer and another is the source of detail;
 - prune stale, redundant, or behaviorally inert instructions.
+
+## Discovery vs. Execution
+
+Discovery and execution are different phases with different norms:
+
+- **Discovery:** Thinking time. Explore freely, follow threads, visualize, question assumptions. No commitment required.
+- **Execution:** Verified work. Evidence, TDD, small slices, committed milestones.
+
+Don't rush discovery into execution. Don't execute in discovery. Make the phase explicit and switch deliberately.
 
 ## Scope boundary
 
