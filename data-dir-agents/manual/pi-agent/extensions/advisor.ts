@@ -13,9 +13,14 @@
  * Recommended env for a local executor:
  *   export PI_ADVISOR_PROVIDER=openai-codex
  *   export PI_ADVISOR_MODEL=gemini-3.5-flash
- *   # or override per preference, for example:
- *   export PI_ADVISOR_PROVIDER=openai
- *   export PI_ADVISOR_MODEL=gpt-5.5
+ *
+ * Alternatively, configure a fallback chain (tries left-to-right on error):
+ *   export PI_ADVISOR_MODELS="provider/model:effort#provider2/model2:effort2"
+ *   # Example: try local qwen first, fall back to Gemini:
+ *   export PI_ADVISOR_MODELS="8081-twins/qwen36-27b-nvidia-nvfp4:off#google/gemini-3.5-flash:medium"
+ *
+ * When PI_ADVISOR_MODELS is set, PI_ADVISOR_PROVIDER / PI_ADVISOR_MODEL are
+ * ignored (backward compat: unset PI_ADVISOR_MODELS to use the old behavior).
  *
  * Optional privacy gate:
  *   export PI_ADVISOR_REQUIRE_ALLOW=1
@@ -82,6 +87,14 @@ type AdvisorRunResult = {
   turnCallIndex: number;
   error?: string;
 };
+
+/** One entry in the advisor fallback chain. */
+interface AdvisorAttempt {
+  provider: string;
+  model: string;
+  /** Reasoning effort override. Empty string means "use config default". */
+  reasoningEffort: string;
+}
 
 // Minimal shape for session branch entries we actually read.
 interface BranchMessage {
@@ -163,6 +176,120 @@ function clampWords(value: unknown, fallback: number): number {
   const n =
     typeof value === "number" && Number.isFinite(value) ? value : fallback;
   return Math.max(80, Math.min(Math.trunc(n), 1_200));
+}
+
+// ---------------------------------------------------------------------------
+// Model chain resolution
+// ---------------------------------------------------------------------------
+
+/**
+ * Parse one entry from PI_ADVISOR_MODELS.
+ *
+ * Format:  provider/model[:reasoningEffort]
+ *
+ * - Split on the **first** "/" → provider / rest
+ * - Split rest on the **last** ":" → model / effort (effort may be absent)
+ */
+function parseAdvisorEntry(raw: string, defaultEffort: string): AdvisorAttempt | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+
+  // Split on first "/" to get provider.
+  const slashIdx = trimmed.indexOf("/");
+  if (slashIdx < 1) return null; // need at least "x/y"
+
+  const provider = trimmed.slice(0, slashIdx);
+  const rest = trimmed.slice(slashIdx + 1);
+  if (!rest) return null;
+
+  // Split on last ":" to get model + optional effort.
+  const colonIdx = rest.lastIndexOf(":");
+  let model: string;
+  let reasoningEffort: string;
+
+  if (colonIdx > 0) {
+    model = rest.slice(0, colonIdx);
+    reasoningEffort = rest.slice(colonIdx + 1).trim();
+  } else {
+    model = rest;
+    reasoningEffort = "";
+  }
+
+  return {
+    provider,
+    model,
+    reasoningEffort: reasoningEffort || defaultEffort,
+  };
+}
+
+/**
+ * Resolve the advisor model chain.
+ *
+ * Priority:
+ * 1. If PI_ADVISOR_MODELS is set → parse it (#-separated entries).
+ * 2. Otherwise → single entry from PI_ADVISOR_PROVIDER / PI_ADVISOR_MODEL.
+ *
+ * Params overrides (provider/model) are applied to the **first** entry only,
+ * preserving the rest of the chain as-is.
+ */
+function resolveAdvisorChain(
+  params: AdvisorParams,
+  cfg: AdvisorConfig,
+): AdvisorAttempt[] {
+  const chainRaw = env("PI_ADVISOR_MODELS", "").trim();
+
+  // --- Fast path: no chain configured → use built-in default chain ---
+  if (!chainRaw) {
+    const defaultChain = "8081-twins/qwen36-27b-nvidia-nvfp4:off#google/gemini-3.5-flash:medium";
+    const attempts: AdvisorAttempt[] = defaultChain
+      .split("#")
+      .map((raw) => parseAdvisorEntry(raw, ""))
+      .filter((e): e is AdvisorAttempt => e !== null);
+
+    // Apply params overrides to the first entry only.
+    if (params.provider?.trim()) {
+      attempts[0].provider = params.provider.trim();
+    }
+    if (params.model?.trim()) {
+      attempts[0].model = params.model.trim();
+    }
+    return attempts;
+  }
+
+  // --- Parse the chain ---
+  const entries = chainRaw.split("#").map((raw) => parseAdvisorEntry(raw, ""));
+  const attempts: AdvisorAttempt[] = [];
+
+  for (const entry of entries) {
+    if (entry) {
+      // Fill in per-entry effort: entry's own value > config default > empty
+      if (!entry.reasoningEffort) {
+        entry.reasoningEffort = cfg.reasoningEffort;
+      }
+      attempts.push(entry);
+    }
+  }
+
+  // If parsing produced nothing, fall back to legacy single model.
+  if (attempts.length === 0) {
+    return [
+      {
+        provider: params.provider?.trim() || cfg.provider,
+        model: params.model?.trim() || cfg.model,
+        reasoningEffort: cfg.reasoningEffort,
+      },
+    ];
+  }
+
+  // Apply params overrides to the first entry only.
+  if (params.provider?.trim()) {
+    attempts[0].provider = params.provider.trim();
+  }
+  if (params.model?.trim()) {
+    attempts[0].model = params.model.trim();
+  }
+
+  return attempts;
 }
 
 function redactSecrets(input: string, enabled: boolean): string {
@@ -492,12 +619,8 @@ export default function advisorExtension(pi: ExtensionAPI) {
     signal?: AbortSignal,
   ): Promise<AdvisorRunResult> {
     const cfg = getConfig();
-    const provider = params.provider?.trim() || cfg.provider;
-    const modelId = params.model?.trim() || cfg.model;
 
     const base = {
-      provider,
-      model: modelId,
       promptChars: 0,
       transcriptChars: 0,
       callIndex: callsThisSession,
@@ -509,6 +632,8 @@ export default function advisorExtension(pi: ExtensionAPI) {
         ...base,
         ok: false,
         text: "Advisor is disabled by privacy gate. Set PI_ADVISOR_ALLOWED=1, or unset PI_ADVISOR_REQUIRE_ALLOW, to allow sending transcript context to the advisor provider.",
+        provider: "",
+        model: "",
         error: "privacy_gate",
       };
     }
@@ -518,43 +643,9 @@ export default function advisorExtension(pi: ExtensionAPI) {
         ...base,
         ok: false,
         text: `Advisor per-turn cap reached (${cfg.maxPerTurn}). Continue with the best current plan unless the user explicitly asks for more advisor calls.`,
+        provider: "",
+        model: "",
         error: "per_turn_cap",
-      };
-    }
-
-    const model = ctx.modelRegistry.find(provider, modelId);
-    if (!model) {
-      return {
-        ...base,
-        ok: false,
-        text: `Advisor model not found in Pi model registry: ${provider}/${modelId}. Use /model to check available models or set PI_ADVISOR_PROVIDER and PI_ADVISOR_MODEL.`,
-        error: "model_not_found",
-      };
-    }
-
-    const auth = await ctx.modelRegistry.getApiKeyAndHeaders(model);
-    if (!auth.ok) {
-      return {
-        ...base,
-        ok: false,
-        text: `Advisor auth failed for ${provider}/${modelId}: ${auth.error}`,
-        error: "auth_failed",
-      };
-    }
-
-    // Work around modelRegistry.getApiKeyAndHeaders() using a stricter auth
-    // path than normal model execution for some env-key setups (for example
-    // google/GEMINI_API_KEY). If the model-specific lookup yields no API key,
-    // retry with provider-level resolution, which includes the standard env
-    // fallback used elsewhere in Pi.
-    const apiKey = auth.apiKey ?? (await ctx.modelRegistry.getApiKeyForProvider(provider));
-
-    if (!apiKey) {
-      return {
-        ...base,
-        ok: false,
-        text: `No API key available for advisor model ${provider}/${modelId}. Set the provider API key, authenticate in Pi, or choose another advisor model.`,
-        error: "missing_api_key",
       };
     }
 
@@ -566,6 +657,8 @@ export default function advisorExtension(pi: ExtensionAPI) {
         ...base,
         ok: false,
         text: "Advisor called with include_transcript=false but no `context` was provided. Either keep include_transcript at its default (true) or pass a non-empty `context` string with the curated information you want the advisor to consider.",
+        provider: "",
+        model: "",
         error: "missing_context",
       };
     }
@@ -573,94 +666,150 @@ export default function advisorExtension(pi: ExtensionAPI) {
     const transcript = includeTranscript ? buildTranscript(ctx, cfg.redact) : "";
     const prompt = buildAdvisorPrompt(pi, ctx, params, transcript, cfg);
 
+    // Resolve the fallback chain.
+    const attempts = resolveAdvisorChain(params, cfg);
+
+    // Increment counters once for the whole chain (counts as 1 call).
     callsThisTurn += 1;
     callsThisSession += 1;
 
-    const messages = [
-      {
-        role: "user" as const,
-        content: [{ type: "text" as const, text: prompt }],
-        timestamp: Date.now(),
-      },
-    ];
+    const lastErrors: string[] = [];
 
-    // Scope the cache-affinity key per advisor provider/model so switching
-    // advisors mid-session doesn't cause misses or cross-model collisions.
-    const baseSessionId = getSessionIdForCache(ctx);
-    const cacheSessionId = `${baseSessionId}:${provider}:${modelId}`;
+    for (let i = 0; i < attempts.length; i++) {
+      const attempt = attempts[i];
+      const { provider, model: modelId, reasoningEffort } = attempt;
 
-    const options: Record<string, unknown> = {
-      apiKey,
-      headers: auth.headers,
-      cacheRetention: cfg.cacheRetention,
-      sessionId: cacheSessionId,
-      signal,
-    };
-
-    if (provider.toLowerCase().includes("openai") && cfg.reasoningEffort) {
-      options.reasoningEffort = cfg.reasoningEffort;
-    }
-
-    try {
-      const response = await complete(
-        model,
-        { messages },
-        options as Parameters<typeof complete>[2],
-      );
-      const info = summarizeCompletion(response);
-
-      if (info.text) {
-        return {
-          ok: true,
-          text: info.text,
-          provider,
-          model: model.id,
-          promptChars: prompt.length,
-          transcriptChars: transcript.length,
-          callIndex: callsThisSession,
-          turnCallIndex: callsThisTurn,
-        };
+      const model = ctx.modelRegistry.find(provider, modelId);
+      if (!model) {
+        lastErrors.push(`[${provider}/${modelId}] model not found`);
+        continue;
       }
 
-      // Empty completion — surface what we know so failures are diagnosable.
-      const detail = [
-        info.errorMessage ? `error: ${info.errorMessage}` : null,
-        info.stopReason ? `stopReason: ${info.stopReason}` : null,
-        typeof info.outputTokens === "number"
-          ? `outputTokens: ${info.outputTokens}`
-          : null,
-        typeof info.reasoningTokens === "number"
-          ? `reasoningTokens: ${info.reasoningTokens}`
-          : null,
-      ]
-        .filter(Boolean)
-        .join(", ");
+      const auth = await ctx.modelRegistry.getApiKeyAndHeaders(model);
 
-      return {
-        ok: false,
-        text: `Advisor returned no text.${detail ? ` (${detail})` : ""} Continue with the current best plan and verify with tests.`,
-        provider,
-        model: model.id,
-        promptChars: prompt.length,
-        transcriptChars: transcript.length,
-        callIndex: callsThisSession,
-        turnCallIndex: callsThisTurn,
-        error: info.errorMessage ?? info.stopReason ?? "empty_response",
+      // If auth fails but the provider declares no-api-key-needed, bypass the
+      // gate — getApiKeyAndHeaders uses a stricter path than normal execution
+      // and can reject providers that work fine at runtime.
+      let authOk = auth.ok;
+      if (!authOk) {
+        const rawModel = ctx.modelRegistry.find(provider, modelId);
+        const rawApiKey = (rawModel as unknown as { apiKey?: string })?.apiKey;
+        if (rawApiKey === "no-api-key-needed") {
+          authOk = true;
+        }
+      }
+
+      if (!authOk) {
+        lastErrors.push(`[${provider}/${modelId}] auth: ${auth.error}`);
+        continue;
+      }
+
+      // Work around modelRegistry.getApiKeyAndHeaders() using a stricter auth
+      // path than normal model execution for some env-key setups (for example
+      // google/GEMINI_API_KEY). If the model-specific lookup yields no API key,
+      // retry with provider-level resolution, which includes the standard env
+      // fallback used elsewhere in Pi.
+      let apiKey = auth.apiKey ?? (await ctx.modelRegistry.getApiKeyForProvider(provider));
+
+      // Local providers may declare apiKey: "none" or "no-api-key-needed" —
+      // the registry lookup can return undefined for those, so fall back to
+      // the literal value.
+      if (!apiKey) {
+        const rawModel = ctx.modelRegistry.find(provider, modelId);
+        const rawApiKey = (rawModel as unknown as { apiKey?: string })?.apiKey;
+        if (rawApiKey === "none" || rawApiKey === "no-api-key-needed") {
+          apiKey = rawApiKey;
+        }
+      }
+
+      if (!apiKey) {
+        lastErrors.push(`[${provider}/${modelId}] no API key`);
+        continue;
+      }
+
+      const messages = [
+        {
+          role: "user" as const,
+          content: [{ type: "text" as const, text: prompt }],
+          timestamp: Date.now(),
+        },
+      ];
+
+      // Scope the cache-affinity key per advisor provider/model so switching
+      // advisors mid-session doesn't cause misses or cross-model collisions.
+      const baseSessionId = getSessionIdForCache(ctx);
+      const cacheSessionId = `${baseSessionId}:${provider}:${modelId}`;
+
+      const options: Record<string, unknown> = {
+        apiKey,
+        headers: auth.headers,
+        cacheRetention: cfg.cacheRetention,
+        sessionId: cacheSessionId,
+        signal,
       };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      return {
-        ok: false,
-        text: `Advisor call failed: ${message}. Continue without advisor and verify locally.`,
-        provider,
-        model: model.id,
-        promptChars: prompt.length,
-        transcriptChars: transcript.length,
-        callIndex: callsThisSession,
-        turnCallIndex: callsThisTurn,
-        error: message,
-      };
+
+      // Apply reasoning effort only for OpenAI-compatible providers.
+      // Use per-attempt override if set, else config default.
+      const effectiveEffort = reasoningEffort || cfg.reasoningEffort;
+      if (provider.toLowerCase().includes("openai") && effectiveEffort) {
+        options.reasoningEffort = effectiveEffort;
+      }
+
+      try {
+        const response = await complete(
+          model,
+          { messages },
+          options as Parameters<typeof complete>[2],
+        );
+        const info = summarizeCompletion(response);
+
+        if (info.text) {
+          return {
+            ok: true,
+            text: info.text,
+            provider,
+            model: model.id,
+            promptChars: prompt.length,
+            transcriptChars: transcript.length,
+            callIndex: callsThisSession,
+            turnCallIndex: callsThisTurn,
+          };
+        }
+
+        // Empty completion — treat as failure, try next.
+        const detail = [
+          info.errorMessage ? `error: ${info.errorMessage}` : null,
+          info.stopReason ? `stopReason: ${info.stopReason}` : null,
+          typeof info.outputTokens === "number"
+            ? `outputTokens: ${info.outputTokens}`
+            : null,
+          typeof info.reasoningTokens === "number"
+            ? `reasoningTokens: ${info.reasoningTokens}`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(", ");
+
+        lastErrors.push(`[${provider}/${modelId}] no text${detail ? ` (${detail})` : ""}`);
+
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        lastErrors.push(`[${provider}/${modelId}] ${message}`);
+      }
     }
+
+    // All attempts exhausted.
+    return {
+      ok: false,
+      text: `All advisor models failed:\n${lastErrors.map((e) => `  - ${e}`).join("\n")}.\nContinue without advisor and verify locally.`,
+      provider: attempts[0]?.provider ?? "",
+      model: attempts[0]?.model ?? "",
+      promptChars: prompt.length,
+      transcriptChars: transcript.length,
+      callIndex: callsThisSession,
+      turnCallIndex: callsThisTurn,
+      error: lastErrors.join("; "),
+    };
   }
 
   function formatAdvisorResult(result: AdvisorRunResult): string {
@@ -673,8 +822,12 @@ export default function advisorExtension(pi: ExtensionAPI) {
 
     if (ctx.hasUI) {
       const cfg = getConfig();
+      const attempts = resolveAdvisorChain({}, cfg);
+      const chainLabel = attempts.length > 1
+        ? attempts.map((a) => `${a.provider}/${a.model}`).join(" → ")
+        : `${attempts[0].provider}/${attempts[0].model}`;
       ctx.ui.notify(
-        `Advisor extension loaded: ${cfg.provider}/${cfg.model}`,
+        `Advisor extension loaded: ${chainLabel}`,
         "info",
       );
     }
@@ -753,8 +906,9 @@ export default function advisorExtension(pi: ExtensionAPI) {
     },
     async execute(_toolCallId, params: AdvisorParams, signal, onUpdate, ctx) {
       const cfg = getConfig();
-      const displayProvider = params.provider ?? cfg.provider;
-      const displayModel = params.model ?? cfg.model;
+      const attempts = resolveAdvisorChain(params, cfg);
+      const displayProvider = attempts[0]?.provider ?? cfg.provider;
+      const displayModel = attempts[0]?.model ?? cfg.model;
 
       onUpdate?.({
         content: [
@@ -854,9 +1008,15 @@ export default function advisorExtension(pi: ExtensionAPI) {
     description: "Show advisor extension status",
     handler: async (_args, ctx) => {
       const cfg = getConfig();
+      const attempts = resolveAdvisorChain({}, cfg);
+      const chainLines = attempts.map((a, idx) => {
+        const eff = a.reasoningEffort ? `:${a.reasoningEffort}` : "";
+        return `${idx + 1}. ${a.provider}/${a.model}${eff}`;
+      }).join("\n");
       ctx.ui.notify(
         [
-          `advisor: ${cfg.provider}/${cfg.model}`,
+          `advisor chain (${attempts.length}):`,
+          chainLines,
           `allowed: ${cfg.allowed ? "yes" : "no"}`,
           `redaction: ${cfg.redact ? "on" : "off"}`,
           `cache retention: ${cfg.cacheRetention}`,
