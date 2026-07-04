@@ -15,6 +15,7 @@ skills = [
   "google-workspace-cli",
   "openspec-apply-change",
   "openspec-propose",
+  "openspec-explore",
   "grill-with-docs",
   "grounded-pairing-discipline"
 ]
