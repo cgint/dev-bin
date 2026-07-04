@@ -15,6 +15,7 @@ Design goals:
   - vllm-mtp: vLLM with speculative decoding/MTP metrics; OpenAI-style thinking fields
   - openai-compatible: generic OpenAI-compatible /v1/models
   - llamacpp-qwen-mtp: dedicated 8085-sparky Qwen MTP llama.cpp config
+  - leanstral: Leanstral models with template-driven thinking (chat_template_kwargs)
 - Infer model metadata and thinking controls from provider kind + model name.
 
 Longer documentation:
@@ -61,6 +62,7 @@ DEFAULT_PROVIDERS = [
     # Dedicated Qwen MTP llama.cpp endpoint. Keep this as its own kind so discovery
     # regenerates the required qwen-chat-template thinking config without needing
     # an explicit --provider override.
+    {"key": "8086-sparkz", "kind": "leanstral", "baseUrl": "http://sparkz:8086/v1"},
     {"key": "8085-sparky", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://sparky:8085/v1"},
     {"key": "8086-sparky", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://sparky:8086/v1"},
     # {"key": "8087-sparky", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://sparky:8087/v1"},
@@ -138,6 +140,7 @@ def normalize_kind(kind: str) -> str:
         "qwen-mtp": "llamacpp-qwen-mtp",
         "llamacpp-qwen-twins": "llamacpp-qwen-twins",
         "llamacppqwintwins": "llamacpp-qwen-twins",
+        "leanstral": "leanstral",
         "vllm": "vllm",
         "vllm-openai": "vllm",
         "vllm-mtp": "vllm-mtp",
@@ -167,6 +170,8 @@ def infer_kind(provider_key: str, base_url: str | None) -> str:
         return "vllm-mtp"
     if key == "8087-twins" and "twins:8087" in url:
         return "llamacpp-qwen-twins"
+    if key == "8086-sparkz" and "sparkz:8086" in url:
+        return "leanstral"
     if any(marker in key for marker in ["vllm-mtp", "vllmmtp"]):
         return "vllm-mtp"
     if any(marker in key for marker in ["vllm-mtp", "vllmmtp"]):
@@ -344,6 +349,9 @@ def infer_context_window(
     # OMLX: most llama.cpp builds handle 4k well, which is a safe floor.
     if kind == "omlx":
         return 4096
+    # leanstral has 128K context
+    if kind == "leanstral":
+        return 131072
     return 32768
 
 
@@ -382,6 +390,14 @@ def infer_input_types(model_id: str, kind: str) -> list[str]:
 def infer_thinking_fields(kind: str, model_id: str, reasoning: bool) -> dict[str, Any]:
     if not reasoning:
         return {"reasoning": False}
+
+    # leanstral: template-driven thinking via chat_template_kwargs.enable_thinking
+    if kind == "leanstral":
+        return {
+            "reasoning": True,
+            "thinkingLevelMap": {"off": "none"},
+            "compat": {"supportsReasoningEffort": False, "thinkingFormat": "leanstral"},
+        }
 
     fields: dict[str, Any] = {
         "reasoning": True,
@@ -477,6 +493,15 @@ def provider_default_compat(kind: str) -> dict[str, Any]:
         # OMLX: llama.cpp-like server with template-driven thinking (chat_template_kwargs).
         # Does not support reasoning_effort; thinking toggled via enable_thinking.
         # Does NOT need the synthetic assistant bridge; mirroring llamacpp-qwen-twins.
+        return {
+            "supportsDeveloperRole": False,
+            "supportsReasoningEffort": False,
+            "maxTokensField": "max_tokens",
+            "requiresAssistantAfterToolResult": False,
+        }
+    if kind == "leanstral":
+        # Leanstral: template-driven thinking via chat_template_kwargs.enable_thinking.
+        # Does NOT need the synthetic assistant bridge.
         return {
             "supportsDeveloperRole": False,
             "supportsReasoningEffort": False,
@@ -596,8 +621,16 @@ def discover_openai_compatible_models(base_url: str) -> dict[str, Any]:
         if not isinstance(mid, str) or not mid:
             continue
         model_ids.append(mid)
-        # Extract the server-reported max_model_len
+        # Extract the server-reported max_model_len (OpenAI style)
         max_len = entry.get("max_model_len")
+        # Also check llama.cpp meta.n_ctx (many llama.cpp servers put context
+        # window inside a nested "meta" object instead of a top-level
+        # max_model_len field).
+        meta = entry.get("meta")
+        if isinstance(meta, dict):
+            n_ctx = meta.get("n_ctx")
+            if isinstance(n_ctx, int) and max_len is None:
+                max_len = n_ctx
         reasoning = False
         if isinstance(max_len, int):
             # Check the capabilities list for a reasoning flag.
@@ -660,7 +693,21 @@ def update_provider(data: dict[str, Any], spec: ProviderSpec, models: list[dict[
     provider_obj["baseUrl"] = pi_base
     provider_obj["api"] = "openai-completions"
     provider_obj.setdefault("apiKey", "none" if spec.kind != "lmstudio" else "$OLLAMA_API_KEY")
-    provider_obj["compat"] = merge_compat(provider_default_compat(spec.kind), provider_obj.get("compat"))
+    # Merge compat: new kind defaults fill in blanks; existing user overrides
+    # are preserved UNLESS the kind itself changed (in which case the new
+    # kind's defaults take priority to fix stale settings from the old kind).
+    new_compat = provider_default_compat(spec.kind)
+    if isinstance(existing, dict):
+        existing_compat = existing.get("compat", {})
+        # If existing compat doesn't match the new kind's defaults, the kind
+        # likely changed (e.g. llamacpp → leanstral); let new defaults win.
+        if existing_compat != new_compat:
+            provider_obj["compat"] = merge_compat(existing_compat, new_compat)
+        else:
+            # Same kind: existing user overrides take priority over defaults
+            provider_obj["compat"] = merge_compat(new_compat, existing_compat)
+    else:
+        provider_obj["compat"] = new_compat
     provider_obj["models"] = models
     providers[spec.key] = provider_obj
 
@@ -692,6 +739,13 @@ def discover_for_provider(spec: ProviderSpec, explicit_ollama_models: list[str],
             #   - a deduplicated list of model IDs
             #   - a model_info dict mapping model_id -> {"max_model_len": int, "reasoning": bool}
             model_ids, model_info = discover_openai_compatible_models(spec.base_url)
+            for mid in model_ids:
+                info = model_info.get(mid, {})
+                ml = info.get("max_model_len")
+                if ml is not None:
+                    print(f"  [INFO] {mid}: max_model_len={ml}")
+                else:
+                    print(f"  [INFO] {mid}: max_model_len=<not reported>, will use fallback")
             entries = [
                 build_model_entry(
                     spec.kind,
