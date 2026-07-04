@@ -9,6 +9,8 @@ skills = [
   "my-tools-toolbox",
   "openspec-apply-change",
   "openspec-propose",
+  "openspec-explore",
+  "openspec-archive-change",
   "grounded-pairing-discipline",
   "criticalthink-retro"
 ]
