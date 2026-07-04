@@ -692,7 +692,7 @@ def update_provider(data: dict[str, Any], spec: ProviderSpec, models: list[dict[
 
     provider_obj["baseUrl"] = pi_base
     provider_obj["api"] = "openai-completions"
-    provider_obj.setdefault("apiKey", "none" if spec.kind != "lmstudio" else "$OLLAMA_API_KEY")
+    provider_obj.setdefault("apiKey", "no-api-key-needed" if spec.kind != "lmstudio" else "$OLLAMA_API_KEY")
     # Merge compat: new kind defaults fill in blanks; existing user overrides
     # are preserved UNLESS the kind itself changed (in which case the new
     # kind's defaults take priority to fix stale settings from the old kind).
