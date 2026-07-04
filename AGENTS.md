@@ -18,3 +18,4 @@ data-dir-agents/definitions/
 - **Read** `definitions/STRUCTURE.md` for the propagation pipeline (generator → `generated/` → user config dirs).
 - **Edit** only files under `definitions/`; never edit `generated/` (it's regenerated).
 - **Deploy** with `agents_files_cp.sh [--delete]` (run from any directory).
+- **Commit** both `data-dir-agents/definitions/...` (sources) **and** `data-dir-agents/generated/...` (build outputs) together — never commit one without the other.
