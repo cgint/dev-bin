@@ -90,6 +90,7 @@ DEFAULT_PROVIDERS = [
     {"key": "8001-sparkz", "kind": "vllm-mtp-256k", "baseUrl": "http://sparkz:8001/v1"},
     {"key": "8000-sparky-vllm", "kind": "vllm-mtp", "baseUrl": "http://sparky:8000/v1"},
     {"key": "8090-sparky", "kind": "vllm-mtp", "baseUrl": "http://sparky:8090/v1"},
+    {"key": "8000-twins", "kind": "vllm-mtp", "baseUrl": "http://twins:8000/v1"},
 ]
 
 REASONING_FAMILY_MARKERS = [
