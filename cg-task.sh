@@ -168,9 +168,9 @@ CHECK_UT=$(echo "$CONFIG_LINE" | grep -o 'check_ut=[^ ;]*' | cut -d= -f2 || echo
 OUT_NAME="${TASK}-review.md"
 [[ "$MODE" == "diff-only" ]] && OUT_NAME="${TASK}-diffonly.md"
 
-# Temp files
-TMP_DIFF="$PROMPT_DIR/_tmp_diff.txt"
-TMP_PRMPT="$PROMPT_DIR/_tmp_prompt.txt"
+# Temp files — always in cwd (not PROMPT_DIR) so codegiant.py can find them
+TMP_DIFF="._cg_tmp_diff.txt"
+TMP_PRMPT="._cg_tmp_prompt.txt"
 cleanup() { rm -f "$TMP_DIFF" "$TMP_PRMPT"; }
 trap cleanup EXIT
 
@@ -216,9 +216,9 @@ fi
 
 # Run codegiant
 if [[ "$MODE" == diff-context ]]; then
-    codegiant.py -y -F -o "./$OUT_NAME" -f "$TMP_PRMPT" -a "_tmp_diff.txt"
+    codegiant.py -y -F -o "./$OUT_NAME" -f "$TMP_PRMPT" -a "$TMP_DIFF"
 elif [[ "$MODE" == diff-only ]]; then
-    codegiant.py -y -F -o "./$OUT_NAME" -f "$TMP_PRMPT" -i "_tmp_diff.txt"
+    codegiant.py -y -F -o "./$OUT_NAME" -f "$TMP_PRMPT" -i "$TMP_DIFF"
 else
     codegiant.py -y -F -o "./$OUT_NAME" -f "$TMP_PRMPT"
 fi
