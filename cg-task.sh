@@ -26,19 +26,57 @@
 set -euo pipefail
 
 SCRIPT_NAME="$(basename "$0")"
-SDIR="$(cd "$(dirname "$0")" && pwd)"
+SDIR="$(cd "$(dirname "$(which "$0")")" && pwd)"
 DEFAULTS_DIR="$SDIR/cg-task/defaults"
 LOCAL_DIR="./codegiant-tasks"
 
-# Resolve prompt directory: local first, then global
-if [[ -d "$LOCAL_DIR" ]] && ls "$LOCAL_DIR"/*.txt 1>/dev/null 2>&1; then
+# Detect help request early so we can skip discovery
+HELP_REQUEST=false
+if [[ "${1:-}" == "-h" ]] || [[ "${1:-}" == "--help" ]]; then
+    HELP_REQUEST=true
+fi
+
+# If explicit -h/--help, show minimal help and exit before discovery
+if [[ "$HELP_REQUEST" == true ]]; then
+    echo "Usage: $SCRIPT_NAME <task> [--staged] [--diff-only] [hint]"
+    echo ""
+    echo "Options:"
+    echo "  --staged      Review staged changes instead of working tree"
+    echo "  --diff-only   Override task mode to diff-only (no repo context)"
+    echo "  -h, --help    Show this help"
+    echo ""
+    echo "Hint:"
+    echo "  Any trailing argument is appended to the prompt as dynamic focus."
+    echo ""
+    echo "Run without arguments to see available tasks."
+    exit 0
+fi
+
+# Count valid prompts (files with # codegiant: header) in a directory
+count_valid_prompts() {
+    local dir="$1"
+    local count=0
+    for f in "$dir"/*.txt; do
+        [[ -f "$f" ]] || continue
+        if head -1 "$f" 2>/dev/null | grep -q '^# codegiant:'; then
+            ((count++))
+        fi
+    done
+    echo "$count"
+}
+
+# Resolve prompt directory: local first (if valid prompts exist), then global
+LOCAL_VALID=$(count_valid_prompts "$LOCAL_DIR" 2>/dev/null || echo 0)
+DEFAULTS_VALID=$(count_valid_prompts "$DEFAULTS_DIR" 2>/dev/null || echo 0)
+
+if [[ "$LOCAL_VALID" -gt 0 ]]; then
     PROMPT_DIR="$LOCAL_DIR"
-elif [[ -d "$DEFAULTS_DIR" ]] && ls "$DEFAULTS_DIR"/*.txt 1>/dev/null 2>&1; then
+elif [[ "$DEFAULTS_VALID" -gt 0 ]]; then
     PROMPT_DIR="$DEFAULTS_DIR"
 else
-    echo "Error: no prompt files found." >&2
-    echo "  Local: $LOCAL_DIR/*.txt" >&2
-    echo "  Global: $DEFAULTS_DIR/*.txt" >&2
+    echo "Error: no valid task prompts found (missing '# codegiant:' header)." >&2
+    echo "  Local: $LOCAL_DIR/*.txt ($LOCAL_VALID valid)" >&2
+    echo "  Global: $DEFAULTS_DIR/*.txt ($DEFAULTS_VALID valid)" >&2
     exit 1
 fi
 
@@ -53,10 +91,6 @@ discover_tasks() {
 }
 
 TASK_LIST=$(discover_tasks)
-if [[ -z "$TASK_LIST" ]]; then
-    echo "Error: no valid task prompts found (missing '# codegiant:' header)." >&2
-    exit 1
-fi
 
 usage() {
     echo "Usage: $SCRIPT_NAME <task> [--staged] [--diff-only] [hint]"
@@ -78,7 +112,7 @@ usage() {
 }
 
 # Args
-if [[ $# -eq 0 ]] || [[ "${1:-}" == "-h" ]] || [[ "${1:-}" == "--help" ]]; then
+if [[ $# -eq 0 ]]; then
     usage; exit 0
 fi
 
