@@ -1,7 +1,6 @@
 ---
 name: bootstrap-pairing-memory
 description: User-invoked bootstrap workflow for initializing a repository's pairing memory, north-star context, and status structure.
-disable-model-invocation: true
 ---
 
 # Bootstrap Pairing Memory
