@@ -216,11 +216,11 @@ fi
 
 # Run codegiant
 if [[ "$MODE" == diff-context ]]; then
-    codegiant.py -y -F -o "$PROMPT_DIR/$OUT_NAME" -f "$TMP_PRMPT" -a "_tmp_diff.txt"
+    codegiant.py -y -F -o "./$OUT_NAME" -f "$TMP_PRMPT" -a "_tmp_diff.txt"
 elif [[ "$MODE" == diff-only ]]; then
-    codegiant.py -y -F -o "$PROMPT_DIR/$OUT_NAME" -f "$TMP_PRMPT" -i "_tmp_diff.txt"
+    codegiant.py -y -F -o "./$OUT_NAME" -f "$TMP_PRMPT" -i "_tmp_diff.txt"
 else
-    codegiant.py -y -F -o "$PROMPT_DIR/$OUT_NAME" -f "$TMP_PRMPT"
+    codegiant.py -y -F -o "./$OUT_NAME" -f "$TMP_PRMPT"
 fi
 
-echo "✓ Written to: $(basename "$PROMPT_DIR")/$OUT_NAME"
+echo "✓ Written to: $OUT_NAME"
