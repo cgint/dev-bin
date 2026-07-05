@@ -1,0 +1,14 @@
+# codegiant: mode=context
+Review the codebase for consistency and readability issues that linters miss. Focus on patterns that affect maintainability.
+
+Check:
+1. **Naming**: Are variable/function/class names descriptive and consistent in style? Any misleading names?
+2. **Duplication**: Are there repeated patterns that should be extracted? (Similar logic across files, copy-paste code)
+3. **Comment quality**: Do comments explain why, not what? Any outdated or misleading comments?
+4. **Function size**: Are any functions doing too much? Clear single-responsibility violations?
+5. **Error messages**: Are user-facing error messages clear and in the right language (German for user, English for logs)?
+6. **Logging**: Is logging consistent? Any missing context in log messages that would make debugging hard?
+
+Only report issues that meaningfully affect readability or maintainability. Do not report stylistic preferences (e.g., bracket style, quote type) — those are linter territory. Quantitative claims (e.g., function sizes) should be approximate — treat numbers as directional, not exact.
+
+Structure the output as: (1) Executive summary, (2) Detailed findings per dimension with file/line citations, (3) Anti-pattern highlights, (4) Prioritized Concern/Risk/Next Step recommendations. Do not narratively claim you created or modified files.

@@ -1,0 +1,19 @@
+# codegiant: mode=context
+Compare the four archived OpenSpec changes against the current codebase to find deviations between what the specs/designs commit to and what the code actually delivers. Check each archived change's spec requirements, design decisions, and task checklist against the corresponding source files, tests, and frontend assets.
+
+Only report findings that meet BOTH criteria:
+1. They are grounded in evidence from the provided files — never invent paths, filenames, or missing files that are actually present in the context.
+2. They have material impact: broken functionality, security/compliance risk, spec contract violation, or cross-change coordination gap.
+
+Do NOT report:
+- Redundant imports, unused variables, or style preferences (linters handle these)
+- Stale build artifacts (__pycache__, lock files)
+- Cosmetic differences that don't affect behavior
+- Hypothetical edge cases with no realistic trigger path
+- Files that exist in the context but you overlooked — verify existence before claiming missing
+
+For each finding, cite the exact file and line (or spec section) as evidence.
+
+Classify severity and likelihood separately — do not conflate how serious a bug is with how often it triggers. Describe the concrete trigger condition instead of using vague terms like "common" or "rare".
+
+Do not narratively claim you created or modified files — you are producing an analysis, not performing file operations.

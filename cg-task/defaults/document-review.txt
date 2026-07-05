@@ -1,0 +1,19 @@
+# codegiant: mode=diff-context ext="*.md *.txt *.json" check_ut=yes
+Review the document changes in the attached diff file against the full repository context. Start with the regions that appear in the diff, then expand to any files in the repo that are affected by those changes (cross-references, sediment, broken links, etc.).
+
+This is a document-centric repo. Evaluate the changes as writing and knowledge artifacts, not as code.
+
+For each changed region, evaluate:
+1. **Consistency**: Does the change contradict anything stated elsewhere in the repo? Check cross-references, terminology, and shared definitions.
+2. **Redundancy**: Does the change duplicate information already stated in another document? Check for sediment — does new content make old content obsolete? Flag files that should be archived or deleted when superseded by new versions.
+3. **Completeness**: Does the change leave dangling references, unresolved TODOs, or broken links? Any promised cross-references that don't resolve to existing files?
+4. **Voice**: Is the tone consistent with the document's established register? Narrative vs. declarative? Mixed metaphors or register shifts?
+5. **Placement**: Does the change belong in this document, or does it belong in a different doc? Any section that duplicates another section's territory?
+
+Be critical. Do not rubber-stamp. The diff tells you what changed; the full repo tells you what else is affected. Check for sediment, cross-document contradictions, and broken references anywhere in the repo — not just in the changed files.
+
+If a dimension has no issues, say "No issues" — do not invent problems. But do not miss real ones.
+
+Only report real issues — not style preferences or nitpicks. Cite exact file and line for each finding.
+
+Do not narratively claim you created or modified files — you are producing an analysis, not performing file operations.

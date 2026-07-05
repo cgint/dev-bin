@@ -1,0 +1,11 @@
+# codegiant: mode=diff-context
+Review the changes in the attached diff file against the full codebase context and any relevant OpenSpec artifacts. Focus only on the regions that appear in the diff — use the surrounding codebase and OpenSpec artifacts for context, not as additional review targets.
+
+For each changed region, evaluate:
+1. **Correctness**: Does the change do what it claims? Are there off-by-one errors, missing edge cases, or logic bugs?
+2. **Side effects**: Does the change break anything downstream? Check callers, imports, tests, and related files.
+3. **Spec alignment**: If an OpenSpec change is involved, does the diff fulfill the spec requirements and task checklist?
+4. **Security**: Any auth bypass, injection, path traversal, info leak, or credential exposure introduced by the change?
+5. **Test coverage**: Are the changes covered by tests? If not, what should be tested?
+
+Only report real issues — not style preferences or linter noise. Cite exact file and line for each finding.

@@ -1,0 +1,15 @@
+# codegiant: mode=context
+Review the overall architecture of the codebase. Assess structural health and propose improvements where they address real problems.
+
+Evaluate:
+1. **Module boundaries**: Are responsibilities clearly separated? Any circular dependencies or god modules?
+2. **Data flow**: Are data paths clear and consistent? Any unexpected mutations or shared mutable state?
+3. **Error handling**: Are errors handled consistently? Any swallowed exceptions or missing fallbacks?
+4. **Configuration**: Are config values centralized? Any hardcoded paths, URLs, or magic numbers?
+5. **Test strategy**: Are critical paths tested? Any untested areas that pose real risk?
+6. **Scalability bottlenecks**: Any synchronous blocking in async paths? Unbounded memory growth? Missing indexes?
+7. **OpenSpec alignment**: Do the active/archived changes reflect coherent architectural decisions or ad-hoc patches?
+
+Only propose changes that solve real problems. Do not propose refactoring for its own sake. For each recommendation, explain the concrete problem it solves and the files involved.
+
+Do not narratively claim you created or modified files — you are producing an analysis, not performing file operations.

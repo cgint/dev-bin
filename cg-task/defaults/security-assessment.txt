@@ -1,0 +1,17 @@
+# codegiant: mode=context
+Perform a production-readiness and operational resilience review of the codebase. Focus on code-level patterns that could cause availability, correctness, or trust issues in a live deployment.
+
+This is a code quality review, not a security audit. Evaluate the following dimensions:
+
+1. **Endpoint protection**: Are sensitive routes properly guarded? Can a caller skip required auth headers or tokens? Are credential-handling patterns sound?
+2. **Role separation**: Do elevated endpoints (admin) enforce their own independent auth checks? Could a regular user reach admin-only behavior?
+3. **User input handling**: Are inputs validated before use? Watch for unsanitized strings flowing into SQL queries, HTML rendering, shell commands, or file paths.
+4. **Leakage risk**: Are API keys, passwords, or personal data exposed in log output, error responses, or stack traces?
+5. **File path safety**: Are file operations constrained to their intended directories? Watch for user-controlled paths that could escape via `..` or symlinks.
+6. **Dependency age**: Are packages in pyproject.toml on reasonably recent versions? Flag any that are many major versions behind.
+7. **Network exposure**: Is CORS too wide? Does scrape/fetch code accept arbitrary user-supplied URLs (SSRF-style risk)?
+8. **Cost and availability guards**: Are expensive endpoints (LLM calls, heavy computation) protected against repeated rapid invocation?
+
+For each finding, classify severity (Critical / High / Medium / Low) and trigger difficulty (Easy / Requires setup / Unlikely) separately. Cite the exact file and line and suggest a concrete fix.
+
+Exclude findings that are only relevant at theoretical extremes or that are fully mitigated by deployment-layer controls (WAF, reverse proxy) when the application code itself is safe. Only report issues grounded in the actual code.
