@@ -12,7 +12,6 @@ fi
 usage() {
     echo "Usage: $(basename "$0") <topic> <question>"
     echo
-    echo "Available topics:"
     (cd "$DOC_AGENT_BM25_DIR" && $CMD_EXECUTE_PREFIX --list-topics)
 }
 
