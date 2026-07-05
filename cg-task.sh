@@ -59,7 +59,7 @@ count_valid_prompts() {
     for f in "$dir"/*.txt; do
         [[ -f "$f" ]] || continue
         if head -1 "$f" 2>/dev/null | grep -q '^# codegiant:'; then
-            ((count++))
+            ((++count)) || true
         fi
     done
     echo "$count"
