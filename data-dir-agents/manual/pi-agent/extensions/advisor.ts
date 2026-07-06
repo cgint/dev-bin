@@ -86,6 +86,7 @@ type AdvisorRunResult = {
   callIndex: number;
   turnCallIndex: number;
   error?: string;
+  attemptLines?: string[];
 };
 
 /** One entry in the advisor fallback chain. */
@@ -617,6 +618,7 @@ export default function advisorExtension(pi: ExtensionAPI) {
     ctx: ExtensionContext | ExtensionCommandContext,
     params: AdvisorParams,
     signal?: AbortSignal,
+    onAttempt?: (attemptLines: string[], index: number, total: number, provider: string, model: string) => void,
   ): Promise<AdvisorRunResult> {
     const cfg = getConfig();
 
@@ -674,14 +676,48 @@ export default function advisorExtension(pi: ExtensionAPI) {
     callsThisSession += 1;
 
     const lastErrors: string[] = [];
+    let lastAttempt: { provider: string; model: string } | null = null;
+    const attemptLines: string[] = [];
+
+    const shortMessage = (message: string): string => {
+      const compact = message.replace(/\s+/g, " ").trim();
+      return compact.length > 50 ? `${compact.slice(0, 47)}...` : compact;
+    };
+
+    const setAttemptLine = (
+      index: number,
+      total: number,
+      provider: string,
+      model: string,
+      line: string,
+    ) => {
+      attemptLines[index - 1] = line;
+      onAttempt?.([...attemptLines], index, total, provider, model);
+    };
 
     for (let i = 0; i < attempts.length; i++) {
       const attempt = attempts[i];
       const { provider, model: modelId, reasoningEffort } = attempt;
+      lastAttempt = { provider, model: modelId };
+      setAttemptLine(
+        i + 1,
+        attempts.length,
+        provider,
+        modelId,
+        `Connecting to advisor ${provider}/${modelId}...`,
+      );
 
       const model = ctx.modelRegistry.find(provider, modelId);
       if (!model) {
-        lastErrors.push(`[${provider}/${modelId}] model not found`);
+        const msg = "model not found";
+        lastErrors.push(`[${provider}/${modelId}] ${msg}`);
+        setAttemptLine(
+          i + 1,
+          attempts.length,
+          provider,
+          modelId,
+          `Error seeking advice from advisor ${provider}/${modelId}!\n      -> ${shortMessage(msg)}`,
+        );
         continue;
       }
 
@@ -700,7 +736,15 @@ export default function advisorExtension(pi: ExtensionAPI) {
       }
 
       if (!authOk) {
-        lastErrors.push(`[${provider}/${modelId}] auth: ${auth.error}`);
+        const msg = `auth: ${auth.error}`;
+        lastErrors.push(`[${provider}/${modelId}] ${msg}`);
+        setAttemptLine(
+          i + 1,
+          attempts.length,
+          provider,
+          modelId,
+          `Error seeking advice from advisor ${provider}/${modelId}!\n      -> ${shortMessage(msg)}`,
+        );
         continue;
       }
 
@@ -723,10 +767,25 @@ export default function advisorExtension(pi: ExtensionAPI) {
       }
 
       if (!apiKey) {
-        lastErrors.push(`[${provider}/${modelId}] no API key`);
+        const msg = "no API key";
+        lastErrors.push(`[${provider}/${modelId}] ${msg}`);
+        setAttemptLine(
+          i + 1,
+          attempts.length,
+          provider,
+          modelId,
+          `Error seeking advice from advisor ${provider}/${modelId}!\n      -> ${shortMessage(msg)}`,
+        );
         continue;
       }
 
+      setAttemptLine(
+        i + 1,
+        attempts.length,
+        provider,
+        modelId,
+        `Consulting advisor ${provider}/${modelId}...`,
+      );
       const messages = [
         {
           role: "user" as const,
@@ -773,6 +832,7 @@ export default function advisorExtension(pi: ExtensionAPI) {
             transcriptChars: transcript.length,
             callIndex: callsThisSession,
             turnCallIndex: callsThisTurn,
+            attemptLines,
           };
         }
 
@@ -784,17 +844,32 @@ export default function advisorExtension(pi: ExtensionAPI) {
             ? `outputTokens: ${info.outputTokens}`
             : null,
           typeof info.reasoningTokens === "number"
-            ? `reasoningTokens: ${info.reasoningTokens}`
-            : null,
+            ? `reasoningTokens: ${info.reasoningTokens}` : null,
         ]
           .filter(Boolean)
           .join(", ");
 
-        lastErrors.push(`[${provider}/${modelId}] no text${detail ? ` (${detail})` : ""}`);
+        const msg = `no text${detail ? ` (${detail})` : ""}`;
+        lastErrors.push(`[${provider}/${modelId}] ${msg}`);
+        setAttemptLine(
+          i + 1,
+          attempts.length,
+          provider,
+          modelId,
+          `Error seeking advice from advisor ${provider}/${modelId}!\n      -> ${shortMessage(msg)}`,
+        );
 
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
+        const msg = shortMessage(message);
         lastErrors.push(`[${provider}/${modelId}] ${message}`);
+        setAttemptLine(
+          i + 1,
+          attempts.length,
+          provider,
+          modelId,
+          `Error seeking advice from advisor ${provider}/${modelId}!\n      -> ${msg}`,
+        );
       }
     }
 
@@ -802,19 +877,29 @@ export default function advisorExtension(pi: ExtensionAPI) {
     return {
       ok: false,
       text: `All advisor models failed:\n${lastErrors.map((e) => `  - ${e}`).join("\n")}.\nContinue without advisor and verify locally.`,
-      provider: attempts[0]?.provider ?? "",
-      model: attempts[0]?.model ?? "",
+      provider: lastAttempt?.provider ?? "",
+      model: lastAttempt?.model ?? "",
       promptChars: prompt.length,
       transcriptChars: transcript.length,
       callIndex: callsThisSession,
       turnCallIndex: callsThisTurn,
       error: lastErrors.join("; "),
+      attemptLines,
     };
   }
 
+  function formatAttemptLines(lines: string[]): string {
+    return lines.filter(Boolean).join("\n\n");
+  }
+
   function formatAdvisorResult(result: AdvisorRunResult): string {
-    const status = result.ok ? "Advisor advice" : "Advisor unavailable";
-    return `${status} from ${result.provider}/${result.model}:\n\n${result.text}`;
+    const history = result.ok
+      ? (result.attemptLines ?? []).slice(0, -1)
+      : (result.attemptLines ?? []);
+    const formattedHistory = formatAttemptLines(history);
+    const prefix = formattedHistory ? `${formattedHistory}\n\n` : "";
+    const status = result.ok ? "Advice" : "Advisor unavailable";
+    return `${prefix}${status} from ${result.provider}/${result.model}:\n\n${result.text}`;
   }
 
   pi.on("session_start", async (_event, ctx) => {
@@ -906,28 +991,29 @@ export default function advisorExtension(pi: ExtensionAPI) {
     },
     async execute(_toolCallId, params: AdvisorParams, signal, onUpdate, ctx) {
       const cfg = getConfig();
-      const attempts = resolveAdvisorChain(params, cfg);
-      const displayProvider = attempts[0]?.provider ?? cfg.provider;
-      const displayModel = attempts[0]?.model ?? cfg.model;
 
-      onUpdate?.({
-        content: [
-          {
-            type: "text",
-            text: `Consulting advisor ${displayProvider}/${displayModel}...`,
+      let lastProgressMsg = "";
+      const result = await runAdvisor(ctx, params, signal, (attemptLines, _index, _total, provider, model) => {
+        const progressMsg = formatAttemptLines(attemptLines);
+        if (!progressMsg || progressMsg === lastProgressMsg) return;
+        lastProgressMsg = progressMsg;
+
+        onUpdate?.({
+          content: [
+            {
+              type: "text",
+              text: progressMsg,
+            },
+          ],
+          details: {
+            advisor: {
+              status: "running",
+              provider,
+              model,
+            },
           },
-        ],
-        details: {
-          advisor: {
-            status: "running",
-            provider: displayProvider,
-            model: displayModel,
-          },
-        },
+        });
       });
-
-      const result = await runAdvisor(ctx, params, signal);
-
       return {
         content: [{ type: "text", text: formatAdvisorResult(result) }],
         details: {
