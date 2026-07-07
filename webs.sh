@@ -14,7 +14,7 @@
 #
 # Options:
 #   @file.txt     Reference a file whose content will be included in the prompt
-#   -f <file>     Write output to specified file instead of stdout
+#   -f <file>     Also copy the streamed /tmp output to the specified file after completion
 #   -m <model>    Model to use: flash, pro (default: flash, avoid using pro as it usually takes too long)
 #   -o <format>   Output format: text, json, stream-json (default: text) - e.g. stream-json will contain the search queries used, json contains a lot of statistical details
 #   -h, --help    Show this help message
@@ -25,6 +25,7 @@
 #   webs.sh @code.py "find documentation for the libraries used" -f docs.txt
 
 set -e
+set -o pipefail
 
 SCRIPT_DIR="$(dirname "$0")"
 
@@ -125,11 +126,13 @@ $prompt"
 # Gemini CLI's Policy Engine rejects an empty mcpName, so we pass an allowlist
 # entry that (practically) matches no server.
 DISABLE_ALL_MCP_NAME="__DISABLE_ALL_MCP__"
+tmp_out_file=$(mktemp /tmp/webs_output.XXXXXX)
+echo "Searching the web..." >&2
+echo "Streaming results to: $tmp_out_file" >&2
+echo "You can read partial output from that file while this search is running." >&2
+echo "$full_prompt" | GEMINI_CLI_TRUST_WORKSPACE=true "$SCRIPT_DIR/gem.sh" "$model" -o "$output_format" --allowed-mcp-server-names "$DISABLE_ALL_MCP_NAME" | tee "$tmp_out_file"
 
 if [[ -n "$output_file" ]]; then
-    echo "Searching the web..." >&2
-    echo "$full_prompt" | GEMINI_CLI_TRUST_WORKSPACE=true "$SCRIPT_DIR/gem.sh" "$model" -o "$output_format" --allowed-mcp-server-names "$DISABLE_ALL_MCP_NAME" > "$output_file"
-    echo "Results written to: $output_file" >&2
-else
-    echo "$full_prompt" | GEMINI_CLI_TRUST_WORKSPACE=true "$SCRIPT_DIR/gem.sh" "$model" -o "$output_format" --allowed-mcp-server-names "$DISABLE_ALL_MCP_NAME"
+    cp "$tmp_out_file" "$output_file"
+    echo "Results written to your configured output file: $output_file" >&2
 fi
