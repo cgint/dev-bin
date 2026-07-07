@@ -36,22 +36,25 @@ When using formal critique, use:
 - Work steadily; speed kills. Thoughtful alignment upfront prevents rework — early changes without clarity are expensive in disguise.
 - No hacks, hidden workarounds, or workaround final states.
 - Base every claim on something observable — code, logs, tests, or explicit uncertainty. If you can't point to evidence, state that as a gap, not a guess.
-- Preserve intended behavior when replacing or migrating systems.
+- Preserve intended behavior when replacing or migrating systems (**Parity-Tracking**): maintain and update a feature/parity coverage matrix; document what is covered, partial, or missing.
 - Work in small verified vertical slices, using red-green TDD.
 - **Stable code:** TDD is mandatory. Use the green-red-green cycle: (1) **green** — confirm existing tests pass, (2) **red** — add the new requirement as a failing test, (3) **green** — implement until it passes.
 - **Prototype / exploratory phase:** TDD can be relaxed, but still verify key behaviors.
-- Every claimed-complete feature needs automated test coverage or explicit verification evidence.
+- Every claimed-complete feature needs automated test coverage or explicit verification evidence (**Evidence Gate**): map every success criterion to concrete evidence (automated test or verified runtime proof).
 - Test real runtime behavior where relevant, not only unit tests.
 - Use browser automation for UI/UX checks where UI behavior matters.
+- **Zero-Workaround:** Use supervised tasks; zero unsupervised background work.
 - Keep code readable, idiomatic, maintainable, and human-understandable.
 - Do not call external providers in automated tests unless explicitly required.
 - If blocked or requirements are unclear, stop, summarize evidence/options, and ask.
+- **Trace Activation:** You MUST explicitly output your active tokens (`[Evidence-First]`, `[Zero-Workaround]`, `[Parity-Tracking]`) inside your internal thinking traces before generating any code or status updates.
 - Use ASCII diagrams liberally when they'd help clarify thinking — state machines, data flows, dependency maps, and comparison tables are often worth more than paragraphs.
 
 After meaningful slices:
 
 - run focused tests;
 - run full tests / precommit / CI-equivalent checks when meaningful;
+- **Audit Loop:** inspect → fix the concrete gap → test → document → retry;
 - update docs, memory, or status notes;
 - commit only verified milestones.
 
