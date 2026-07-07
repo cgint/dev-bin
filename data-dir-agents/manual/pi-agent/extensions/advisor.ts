@@ -69,8 +69,6 @@ type AdvisorStage =
 type AdvisorParams = {
   stage?: AdvisorStage;
   question?: string;
-  provider?: string;
-  model?: string;
   max_words?: number;
   context?: string;
   include_transcript?: boolean;
@@ -229,14 +227,8 @@ function parseAdvisorEntry(raw: string, defaultEffort: string): AdvisorAttempt |
  * Priority:
  * 1. If PI_ADVISOR_MODELS is set → parse it (#-separated entries).
  * 2. Otherwise → single entry from PI_ADVISOR_PROVIDER / PI_ADVISOR_MODEL.
- *
- * Params overrides (provider/model) are applied to the **first** entry only,
- * preserving the rest of the chain as-is.
  */
-function resolveAdvisorChain(
-  params: AdvisorParams,
-  cfg: AdvisorConfig,
-): AdvisorAttempt[] {
+function resolveAdvisorChain(cfg: AdvisorConfig): AdvisorAttempt[] {
   const chainRaw = env("PI_ADVISOR_MODELS", "").trim();
 
   // --- Fast path: no chain configured → use built-in default chain ---
@@ -246,14 +238,6 @@ function resolveAdvisorChain(
       .split("#")
       .map((raw) => parseAdvisorEntry(raw, ""))
       .filter((e): e is AdvisorAttempt => e !== null);
-
-    // Apply params overrides to the first entry only.
-    if (params.provider?.trim()) {
-      attempts[0].provider = params.provider.trim();
-    }
-    if (params.model?.trim()) {
-      attempts[0].model = params.model.trim();
-    }
     return attempts;
   }
 
@@ -275,19 +259,11 @@ function resolveAdvisorChain(
   if (attempts.length === 0) {
     return [
       {
-        provider: params.provider?.trim() || cfg.provider,
-        model: params.model?.trim() || cfg.model,
+        provider: cfg.provider,
+        model: cfg.model,
         reasoningEffort: cfg.reasoningEffort,
       },
     ];
-  }
-
-  // Apply params overrides to the first entry only.
-  if (params.provider?.trim()) {
-    attempts[0].provider = params.provider.trim();
-  }
-  if (params.model?.trim()) {
-    attempts[0].model = params.model.trim();
   }
 
   return attempts;
@@ -668,8 +644,8 @@ export default function advisorExtension(pi: ExtensionAPI) {
     const transcript = includeTranscript ? buildTranscript(ctx, cfg.redact) : "";
     const prompt = buildAdvisorPrompt(pi, ctx, params, transcript, cfg);
 
-    // Resolve the fallback chain.
-    const attempts = resolveAdvisorChain(params, cfg);
+    // Resolve the fallback chain (selection driven solely by env vars / defaults).
+    const attempts = resolveAdvisorChain(cfg);
 
     // Increment counters once for the whole chain (counts as 1 call).
     callsThisTurn += 1;
@@ -907,7 +883,7 @@ export default function advisorExtension(pi: ExtensionAPI) {
 
     if (ctx.hasUI) {
       const cfg = getConfig();
-      const attempts = resolveAdvisorChain({}, cfg);
+      const attempts = resolveAdvisorChain(cfg);
       const chainLabel = attempts.length > 1
         ? attempts.map((a) => `${a.provider}/${a.model}`).join(" → ")
         : `${attempts[0].provider}/${attempts[0].model}`;
@@ -952,18 +928,6 @@ export default function advisorExtension(pi: ExtensionAPI) {
         Type.String({
           description:
             "Specific question or decision for the advisor. Include your hypothesis, errors, or proposed plan.",
-        }),
-      ),
-      provider: Type.Optional(
-        Type.String({
-          description:
-            "Optional advisor provider override, for example openai or anthropic. Defaults to PI_ADVISOR_PROVIDER.",
-        }),
-      ),
-      model: Type.Optional(
-        Type.String({
-          description:
-            "Optional advisor model override, for example claude-opus-4-7 or gpt-5.5. Defaults to PI_ADVISOR_MODEL.",
         }),
       ),
       max_words: Type.Optional(
@@ -1094,7 +1058,7 @@ export default function advisorExtension(pi: ExtensionAPI) {
     description: "Show advisor extension status",
     handler: async (_args, ctx) => {
       const cfg = getConfig();
-      const attempts = resolveAdvisorChain({}, cfg);
+      const attempts = resolveAdvisorChain(cfg);
       const chainLines = attempts.map((a, idx) => {
         const eff = a.reasoningEffort ? `:${a.reasoningEffort}` : "";
         return `${idx + 1}. ${a.provider}/${a.model}${eff}`;
