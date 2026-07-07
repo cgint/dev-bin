@@ -12,7 +12,7 @@ skills = [
   "openspec-explore",
   "openspec-archive-change",
   "grounded-pairing-discipline",
-  "criticalthink-retro"
+  "criticalthink"
 ]
 
 prompts = ["done-archived-commit-exact.md"]

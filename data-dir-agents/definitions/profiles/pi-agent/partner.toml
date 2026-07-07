@@ -21,7 +21,7 @@ skills = [
   "grounded-pairing-discipline",
   "orwell-6-rule-prose",
   "bootstrap-pairing-memory",
-  "criticalthink-retro"
+  "criticalthink"
 ]
 
 prompts = ["done-archived-commit-exact.md", "check-sanity-before-continue.md"]

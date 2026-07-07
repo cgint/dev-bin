@@ -13,7 +13,7 @@ Skills are the modular building blocks attached to agent profiles. Each skill li
 | Pattern | Meaning | Example |
 |---------|---------|---------|
 | `<name>` | Stable, always-available skill | `web-search`, `diagrams` |
-| `<name>-retro` | Post-hoc variant of a standing skill | `criticalthink-retro` replaces `criticalthink` |
+| `<name>-retro` | Post-hoc variant of a standing skill | `criticalthink` replaces `criticalthink` |
 | `<name>-<mode>` | Variant tuned for a specific mode/context | — |
 
 **Rule:** When a skill replaces another (rename, refactor, specialization), move the old directory aside with a suffix (`-retro`, `-v2`, etc.) and update the TOML skill lists in every profile that references it. The generator copies directories by name, so stale directories linger in `generated/` until cleaned up with `--delete`.
@@ -27,7 +27,7 @@ Skills that shape how the agent behaves in partnership with the user.
 |-------|---------|
 | `orwell-6-rule-prose` | Apply Orwell's six writing rules — maximize information density per word |
 | `grounded-pairing-discipline` | Standing collaboration posture — critical, constructive, concise |
-| `criticalthink-retro` | Post-hoc self-audit: stress-test your own previous response |
+| `criticalthink` | Post-hoc self-audit: stress-test your own previous response |
 | `bootstrap-pairing-memory` | Initialize the pairing memory system |
 | `skill-architect` | Design and author new agent skills |
 
