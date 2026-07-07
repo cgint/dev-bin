@@ -1,0 +1,78 @@
+# codegiant: mode=context dirs="src tests docs openspec .github .pi" add="AGENTS.md README.md pyproject.toml .env.example" xdirs="archive screenshots"
+Prepare a structured exploration brief for the target idea or area named in the additional focus hint. Build an understanding packet that can stand alone and also serve as a durable handoff artifact for a later interactive exploration or design session.
+
+Primary goal: explain what must be understood before discussing or implementing the target change. This is not primarily a review or implementation plan. It may include review-style findings only when they materially improve understanding of the target area.
+
+Output a concise but information-dense markdown brief with these sections.
+
+Epistemic guardrails:
+- Do not fake understanding. If something is unclear from the provided context, say so plainly.
+- Ground the brief in the actual codebase and provided specs/docs, not generic architectural theory.
+- Question your own assumptions. Do not present inferred structure, names, env vars, commands, or file paths as confirmed facts.
+- Surface unknowns and follow-up checks explicitly instead of silently filling gaps.
+- Use these labels consistently:
+  - **Confirmed** — already exists exactly as written in the current code/docs/specs and is directly supported by the provided context
+  - **Inference** — strongly suggested by the context but not explicitly stated or implemented
+  - **Unknown** — important gap that could not be confirmed from the context
+  - **Proposal** — anything that would need to be added, changed, renamed, or created; this includes future command names, env vars, files, tests, hooks, and config keys
+- Do not mix labels in one claim. If a statement contains both an existing fact and a suggested future change, split it into separate bullets.
+- For every **Confirmed** claim, cite the exact file path and, when practical, an exact symbol or line reference.
+
+Output a concise but information-dense markdown brief with these sections:
+
+1. **Target and Scope**
+   - Restate the target idea from the hint.
+   - Define the relevant subsystem(s), boundaries, and explicit exclusions.
+   - If the hint is missing or vague, infer the most plausible target from the codebase and state that it is inferred.
+
+2. **Relevant Files, Symbols, and Entry Points**
+   - List the files, modules, classes, functions, routes, jobs, commands, or configs most relevant to the target.
+   - For each, state why it matters to the target idea.
+   - Prefer the smallest useful set; exclude unrelated modules.
+   - For every confirmed file or symbol, cite the exact file path and, when practical, a symbol name or line reference.
+
+3. **Current Flow and Integration Surface**
+   - Map the current control flow and data flow relevant to the target.
+   - Identify upstream callers, downstream dependencies, external systems, persistence boundaries, and configuration hooks.
+   - Use a small ASCII diagram when it clarifies the flow.
+
+4. **Tests, Verification Surface, and Operational Touchpoints**
+   - Identify the most relevant existing tests, test gaps, runtime checks, logs, scripts, dashboards, or operational artifacts tied to this area.
+   - State what would likely need verification if the target idea were pursued.
+
+5. **Documentation, Specs, and Reality Checks**
+   - Identify the docs, comments, specs, or planning artifacts that appear relevant in the provided context.
+   - Include relevant OpenSpec artifacts when present.
+   - Note any material mismatches between documented intent and implementation reality.
+   - If no relevant docs/specs are present in the provided context, say so plainly.
+
+6. **Domain Terms, Boundaries, and Naming Tensions**
+   - Extract the project-specific terms that matter most for this target.
+   - Call out overloaded terms, conflicting names, unclear boundaries, or hidden ownership assumptions.
+   - Suggest the clearest interpretation when the codebase strongly implies one, but label it as inference if not explicit.
+
+7. **Architecture Tensions, Risks, and Trade-offs**
+   - Surface only the structural issues, tech debt, discrepancy signals, or hard trade-offs that materially affect understanding or adding the target capability.
+   - Do not turn this into a generic code review; stay tied to the target.
+
+8. **High-Leverage Questions for the Next Session**
+   - End with 3-5 concrete questions or decisions that should drive the next human or interactive exploration session.
+   - For each, provide a brief recommended default or likely answer when the evidence supports one.
+
+Evidence rules:
+- Ground every important claim in files, symbols, or observable structure from the provided context.
+- Separate confirmed facts from inference, unknowns, and proposals.
+- Cite exact file paths and, when practical, exact symbols or line references.
+- If you suggest a future module name, env var, CLI command, skill name, or config key, label it **Proposal** rather than presenting it as existing reality.
+
+Anti-goals:
+- Do not simulate a conversation.
+- Do not ask the user questions and wait for answers.
+- Do not narratively claim you created or modified files.
+- Do not dump a generic architecture summary of the whole repo.
+- Do not produce an implementation plan unless it is clearly separated as a minor appendix.
+
+Prioritization:
+- Relevance to the target idea beats comprehensiveness.
+- Architectural overlap and discrepancy findings are welcome only when they help explain the target area.
+- The final brief should be usable on its own by someone preparing for a deeper interactive exploration session.

@@ -3,8 +3,9 @@
 #
 # Intent: Single entry point for structured codegiant tasks. Each task is
 # defined by a prompt file with a # codegiant: header that declares its
-# configuration (mode, ext filter, untracked check). The script auto-discovers
-# tasks from prompt files — no hardcoded dispatch.
+# configuration (mode, ext filter, untracked check, and optional context
+# scoping). The script auto-discovers tasks from prompt files — no hardcoded
+# dispatch.
 #
 # Resolution order:
 #   1. ./codegiant-tasks/ (repo-local, version-controlled)
@@ -16,12 +17,12 @@
 #   - Git repository (for diff-based tasks)
 #
 # Prompt file header format (first line):
-#   # codegiant: mode=<diff-context|diff-only|context> [ext="*.md *.py"] [check_ut=yes]
+#   # codegiant: mode=<diff-context|diff-only|context> [ext="*.md *.py"] [check_ut=yes] [dirs="src tests"] [add="README.md AGENTS.md"] [xdirs="archive screenshots"] [omit="*.png"]
 #
 # Modes:
-#   diff-context  — Full repo context + diff attached (-a diff.txt)
+#   diff-context  — Repo context (optionally scoped) + diff attached (-a diff.txt)
 #   diff-only     — Diff file only, no repo context (-i diff.txt)
-#   context       — Full repo context, no diff (arch review, security, etc.)
+#   context       — Repo context (optionally scoped), no diff
 
 set -euo pipefail
 
@@ -111,6 +112,14 @@ usage() {
     echo "  Any trailing argument is appended to the prompt as dynamic focus."
 }
 
+extract_quoted_config() {
+    local config_line="$1"
+    local key="$2"
+    if [[ $config_line =~ (^|[[:space:]])${key}=\"([^\"]*)\" ]]; then
+        printf '%s\n' "${BASH_REMATCH[2]}"
+    fi
+}
+
 # Args
 if [[ $# -eq 0 ]]; then
     usage; exit 0
@@ -160,9 +169,22 @@ else
     MODE="$DEFAULT_MODE"
 fi
 
-# Extract ext and check_ut
-EXT=$(echo "$CONFIG_LINE" | grep -o 'ext="[^"]*"' | cut -d'"' -f2 || true)
+# Extract config values
+EXT=$(extract_quoted_config "$CONFIG_LINE" ext)
 CHECK_UT=$(echo "$CONFIG_LINE" | grep -o 'check_ut=[^ ;]*' | cut -d= -f2 || echo "no")
+DIRS_RAW=$(extract_quoted_config "$CONFIG_LINE" dirs)
+ADD_RAW=$(extract_quoted_config "$CONFIG_LINE" add)
+XDIRS_RAW=$(extract_quoted_config "$CONFIG_LINE" xdirs)
+OMIT_RAW=$(extract_quoted_config "$CONFIG_LINE" omit)
+
+DIRS=()
+ADD_FILES=()
+EXCLUDE_DIRS=()
+OMIT_FILES=()
+[[ -n "$DIRS_RAW" ]] && read -r -a DIRS <<< "$DIRS_RAW"
+[[ -n "$ADD_RAW" ]] && read -r -a ADD_FILES <<< "$ADD_RAW"
+[[ -n "$XDIRS_RAW" ]] && read -r -a EXCLUDE_DIRS <<< "$XDIRS_RAW"
+[[ -n "$OMIT_RAW" ]] && read -r -a OMIT_FILES <<< "$OMIT_RAW"
 
 # Output filename
 OUT_NAME="${TASK}-review.md"
@@ -214,13 +236,37 @@ fi
     fi
 } > "$TMP_PRMPT"
 
+# Build codegiant args
+CODEGIANT_ARGS=(-y -F -o "./$OUT_NAME" -f "$TMP_PRMPT")
+
+if [[ ${#DIRS[@]} -gt 0 ]]; then
+    for dir in "${DIRS[@]}"; do
+        CODEGIANT_ARGS+=(-d "$dir")
+    done
+fi
+if [[ ${#ADD_FILES[@]} -gt 0 ]]; then
+    for file in "${ADD_FILES[@]}"; do
+        CODEGIANT_ARGS+=(-a "$file")
+    done
+fi
+if [[ ${#EXCLUDE_DIRS[@]} -gt 0 ]]; then
+    for dir in "${EXCLUDE_DIRS[@]}"; do
+        CODEGIANT_ARGS+=(-x "$dir")
+    done
+fi
+if [[ ${#OMIT_FILES[@]} -gt 0 ]]; then
+    for pattern in "${OMIT_FILES[@]}"; do
+        CODEGIANT_ARGS+=(-O "$pattern")
+    done
+fi
+
 # Run codegiant
 if [[ "$MODE" == diff-context ]]; then
-    codegiant.py -y -F -o "./$OUT_NAME" -f "$TMP_PRMPT" -a "$TMP_DIFF"
+    CODEGIANT_ARGS+=(-a "$TMP_DIFF")
 elif [[ "$MODE" == diff-only ]]; then
-    codegiant.py -y -F -o "./$OUT_NAME" -f "$TMP_PRMPT" -i "$TMP_DIFF"
-else
-    codegiant.py -y -F -o "./$OUT_NAME" -f "$TMP_PRMPT"
+    CODEGIANT_ARGS+=(-i "$TMP_DIFF")
 fi
+
+codegiant.py "${CODEGIANT_ARGS[@]}"
 
 echo "✓ Written to: $OUT_NAME"

@@ -14,14 +14,14 @@ Unified codegiant task dispatcher. A single script (`~/.local/bin/cg-task.sh`) a
 
 **Prompt header format** (first line of `*.txt`):
 ```
-# codegiant: mode=<diff-context|diff-only|context> [ext="*.md *.py"] [check_ut=yes]
+# codegiant: mode=<diff-context|diff-only|context> [ext="*.md *.py"] [check_ut=yes] [dirs="src tests"] [add="README.md AGENTS.md"] [xdirs="archive screenshots"] [omit="*.png"]
 ```
 
 | Mode | Behavior |
 |------|----------|
-| `diff-context` | Full repo context + diff attached (`-a`) |
+| `diff-context` | Repo context (optionally scoped) + diff attached (`-a`) |
 | `diff-only` | Diff file only, no repo context (`-i`) |
-| `context` | Full repo context, no diff |
+| `context` | Repo context (optionally scoped), no diff |
 
 ## Tasks
 
@@ -33,6 +33,7 @@ Unified codegiant task dispatcher. A single script (`~/.local/bin/cg-task.sh`) a
 | `security-assessment` | context | Production readiness review |
 | `code-style` | context | Readability/maintainability |
 | `discrepancy-check` | context | Archived OpenSpec vs code |
+| `explore-prep` | context | Targeted understanding brief for a planned change or subsystem |
 
 ## Usage
 
@@ -44,6 +45,7 @@ cg-task.sh diff-review --diff-only     # diff only, no repo context
 cg-task.sh document-review             # document review (halts on untracked)
 cg-task.sh architecture-review         # full context review
 cg-task.sh architecture-review "focus on module boundaries"  # with hint
+cg-task.sh explore-prep "add elasticsearch as a new information source"  # targeted recon brief
 ```
 
 ## Experience Log
@@ -107,6 +109,6 @@ cg-task.sh architecture-review "focus on module boundaries"  # with hint
 ## Adding New Tasks
 
 1. Create `<name>.txt` in `~/.local/bin/cg-task/defaults/` (global) or `./codegiant-tasks/` (repo-local)
-2. First line must be: `# codegiant: mode=<diff-context|diff-only|context> [ext="..."] [check_ut=yes]`
+2. First line must be: `# codegiant: mode=<diff-context|diff-only|context> [ext="..."] [check_ut=yes] [dirs="..."] [add="..."] [xdirs="..."] [omit="..."]`
 3. That's it — `cg-task.sh -h` will discover it automatically
 4. Test once and record quality notes in this README

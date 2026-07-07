@@ -29,6 +29,8 @@ FILE_OMIT_CONTENT_PATTERNS = [
     # Common binary file extensions
     "*.jar", "*.class", "*.zip", "*.png", "*.jpg", "*.jpeg", "*.gif", "*.svg",
     "*.webp", "*.mp4", "*.mp3", "*.mov", "*.pdf",
+    # Minified/vendor web assets and sourcemaps
+    "*.min.js", "*.min.js.map", "*.js.map",
 ]
 
 # Patterns for directories to always ignore during file scanning
