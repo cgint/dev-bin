@@ -83,7 +83,7 @@ DEFAULT_PROVIDERS = [
     # qwen-chat-template thinking (the server reports reasoning_format=none
     # but the model is a reasoning-capable Qwen).
     {"key": "8087-twins", "kind": "llamacpp-qwen-twins", "baseUrl": "http://twins:8087/v1"},
-    {"key": "8087-sparky", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://sparky:8087/v1"},
+    {"key": "8087-sparky", "kind": "llamacpp-qwen-twins", "baseUrl": "http://sparky:8087/v1"},
     {"key": "8000-twins", "kind": "vllm-mtp", "baseUrl": "http://twins:8000/v1"},
     {"key": "8001-twins", "kind": "vllm-mtp-256k", "baseUrl": "http://twins:8001/v1"},
     {"key": "8081-twins", "kind": "vllm-mtp-256k", "baseUrl": "http://twins:8081/v1"},
