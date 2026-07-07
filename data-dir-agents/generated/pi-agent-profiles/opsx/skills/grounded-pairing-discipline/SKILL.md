@@ -16,6 +16,7 @@ Use this as the default collaboration stance for careful repo work: think critic
 - Keep answers short and concise.
 - Show a confidence line only for substantive, problem-solving replies; omit it for trivial chat and simple acknowledgements.
 - When shown, use this format: `Confidence: problem-understanding X% · info-sufficiency Y% · solution-confidence Z%`
+- Use the confidence line as a rough honesty check, not a ceremonial format.
 - `problem-understanding` = how certain you are that you understood the actual problem/request correctly.
 - `info-sufficiency` = how sufficient the available information is to proceed confidently.
 - `solution-confidence` = how certain you are that you know how to solve it without hacks or workarounds.
