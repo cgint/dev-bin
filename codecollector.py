@@ -42,7 +42,8 @@ FILE_NEVER_INCLUDE_IGNORE_DIRS = [
     "playwright-report/", "target/", "bin/", "obj/", "Debug/", "Release/",
     ".gradle/", "gradle/", "out/", "logs/", "tmp/", "temp/", "cache/",
     ".cache/", "coverage/", ".coverage/", ".nyc_output/", "htmlcov/",
-    "mlruns/", "openspec/"
+    "mlruns/", "openspec/",
+    "web/static/external/**",
 ]
 
 # Patterns for files to always ignore
@@ -150,6 +151,27 @@ def parse_file_list(file_path: Path) -> list[Path]:
         return []
     
     return file_paths
+
+def should_ignore_scanned_dir(dir_path: Path) -> bool:
+    """Return True when a directory should be pruned during os.walk.
+
+    Supports both exact directory-name ignores like "node_modules/" and
+    path-aware glob rules like "web/static/external/**".
+    """
+    dir_path_str = dir_path.as_posix().strip("./")
+    dir_path_with_slash = f"{dir_path_str}/" if dir_path_str else ""
+    dir_name_with_slash = f"{dir_path.name}/"
+
+    for pattern in FILE_NEVER_INCLUDE_IGNORE_DIRS:
+        normalized_pattern = pattern.replace("\\", "/")
+        if "*" in normalized_pattern or "/" in normalized_pattern.rstrip("/"):
+            if fnmatch.fnmatch(dir_path_str, normalized_pattern.rstrip("/")) or fnmatch.fnmatch(dir_path_with_slash, normalized_pattern):
+                return True
+        elif dir_name_with_slash == normalized_pattern:
+            return True
+
+    return False
+
 
 def is_codegiant_ignored(relative_path: Path, codegiant_ignore_patterns: list[str]) -> tuple[bool, str]:
     """
@@ -308,8 +330,12 @@ def gather_files(args: argparse.Namespace) -> list[Path]:
                 if not args.ignore_all_ignores:
                     # Enhanced directory filtering - more aggressive pruning
                     original_dir_count = len(dirs)
-                    dirs[:] = [d for d in dirs if f"{d}/" not in FILE_NEVER_INCLUDE_IGNORE_DIRS]
-                    
+                    root_path = Path(root)
+                    dirs[:] = [
+                        d for d in dirs
+                        if not should_ignore_scanned_dir((root_path / d).resolve().relative_to(Path.cwd().resolve()))
+                    ]
+
                     # Also filter out common patterns that might not be in the exact list
                     dirs[:] = [d for d in dirs if not any([
                         d.startswith('.') and d not in ['.github', '.vscode'],  # Hidden dirs except common ones
