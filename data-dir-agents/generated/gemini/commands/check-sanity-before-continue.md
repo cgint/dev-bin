@@ -1,6 +1,6 @@
 ## General instruction now
 - All sound ?
-- No hacks and workarouns ?
+- No hacks and workarounds ?
 - Any objections to the current state ?
 - Anything left to do before we have this part finished and can go on to the next ?
 
