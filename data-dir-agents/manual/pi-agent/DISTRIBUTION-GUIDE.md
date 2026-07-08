@@ -27,6 +27,20 @@ After modifying a file that is distributed, check whether it needs to be
 copied to any of the locations above. **Do not distribute automatically** — confirm
 with the user which locations need updating.
 
+## Rollout note (2026-07-07)
+
+Rollout of `extensions/advisor.ts` requires write access to `~/.pi/` paths.
+In READ-ONLY mode the write guard restricts output to the repo directory
+(`data-dir-agents/manual/pi-agent/`). The rollout commands are ready:
+
+```bash
+cp data-dir-agents/manual/pi-agent/extensions/advisor.ts ~/.pi/agent/extensions/advisor.ts
+cp data-dir-agents/manual/pi-agent/extensions/advisor.ts ~/.pi/profiles/partner/agent/extensions/advisor.ts
+```
+
+If the write guard blocks this, the user needs to update the write guard to
+allow `~/.pi/` paths, or approve the `cp` command explicitly.
+
 ## Quick reference
 
 ```bash
