@@ -48,6 +48,16 @@ cg-task.sh architecture-review "focus on module boundaries"  # with hint
 cg-task.sh explore-prep "add elasticsearch as a new information source"  # targeted recon brief
 ```
 
+## Output files
+
+The dispatcher copies the final markdown result to the working directory as:
+
+```bash
+cg-task-result-<task>.md
+```
+
+This makes it easy to ignore with a single pattern like `cg-task-result-*`.
+
 ## Experience Log
 
 ### General observations (based on initial trial runs)

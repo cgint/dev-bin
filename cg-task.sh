@@ -187,8 +187,7 @@ OMIT_FILES=()
 [[ -n "$OMIT_RAW" ]] && read -r -a OMIT_FILES <<< "$OMIT_RAW"
 
 # Output filename
-OUT_NAME="${TASK}-review.md"
-[[ "$MODE" == "diff-only" ]] && OUT_NAME="${TASK}-diffonly.md"
+OUT_NAME="cg-task-result-${TASK}.md"
 
 # Temp files — always in cwd (not PROMPT_DIR) so codegiant.py can find them
 TMP_DIFF="._cg_tmp_diff.txt"
