@@ -20,3 +20,5 @@ __pycache__/
 testing_tmp/
 *.zip
 .venv*
+
+.pi/goals
