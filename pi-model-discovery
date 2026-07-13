@@ -75,6 +75,7 @@ DEFAULT_PROVIDERS = [
     # {"key": "lms-twins", "kind": "lmstudio", "baseUrl": "http://twins:1234/v1"},
     {"key": "8083-twins", "kind": "vllm-mtp", "baseUrl": "http://twins:8083/v1"},
     {"key": "8083-sparky", "kind": "vllm-mtp", "baseUrl": "http://sparky:8083/v1"},
+    {"key": "8003-sparky", "kind": "vllm-mtp", "baseUrl": "http://sparky:8003/v1"},
     # {"key": "8085-twins", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://twins:8085/v1"},
     # {"key": "8086-twins", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://twins:8086/v1"},
     # {"key": "8000-twins", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://twins:8000/v1"},
