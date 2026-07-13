@@ -482,7 +482,7 @@ def provider_default_compat(kind: str) -> dict[str, Any]:
         return {
             "supportsDeveloperRole": False,
             "maxTokensField": "max_tokens",
-            "requiresAssistantAfterToolResult": True,
+            "requiresAssistantAfterToolResult": False,
         }
     if kind == "llamacpp-qwen-twins":
         # Qwen reasoning model on twins:8087. Does NOT need the synthetic
