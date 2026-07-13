@@ -1,6 +1,6 @@
 ---
 name: python-uv-discipline
-description: Strong Python execution discipline for uv-based work: stop before bare `python`, check for `uv.lock`, and use `uv run python` so the project environment is never bypassed.
+description: "Strong Python execution discipline for uv-based work: stop before bare `python`, check for `uv.lock`, and use `uv run python` so the project environment is never bypassed."
 ---
 
 # Python UV Discipline
