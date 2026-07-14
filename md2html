@@ -52,7 +52,7 @@ code {
 }
 
 :not(pre):not(.hljs) > code {
-  color: #C9AE75;
+  color: #6B4F00;
   font-size: inherit;
 }
 
