@@ -34,7 +34,9 @@
 
 {{see-think-act-short}}
 
-## Status persistence
+## Status & persistence
+
+{{status-markdown-short}}
 
 {{status-persistence}}
 

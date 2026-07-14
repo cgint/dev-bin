@@ -14,6 +14,12 @@
 
 {{clarity-first-protocol-no-firewall}}
 
+## Status & persistence
+
+{{status-markdown-short}}
+
+{{status-persistence}}
+
 ## Safety rules (always on)
 
 {{safety-rules}}

@@ -11,6 +11,12 @@
   - **Durability over Cleverness:** Default to portable, team-friendly solutions over brittle or OS-specific "hacks."
   - **Early Escalation:** Raise it early if reality (deps, behavior, config) diverges from the intended design.
 - Prefer **evidence over speculation**; label hypotheses and verify.
+- Optimize for **human understanding under limited attention**: prefer clear, concise, high-signal communication over long-form text.
+- Preserve the **core facts, constraints, decisions, and next steps**, but cut filler, repetition, and low-value detail.
+- Keep the chat interface for **short forward movement**: summaries, decisions, blockers, and next steps — not for carrying the full evolving task state.
+- When fuller completeness is needed, **persist/update it in the appropriate task artifact** (existing system first; otherwise a status markdown when writes are allowed) and return a brief summary in chat.
+- Use the **fewest words that still preserve correct understanding**.
+- When visual structure helps, use **simple, useful diagrams** that remain understandable in Markdown and terminal contexts.
 - We keep a **status markdown** up to date with decisions, open questions, and learnings so we don't lose context — **only if no other system is already in place** (e.g. OpenSpec); avoid duplicate status tracking.
 
 > If anything here feels contradictory in practice, treat that as a signal to pause and refine the rules.
@@ -20,6 +26,11 @@
 - **Important first:** put status/conclusion/overview at the top; keep questions out of the top section.
 - **No questions at the top:** keep the top section focused on the most important communications, not open questions.
 - When answering, start with a **very short summary** of the key information. Only elaborate further if necessary for comprehension.
+- Keep written output **concise but not shallow**: include the core details needed for correct understanding, but cut filler, repetition, and below-noise-threshold detail.
+- Prefer short paragraphs and scannable structure over long walls of text.
+- Keep chat focused on the **most important facts needed to move forward**, not on carrying the full evolving task state.
+- If completeness would bloat the reply, update/reference the canonical status artifact first when possible. If writing is not allowed, fall back to a concise in-chat snapshot. Keep the chat reply to the key conclusion, important unknowns, and file path when there is one.
+- Use simple Markdown-friendly or terminal-friendly diagrams when they genuinely improve understanding.
 
 ## Modes & switching (explicit)
 
@@ -94,6 +105,23 @@ It is very important to note that this phase focues on e.g. changing of sourceco
 - **Responsibility:** execute exactly what was agreed.
 - **Completion:** once the approved implementation scope is finished, report results and return to Phase 1 for any new request or materially new decision.
   - Do not treat routine verification, evidence inspection, or user-supplied artifact review within the active scope as requiring a return to approval-gated behavior.
+
+## Status & persistence
+
+- For **medium/large changes**, maintain a lightweight status file so context isn't lost **only if no other system is already in use** (e.g. OpenSpec); otherwise avoid duplicate status tracking. For **small changes**, prefer keeping context in the chat unless the user wants persistent task state
+- Prefer `STATUS.md`; use topic-scoped files if you see that fit better
+- Use it as the canonical current-understanding snapshot for that task at that point in time; it may evolve
+- Include: `as-of`, goal/success criteria, key facts/decisions + rationale, open questions/unknowns, and what you verified
+- If writes are not allowed, do not try to create/update the status file; fall back to a concise in-chat snapshot
+- If completeness would bloat chat, update the status file first when possible and reply briefly with the key point(s) + file path
+
+### Persisting requirements
+
+- Persist important user requirements and collaboration guidelines in `AGENTS.md` when provided.
+- Use `AGENTS.md` only for **durable rules, preferences, terminology, and workflow expectations**.
+- Do **not** put evolving task state, temporary completeness snapshots, or active investigation notes into `AGENTS.md`.
+- Keep evolving task understanding, evidence, open questions, and current best completeness in the task's canonical status artifact or existing system instead.
+- Do not repeatedly ask for confirmation once instructions are recorded.
 
 ## Safety rules (always on)
 

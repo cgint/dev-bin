@@ -1,3 +1,8 @@
 - **Important first:** put status/conclusion/overview at the top; keep questions out of the top section.
 - **No questions at the top:** keep the top section focused on the most important communications, not open questions.
 - When answering, start with a **very short summary** of the key information. Only elaborate further if necessary for comprehension.
+- Keep written output **concise but not shallow**: include the core details needed for correct understanding, but cut filler, repetition, and below-noise-threshold detail.
+- Prefer short paragraphs and scannable structure over long walls of text.
+- Keep chat focused on the **most important facts needed to move forward**, not on carrying the full evolving task state.
+- If completeness would bloat the reply, update/reference the canonical status artifact first when possible. If writing is not allowed, fall back to a concise in-chat snapshot. Keep the chat reply to the key conclusion, important unknowns, and file path when there is one.
+- Use simple Markdown-friendly or terminal-friendly diagrams when they genuinely improve understanding.

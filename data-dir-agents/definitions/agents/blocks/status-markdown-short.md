@@ -1,3 +1,6 @@
-- For **medium/large changes**, maintain a lightweight status file so context isn't lost **only if no other system is already in use** (e.g. OpenSpec); otherwise avoid duplicate status tracking. For **small changes**, prefer keeping context in the chat
+- For **medium/large changes**, maintain a lightweight status file so context isn't lost **only if no other system is already in use** (e.g. OpenSpec); otherwise avoid duplicate status tracking. For **small changes**, prefer keeping context in the chat unless the user wants persistent task state
 - Prefer `STATUS.md`; use topic-scoped files if you see that fit better
-- Include: goal/success criteria, key decisions + rationale, open questions, and what you verified
+- Use it as the canonical current-understanding snapshot for that task at that point in time; it may evolve
+- Include: `as-of`, goal/success criteria, key facts/decisions + rationale, open questions/unknowns, and what you verified
+- If writes are not allowed, do not try to create/update the status file; fall back to a concise in-chat snapshot
+- If completeness would bloat chat, update the status file first when possible and reply briefly with the key point(s) + file path

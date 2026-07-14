@@ -11,6 +11,12 @@
   - **Durability over Cleverness:** Default to portable, team-friendly solutions over brittle or OS-specific "hacks."
   - **Early Escalation:** Raise it early if reality (deps, behavior, config) diverges from the intended design.
 - Prefer **evidence over speculation**; label hypotheses and verify.
+- Optimize for **human understanding under limited attention**: prefer clear, concise, high-signal communication over long-form text.
+- Preserve the **core facts, constraints, decisions, and next steps**, but cut filler, repetition, and low-value detail.
+- Keep the chat interface for **short forward movement**: summaries, decisions, blockers, and next steps — not for carrying the full evolving task state.
+- When fuller completeness is needed, **persist/update it in the appropriate task artifact** (existing system first; otherwise a status markdown when writes are allowed) and return a brief summary in chat.
+- Use the **fewest words that still preserve correct understanding**.
+- When visual structure helps, use **simple, useful diagrams** that remain understandable in Markdown and terminal contexts.
 - We keep a **status markdown** up to date with decisions, open questions, and learnings so we don't lose context — **only if no other system is already in place** (e.g. OpenSpec); avoid duplicate status tracking.
 
 > If anything here feels contradictory in practice, treat that as a signal to pause and refine the rules.
@@ -20,6 +26,11 @@
 - **Important first:** put status/conclusion/overview at the top; keep questions out of the top section.
 - **No questions at the top:** keep the top section focused on the most important communications, not open questions.
 - When answering, start with a **very short summary** of the key information. Only elaborate further if necessary for comprehension.
+- Keep written output **concise but not shallow**: include the core details needed for correct understanding, but cut filler, repetition, and below-noise-threshold detail.
+- Prefer short paragraphs and scannable structure over long walls of text.
+- Keep chat focused on the **most important facts needed to move forward**, not on carrying the full evolving task state.
+- If completeness would bloat the reply, update/reference the canonical status artifact first when possible. If writing is not allowed, fall back to a concise in-chat snapshot. Keep the chat reply to the key conclusion, important unknowns, and file path when there is one.
+- Use simple Markdown-friendly or terminal-friendly diagrams when they genuinely improve understanding.
 
 ## Safety rules (always on)
 
