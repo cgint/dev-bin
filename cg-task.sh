@@ -2,7 +2,7 @@
 # cg-task.sh — Unified codegiant task dispatcher
 #
 # Intent: Single entry point for structured codegiant tasks. Each task is
-# defined by a prompt file with a # codegiant: header that declares its
+# defined by a prompt file whose top-of-file frontmatter declares its
 # configuration (mode, ext filter, untracked check, and optional context
 # scoping). The script auto-discovers tasks from prompt files — no hardcoded
 # dispatch.
@@ -16,8 +16,13 @@
 #   - GEMINI_API_KEY set
 #   - Git repository (for diff-based tasks)
 #
-# Prompt file header format (first line):
-#   # codegiant: mode=<diff-context|diff-only|context> [ext="*.md *.py"] [check_ut=yes] [dirs="src tests"] [add="README.md AGENTS.md"] [xdirs="archive screenshots"] [omit="*.png"]
+# Prompt file format (top of file):
+#   ---
+#   mode: diff-context
+#   scan-dirs: "src tests"
+#   ignore-dirs: "archive screenshots"
+#   ---
+#   Prompt body starts here.
 #
 # Modes:
 #   diff-context  — Repo context (optionally scoped) + diff attached (-a diff.txt)
@@ -53,13 +58,146 @@ if [[ "$HELP_REQUEST" == true ]]; then
     exit 0
 fi
 
-# Count valid prompts (files with # codegiant: header) in a directory
+is_frontmatter_prompt() {
+    local prompt_file="$1"
+    head -1 "$prompt_file" 2>/dev/null | grep -qx '^---$'
+}
+
+frontmatter_end_line() {
+    local prompt_file="$1"
+    awk '
+        NR == 1 {
+            if ($0 != "---") {
+                exit 1
+            }
+            next
+        }
+        $0 == "---" {
+            print NR
+            found = 1
+            exit
+        }
+        END {
+            if (!found) {
+                exit 1
+            }
+        }
+    ' "$prompt_file" 2>/dev/null || true
+}
+
+frontmatter_has_only_supported_keys() {
+    local prompt_file="$1"
+    awk '
+        BEGIN {
+            allowed["mode"] = 1
+            allowed["scan-dirs"] = 1
+            allowed["ignore-dirs"] = 1
+            allowed["add"] = 1
+            allowed["ext"] = 1
+            allowed["check_ut"] = 1
+            allowed["omit"] = 1
+            closed = 0
+        }
+        NR == 1 {
+            if ($0 != "---") {
+                exit 1
+            }
+            next
+        }
+        $0 == "---" {
+            closed = 1
+            exit
+        }
+        {
+            line = $0
+            sub(/^[[:space:]]+/, "", line)
+            sub(/[[:space:]]+$/, "", line)
+            if (line == "") {
+                next
+            }
+            if (line !~ /^[[:alnum:]_-]+:[[:space:]]*/) {
+                exit 1
+            }
+            key = line
+            sub(/:.*/, "", key)
+            if (!(key in allowed)) {
+                exit 1
+            }
+        }
+        END {
+            if (!closed) {
+                exit 1
+            }
+        }
+    ' "$prompt_file" >/dev/null 2>&1
+}
+
+frontmatter_value() {
+    local prompt_file="$1"
+    local wanted="$2"
+    awk -v wanted="$wanted" '
+        NR == 1 {
+            if ($0 != "---") {
+                exit 1
+            }
+            next
+        }
+        $0 == "---" {
+            exit
+        }
+        {
+            line = $0
+            sub(/^[[:space:]]+/, "", line)
+            sub(/[[:space:]]+$/, "", line)
+            if (line !~ /^[[:alnum:]_-]+:[[:space:]]*/) {
+                next
+            }
+            field = line
+            sub(/:.*/, "", field)
+            if (field != wanted) {
+                next
+            }
+            value = substr(line, index(line, ":") + 1)
+            sub(/^[[:space:]]+/, "", value)
+            sub(/[[:space:]]+$/, "", value)
+            if (value ~ /^".*"$/) {
+                value = substr(value, 2, length(value) - 2)
+            }
+            print value
+            found = 1
+            exit
+        }
+        END {
+            if (!found) {
+                exit 1
+            }
+        }
+    ' "$prompt_file" 2>/dev/null || true
+}
+
+prompt_file_is_valid_task() {
+    local prompt_file="$1"
+    local mode
+
+    [[ -f "$prompt_file" ]] || return 1
+    is_frontmatter_prompt "$prompt_file" || return 1
+    [[ -n "$(frontmatter_end_line "$prompt_file")" ]] || return 1
+    frontmatter_has_only_supported_keys "$prompt_file" || return 1
+
+    mode="$(frontmatter_value "$prompt_file" mode)"
+    case "$mode" in
+        diff-context|diff-only|context) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+# Count valid prompts (files with frontmatter headers) in a directory
 count_valid_prompts() {
     local dir="$1"
     local count=0
     for f in "$dir"/*.txt; do
         [[ -f "$f" ]] || continue
-        if head -1 "$f" 2>/dev/null | grep -q '^# codegiant:'; then
+        if prompt_file_is_valid_task "$f"; then
             ((++count)) || true
         fi
     done
@@ -75,17 +213,17 @@ if [[ "$LOCAL_VALID" -gt 0 ]]; then
 elif [[ "$DEFAULTS_VALID" -gt 0 ]]; then
     PROMPT_DIR="$DEFAULTS_DIR"
 else
-    echo "Error: no valid task prompts found (missing '# codegiant:' header)." >&2
+    echo "Error: no valid task prompts found (missing top-of-file '---' frontmatter)." >&2
     echo "  Local: $LOCAL_DIR/*.txt ($LOCAL_VALID valid)" >&2
     echo "  Global: $DEFAULTS_DIR/*.txt ($DEFAULTS_VALID valid)" >&2
     exit 1
 fi
 
-# Discover tasks: txt files with # codegiant: header
+# Discover tasks: txt files with frontmatter headers
 discover_tasks() {
     for f in "$PROMPT_DIR"/*.txt; do
         [[ -f "$f" ]] || continue
-        if head -1 "$f" 2>/dev/null | grep -q '^# codegiant:'; then
+        if prompt_file_is_valid_task "$f"; then
             basename "$f" .txt
         fi
     done
@@ -93,13 +231,29 @@ discover_tasks() {
 
 TASK_LIST=$(discover_tasks)
 
+prompt_body_start_line() {
+    local prompt_file="$1"
+    local end_line
+    end_line="$(frontmatter_end_line "$prompt_file")" || return 1
+    printf '%s\n' "$((end_line + 1))"
+}
+
+prompt_preview_line() {
+    local prompt_file="$1"
+    local start_line
+    start_line="$(prompt_body_start_line "$prompt_file")" || return 0
+    sed -n "${start_line},\$p" "$prompt_file" | awk 'NF { print; exit }'
+}
+
 usage() {
     echo "Usage: $SCRIPT_NAME <task> [--staged] [--diff-only] [hint]"
     echo ""
     echo "Tasks (from $(basename "$PROMPT_DIR")):"
-    echo "$TASK_LIST" | while read -r t; do
+    printf '%s\n' "$TASK_LIST" | while read -r t; do
+        [[ -n "$t" ]] || continue
         local prompt_file="$PROMPT_DIR/${t}.txt"
-        local desc=$(sed -n '2p' "$prompt_file" | head -c 60)
+        local desc
+        desc="$(prompt_preview_line "$prompt_file" | head -c 60)"
         printf "  %-20s %s\n" "$t" "$desc"
     done
     echo ""
@@ -112,25 +266,29 @@ usage() {
     echo "  Any trailing argument is appended to the prompt as dynamic focus."
 }
 
-extract_quoted_config() {
-    local config_line="$1"
-    local key="$2"
-    if [[ $config_line =~ (^|[[:space:]])${key}=\"([^\"]*)\" ]]; then
-        printf '%s\n' "${BASH_REMATCH[2]}"
-    fi
+extract_prompt_body() {
+    local prompt_file="$1"
+    local start_line
+    start_line="$(prompt_body_start_line "$prompt_file")" || {
+        echo "Error: missing or unterminated frontmatter in $prompt_file" >&2
+        return 1
+    }
+    sed -n "${start_line},\$p" "$prompt_file"
 }
 
 # Args
 if [[ $# -eq 0 ]]; then
-    usage; exit 0
+    usage
+    exit 0
 fi
 
-TASK="$1"; shift
+TASK="$1"
+shift
 
 # Validate task
-if ! echo "$TASK_LIST" | grep -qx "$TASK"; then
+if ! printf '%s\n' "$TASK_LIST" | grep -qx "$TASK"; then
     echo "Unknown task: $TASK" >&2
-    echo "Available: $(echo $TASK_LIST | tr '\n' ' ')" >&2
+    echo "Available: $(printf '%s\n' "$TASK_LIST" | tr '\n' ' ')" >&2
     exit 1
 fi
 
@@ -148,15 +306,13 @@ done
 
 PROMPT_FILE="$PROMPT_DIR/${TASK}.txt"
 
-# Parse config header
-CONFIG_LINE=$(head -1 "$PROMPT_FILE" | grep '^# codegiant:' || true)
-if [[ -z "$CONFIG_LINE" ]]; then
-    echo "Missing config header in $PROMPT_FILE" >&2
+# Parse config frontmatter
+if ! prompt_file_is_valid_task "$PROMPT_FILE"; then
+    echo "Invalid or incomplete frontmatter in $PROMPT_FILE" >&2
     exit 1
 fi
 
-# Extract mode
-DEFAULT_MODE=$(echo "$CONFIG_LINE" | grep -o 'mode=[^ ;]*' | head -1 | cut -d= -f2)
+DEFAULT_MODE="$(frontmatter_value "$PROMPT_FILE" mode)"
 case "$DEFAULT_MODE" in
     diff-context|diff-only|context) ;;
     *) echo "Invalid mode '$DEFAULT_MODE' in $PROMPT_FILE" >&2; exit 1 ;;
@@ -170,12 +326,13 @@ else
 fi
 
 # Extract config values
-EXT=$(extract_quoted_config "$CONFIG_LINE" ext)
-CHECK_UT=$(echo "$CONFIG_LINE" | grep -o 'check_ut=[^ ;]*' | cut -d= -f2 || echo "no")
-DIRS_RAW=$(extract_quoted_config "$CONFIG_LINE" dirs)
-ADD_RAW=$(extract_quoted_config "$CONFIG_LINE" add)
-XDIRS_RAW=$(extract_quoted_config "$CONFIG_LINE" xdirs)
-OMIT_RAW=$(extract_quoted_config "$CONFIG_LINE" omit)
+EXT="$(frontmatter_value "$PROMPT_FILE" ext)"
+CHECK_UT="$(frontmatter_value "$PROMPT_FILE" check_ut)"
+CHECK_UT="${CHECK_UT:-no}"
+DIRS_RAW="$(frontmatter_value "$PROMPT_FILE" scan-dirs)"
+EXCLUDE_DIRS_RAW="$(frontmatter_value "$PROMPT_FILE" ignore-dirs)"
+ADD_RAW="$(frontmatter_value "$PROMPT_FILE" add)"
+OMIT_RAW="$(frontmatter_value "$PROMPT_FILE" omit)"
 
 DIRS=()
 ADD_FILES=()
@@ -183,7 +340,7 @@ EXCLUDE_DIRS=()
 OMIT_FILES=()
 [[ -n "$DIRS_RAW" ]] && read -r -a DIRS <<< "$DIRS_RAW"
 [[ -n "$ADD_RAW" ]] && read -r -a ADD_FILES <<< "$ADD_RAW"
-[[ -n "$XDIRS_RAW" ]] && read -r -a EXCLUDE_DIRS <<< "$XDIRS_RAW"
+[[ -n "$EXCLUDE_DIRS_RAW" ]] && read -r -a EXCLUDE_DIRS <<< "$EXCLUDE_DIRS_RAW"
 [[ -n "$OMIT_RAW" ]] && read -r -a OMIT_FILES <<< "$OMIT_RAW"
 
 # Output filename
@@ -227,9 +384,9 @@ if [[ "$MODE" == diff-context || "$MODE" == diff-only ]]; then
     [[ -s "$TMP_DIFF" ]] || { echo "No changes to review."; exit 0; }
 fi
 
-# Build prompt: static + hint
+# Build prompt: frontmatter-stripped body + optional hint
 {
-    cat "$PROMPT_FILE"
+    extract_prompt_body "$PROMPT_FILE"
     if [[ -n "$HINT" ]]; then
         printf '\n\n**Additional focus:** %s\n' "$HINT"
     fi

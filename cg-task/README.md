@@ -1,6 +1,6 @@
 # cg-task
 
-Unified codegiant task dispatcher. A single script (`~/.local/bin/cg-task.sh`) auto-discovers tasks from prompt files with `# codegiant:` config headers. No per-task scripts needed.
+Unified codegiant task dispatcher. A single script (`~/.local/bin/cg-task.sh`) auto-discovers tasks from prompt files with top-of-file frontmatter config blocks. No per-task scripts needed.
 
 ## Architecture
 
@@ -12,10 +12,22 @@ Unified codegiant task dispatcher. A single script (`~/.local/bin/cg-task.sh`) a
 
 **Resolution:** if `./codegiant-tasks/` exists with prompt files → use local. Otherwise → fall back to global defaults.
 
-**Prompt header format** (first line of `*.txt`):
+**Prompt frontmatter format** (top of `*.txt`):
 ```
-# codegiant: mode=<diff-context|diff-only|context> [ext="*.md *.py"] [check_ut=yes] [dirs="src tests"] [add="README.md AGENTS.md"] [xdirs="archive screenshots"] [omit="*.png"]
+---
+mode: diff-context
+scan-dirs: "src tests"
+ignore-dirs: "archive screenshots"
+add: "README.md AGENTS.md"
+ext: "*.md *.py"
+check_ut: yes
+omit: "*.png"
+---
 ```
+
+`mode` is required. `scan-dirs` maps to repeated `-d` flags, `ignore-dirs` maps to repeated `-x` flags, and the prompt body begins immediately after the closing `---`.
+
+Legacy `# codegiant:` task headers and legacy scoping keys are no longer supported.
 
 | Mode | Behavior |
 |------|----------|
@@ -111,14 +123,21 @@ This makes it easy to ignore with a single pattern like `cg-task-result-*`.
 ### 2026-07-05 — Unified dispatcher migration
 
 - Replaced per-task `.sh` scripts with single `cg-task.sh` dispatcher.
-- Config driven by `# codegiant:` prompt headers (mode, ext, check_ut).
-- Auto-discovery: any `*.txt` with a valid header is a task. No script edits to add tasks.
 - Precedence: repo-local `./codegiant-tasks/` → global `~/.local/bin/cg-task/defaults/`.
 - Old per-task scripts (`diff_review.sh`, `doc_review.sh`, etc.) are obsolete.
+
+### 2026-07-08 — Frontmatter task definition migration
+
+- Task definitions now use top-of-file frontmatter blocks instead of `# codegiant:` headers.
+- `cg-task.sh` strips the frontmatter before sending the prompt body to `codegiant.py`.
+- Auto-discovery now treats any `*.txt` with valid frontmatter as a task.
+- `scan-dirs` maps to repeated `-d` flags and `ignore-dirs` maps to repeated `-x` flags.
 
 ## Adding New Tasks
 
 1. Create `<name>.txt` in `~/.local/bin/cg-task/defaults/` (global) or `./codegiant-tasks/` (repo-local)
-2. First line must be: `# codegiant: mode=<diff-context|diff-only|context> [ext="..."] [check_ut=yes] [dirs="..."] [add="..."] [xdirs="..."] [omit="..."]`
-3. That's it — `cg-task.sh -h` will discover it automatically
-4. Test once and record quality notes in this README
+2. Add a top-of-file frontmatter block with at least `mode: <diff-context|diff-only|context>`
+3. Use `scan-dirs`, `ignore-dirs`, `add`, `ext`, `check_ut`, and `omit` as needed, one property per line
+4. Put the prompt body immediately after the closing `---`
+5. `cg-task.sh -h` will discover it automatically
+6. Test once and record quality notes in this README

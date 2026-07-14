@@ -1,4 +1,9 @@
-# codegiant: mode=context dirs="src tests docs openspec .github .pi" add="AGENTS.md README.md pyproject.toml .env.example" xdirs="archive screenshots"
+---
+mode: context
+scan-dirs: "src tests docs openspec .github .pi"
+add: "AGENTS.md README.md pyproject.toml .env.example"
+ignore-dirs: "archive screenshots"
+---
 Prepare a structured exploration brief for the target idea or area named in the additional focus hint. Build an understanding packet that can stand alone and also serve as a durable handoff artifact for a later interactive exploration or design session.
 
 Primary goal: explain what must be understood before discussing or implementing the target change. This is not primarily a review or implementation plan. It may include review-style findings only when they materially improve understanding of the target area.

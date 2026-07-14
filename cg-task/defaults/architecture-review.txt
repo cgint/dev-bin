@@ -1,4 +1,6 @@
-# codegiant: mode=context
+---
+mode: context
+---
 Review the overall architecture of the codebase. Assess structural health and propose improvements where they address real problems.
 
 Evaluate:

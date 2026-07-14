@@ -1,4 +1,8 @@
-# codegiant: mode=diff-context ext="*.md *.txt *.json" check_ut=yes
+---
+mode: diff-context
+ext: "*.md *.txt *.json"
+check_ut: yes
+---
 Review the document changes in the attached diff file against the full repository context. Start with the regions that appear in the diff, then expand to any files in the repo that are affected by those changes (cross-references, sediment, broken links, etc.).
 
 This is a document-centric repo. Evaluate the changes as writing and knowledge artifacts, not as code.

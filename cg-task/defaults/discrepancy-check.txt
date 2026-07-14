@@ -1,4 +1,6 @@
-# codegiant: mode=context
+---
+mode: context
+---
 Compare the four archived OpenSpec changes against the current codebase to find deviations between what the specs/designs commit to and what the code actually delivers. Check each archived change's spec requirements, design decisions, and task checklist against the corresponding source files, tests, and frontend assets.
 
 Only report findings that meet BOTH criteria:

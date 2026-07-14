@@ -1,4 +1,6 @@
-# codegiant: mode=context
+---
+mode: context
+---
 Perform a production-readiness and operational resilience review of the codebase. Focus on code-level patterns that could cause availability, correctness, or trust issues in a live deployment.
 
 This is a code quality review, not a security audit. Evaluate the following dimensions:

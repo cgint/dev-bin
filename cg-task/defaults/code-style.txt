@@ -1,4 +1,6 @@
-# codegiant: mode=context
+---
+mode: context
+---
 Review the codebase for consistency and readability issues that linters miss. Focus on patterns that affect maintainability.
 
 Check:

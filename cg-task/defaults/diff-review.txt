@@ -1,4 +1,6 @@
-# codegiant: mode=diff-context
+---
+mode: diff-context
+---
 Review the changes in the attached diff file against the full codebase context and any relevant OpenSpec artifacts. Focus only on the regions that appear in the diff — use the surrounding codebase and OpenSpec artifacts for context, not as additional review targets.
 
 For each changed region, evaluate:
