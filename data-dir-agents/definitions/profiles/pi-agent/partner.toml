@@ -21,7 +21,10 @@ skills = [
   "grounded-pairing-discipline",
   "orwell-6-rule-prose",
   "bootstrap-pairing-memory",
-  "criticalthink"
+  "criticalthink",
+  "short-instruction-semantics",
+  "epistemic-grounding-socratic-aristotelian-inquiry",
+  "explain-diff-html"
 ]
 
 prompts = ["done-archived-commit-exact.md", "check-sanity-before-continue.md"]
