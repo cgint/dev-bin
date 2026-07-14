@@ -341,8 +341,6 @@ def gather_files(args: argparse.Namespace) -> list[Path]:
                         d.startswith('.') and d not in ['.github', '.vscode'],  # Hidden dirs except common ones
                         d.endswith('_cache'),  # Various cache directories
                         d.endswith('.tmp'),  # Temporary directories
-                        'backup' in d.lower(),  # Backup directories
-                        'temp' in d.lower() and len(d) < 10,  # Short temp-named dirs
                     ])]
                     
                     if args.debug and len(dirs) < original_dir_count:
