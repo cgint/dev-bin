@@ -27,4 +27,4 @@ skills = [
   "explain-diff-html"
 ]
 
-prompts = ["done-archived-commit-exact.md", "check-sanity-before-continue.md"]
+prompts = ["done-archived-commit-exact.md", "check-sanity-before-continue.md", "speak-most-important-info.md", "short-concise-persist-details.md"]
