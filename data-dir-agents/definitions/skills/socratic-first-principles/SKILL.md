@@ -1,6 +1,6 @@
 ---
-name: epistemic-grounding-socratic-aristotelian-inquiry
-description: Use when the user asks for a rich explanation of a code change, diff, branch, or PR. Produces HTML output.
+name: socratic-first-principles
+description: Use for complex, assumption-heavy problems. Strips bias and unverified claims to rebuild solutions from fundamental, verified truths.
 ---
 
 # Epistemic Grounding (Socratic-Aristotelian Inquiry)

@@ -1,6 +1,6 @@
 ---
-name: epistemic-grounding-socratic-aristotelian-inquiry
-description: Use when the user presents a highly complex, ambiguous, or high-stakes problem plagued by unverified assumptions, industry buzzwords, or "best practices" that lack evidence. This skill triggers a rigorous audit that ruthlessly strips away bias and unproven claims (Socratic Ignorance), maps critical unknowns, isolates the irreducible logical or physical truths of the problem (Aristotelian First Principles), and builds a bulletproof, sycophancy-free solution from the bedrock up.
+name: socratic-first-principles
+description: Use for complex, assumption-heavy problems. Strips bias and unverified claims to rebuild solutions from fundamental, verified truths.
 ---
 
 # Epistemic Grounding (Socratic-Aristotelian Inquiry)

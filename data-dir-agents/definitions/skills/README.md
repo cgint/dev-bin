@@ -29,6 +29,7 @@ Skills that shape how the agent behaves in partnership with the user.
 | `grounded-pairing-discipline` | Standing collaboration posture — critical, constructive, concise |
 | `criticalthink` | Post-hoc self-audit: stress-test your own previous response |
 | `bootstrap-pairing-memory` | Initialize the pairing memory system |
+| `short-instruction-semantics` | Interpret short commands like `go`, `analyse`, and `do web research` consistently |
 | `skill-architect` | Design and author new agent skills |
 
 ### Code exploration & analysis
@@ -57,6 +58,7 @@ Skills tied to specific development methodologies.
 | `openspec-explore` | Explore and clarify an OpenSpec change |
 | `openspec-propose` | Propose a new change with design artifacts |
 | `openspec-archive-change` | Archive a completed OpenSpec change |
+| `python-uv-discipline` | Preserve `uv` Python command discipline in uv-based projects |
 
 ### Utility & tooling
 General-purpose helper skills.
