@@ -9,6 +9,8 @@
 # Usage: ./gem.sh [flash|pro] [gemini_args...]
 #
 # If no model is specified, it defaults to the 'gemini' command's default model.
+#
+# We solely use gemini-3.5-flash from now on as it is versatile enough and we want backward compatibility with callers.
 
 # Load environment variables from local .env file
 # source "$(dirname "$0")/_env_loader.sh"
@@ -27,10 +29,10 @@ if [[ "$1" == "flash" ]]; then
   model="-m gemini-3.5-flash"
   shift
 elif [[ "$1" == "pro" ]]; then
-  model="-m gemini-3.1-pro-preview"
+  model="-m gemini-3.5-flash"
   shift
 elif [[ "$1" == "lite" ]]; then
-  model="-m gemini-3.1-flash-lite"
+  model="-m gemini-3.5-flash"
   shift
 fi
 
