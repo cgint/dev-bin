@@ -266,7 +266,7 @@ def generate_tree_structure(file_paths: list[Path]) -> str:
 
 # --- Core Logic ---
 
-def gather_files(args: argparse.Namespace) -> list[Path]:
+def gather_files(args: argparse.Namespace) -> tuple[list[Path], dict[Path, Path]]:
     """
     Gathers and filters files based on the provided arguments, returning a sorted list of Paths.
     """
@@ -288,7 +288,7 @@ def gather_files(args: argparse.Namespace) -> list[Path]:
                 for f in matched_files:
                     if f.is_file():
                         exclusive_paths.add(f)
-        return sorted(list(exclusive_paths))
+        return sorted(list(exclusive_paths)), {}
 
     if args.file_list:
         print("  - File list mode: Only files from list will be included.", file=sys.stderr)
@@ -312,10 +312,12 @@ def gather_files(args: argparse.Namespace) -> list[Path]:
         
         # Apply filtering to file list entries (but skip directory scanning)
         print("  - Applying filters to file list entries...", file=sys.stderr)
+        file_to_root = {}  # no os.walk mapping for file_list mode
         # Continue to filtering section below instead of returning early
     else:
         # Enhanced directory filtering during os.walk to avoid collecting unnecessary files
         candidate_files = set()
+        file_to_root = {}
         scan_dirs = args.directories or ['.']
         print(f"  - Scanning directories: {', '.join(scan_dirs)}", file=sys.stderr)
 
@@ -333,7 +335,7 @@ def gather_files(args: argparse.Namespace) -> list[Path]:
                     root_path = Path(root)
                     dirs[:] = [
                         d for d in dirs
-                        if not should_ignore_scanned_dir((root_path / d).resolve().relative_to(Path.cwd().resolve()))
+                        if not should_ignore_scanned_dir((root_path / d).resolve().relative_to(start_path))
                     ]
 
                     # Also filter out common patterns that might not be in the exact list
@@ -348,7 +350,9 @@ def gather_files(args: argparse.Namespace) -> list[Path]:
                         print(f"  Pruned {pruned} directories from {root}", file=sys.stderr)
                 
                 for filename in files:
-                    candidate_files.add(Path(root) / filename)
+                    file_path = Path(root) / filename
+                    candidate_files.add(file_path)
+                    file_to_root[file_path.resolve()] = start_path
 
         scan_time = time.time() - scan_start
         print(f"  - Found {len(candidate_files)} initial file candidates in {scan_time:.2f}s", file=sys.stderr)
@@ -361,15 +365,16 @@ def gather_files(args: argparse.Namespace) -> list[Path]:
     excluded_early = 0
     
     for file_path in candidate_files:
-        # Skip symlinks that point outside the current directory
+        # Skip symlinks that point outside their scan root
         if file_path.is_symlink():
+            symlink_scan_root = file_to_root.get(file_path.resolve(), Path.cwd().resolve())
             try:
                 resolved_path = file_path.resolve()
-                resolved_path.relative_to(Path.cwd().resolve())
+                resolved_path.relative_to(symlink_scan_root)
             except (ValueError, OSError):
                 excluded_early += 1
                 if args.debug:
-                    print(f"  Early exclude: {file_path} (symlink outside directory)", file=sys.stderr)
+                    print(f"  Early exclude: {file_path} (symlink outside scan root)", file=sys.stderr)
                 continue
         
         # Apply cheap filters first
@@ -426,8 +431,9 @@ def gather_files(args: argparse.Namespace) -> list[Path]:
     final_filter_start = time.time()
     
     for file_path in pre_filtered_files:
+        file_scan_root = file_to_root.get(file_path.resolve(), Path.cwd())
         try:
-            relative_path = file_path.relative_to(Path.cwd())
+            relative_path = file_path.relative_to(file_scan_root)
             relative_path_str = str(relative_path)
         except ValueError:
             relative_path = file_path
@@ -478,9 +484,9 @@ def gather_files(args: argparse.Namespace) -> list[Path]:
     print(f"  - Final file count: {len(final_files)} (total processing: {total_time:.2f}s)", file=sys.stderr)
     if not final_files:
         print("Warning: No files found to include in context after all filters.", file=sys.stderr)
-    return sorted(list(final_files))
+    return sorted(list(final_files)), file_to_root
 
-def generate_context_file(args: argparse.Namespace, file_list: list[Path]):
+def generate_context_file(args: argparse.Namespace, file_list: list[Path], file_to_root: dict[Path, Path]):
     """Generates the final markdown context file."""
     output_dir = Path(".codegiant")
     output_dir.mkdir(exist_ok=True)
@@ -489,12 +495,21 @@ def generate_context_file(args: argparse.Namespace, file_list: list[Path]):
     context_file = output_dir / f"{timestamp}_codegiant_context.md"
     
     print(f"\nStep 2: Generating context file: {context_file}", file=sys.stderr)
+    
+    # Determine if multi-root
+    unique_roots = set(file_to_root.values()) if file_to_root else set()
+    is_multi_root = len(unique_roots) > 1
+    
     relative_file_list = []
     for p in file_list:
+        p_root = file_to_root.get(p.resolve(), Path.cwd())
         try:
-            relative_file_list.append(p.relative_to(Path.cwd()))
+            rel = p.relative_to(p_root)
+            if is_multi_root:
+                rel = p_root.name / rel
+            relative_file_list.append(rel)
         except ValueError:
-            # Handle symlinks or paths outside current directory
+            # Fallback to absolute path if relative_to fails
             relative_file_list.append(p)
 
     with open(context_file, "w", encoding="utf-8") as f:
@@ -516,10 +531,14 @@ def generate_context_file(args: argparse.Namespace, file_list: list[Path]):
         added, omitted = 0, 0
 
         for path in file_list:
+            path_root = file_to_root.get(path.resolve(), Path.cwd())
             try:
-                relative_path = path.relative_to(Path.cwd())
+                rel_path = path.relative_to(path_root)
+                if is_multi_root:
+                    rel_path = path_root.name / rel_path
+                relative_path = rel_path
             except ValueError:
-                # Handle symlinks or paths outside current directory
+                # Fallback to absolute path if relative_to fails
                 relative_path = path
             f.write(f"\n## File: `{relative_path}`\n```\n")
             
@@ -610,7 +629,7 @@ def main():
 
     try:
         ensure_codegiant_dir_setup(args.yes)
-        file_list = gather_files(args)
+        file_list, file_to_root = gather_files(args)
 
         if args.list_files_only:
             print(f"\n\nFile list with {len(file_list)} files (as -L was given - will stop after this):")
@@ -619,7 +638,7 @@ def main():
             print("\n\n")
             sys.exit(0)
 
-        context_file = generate_context_file(args, file_list)
+        context_file = generate_context_file(args, file_list, file_to_root)
 
         if args.output_file:
             # Check if source and destination are the same file
