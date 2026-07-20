@@ -1,4 +1,9 @@
-Agent prompt/skill propagation — plan
+# Historical: Agent prompt/skill propagation plan
+
+> **Status:** Historical implementation proposal. The generator and rollout flow described here are implemented.
+> Use [`definitions/STRUCTURE.md`](../../definitions/STRUCTURE.md) and [`definitions/targets/`](../../definitions/targets/) for the active architecture and target mappings.
+
+## Original proposal
 
 Summary
 

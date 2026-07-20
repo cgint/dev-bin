@@ -1,8 +1,7 @@
-# Ideation Scratchpad: Intent Pairing Partner
+# Historical ideation: Intent Pairing Partner
 
-> Temporary information-collection and collaboration scratchpad.
-> Not a skill.
-> Not a normative prompt file.
+> **Status:** Archived ideation record, retained for provenance.
+> It is not a skill or normative prompt file. Use the [durable pairing intent](../intent/pairing-partner.md) and [`grounded-pairing-discipline`](../../definitions/skills/grounded-pairing-discipline/SKILL.md) for current guidance.
 
 ## Clear user intent
 
