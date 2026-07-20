@@ -327,6 +327,31 @@ test_frontmatter_diff_context_task_attaches_diff_and_strips_header() {
   assert_not_contains "$prompt_log" "---"
 }
 
+test_investigate_task_accepts_only_a_question_and_uses_repository_context() {
+  local tmp_dir
+  tmp_dir="$(setup_fixture_dir)"
+  trap 'rm -rf "$tmp_dir"' RETURN
+
+  make_codegiant_stub "$tmp_dir"
+
+  local output
+  output="$(run_task "$tmp_dir" investigate "Determine what is inaccurate in the executive summary")"
+
+  assert_contains "$output" "Written to: cg-task-result-investigate.md"
+
+  if grep -qx -- '-i' "$tmp_dir/state/args.log"; then
+    fail "investigate must retain repository context rather than use exclusive input mode"
+  fi
+
+  local prompt_log
+  prompt_log="$(cat "$tmp_dir/state/prompt.log")"
+  assert_contains "$prompt_log" "Answer only the question in the additional focus hint"
+  assert_contains "$prompt_log" "**Additional focus:** Determine what is inaccurate in the executive summary"
+  assert_contains "$prompt_log" "Do not invent explanations"
+  assert_contains "$prompt_log" "Treat the additional-focus question as the sole investigation objective"
+  assert_contains "$prompt_log" "Test competing explanations"
+}
+
 test_frontmatter_context_task_strips_header_and_maps_scope_flags
 test_frontmatter_body_can_contain_horizontal_rule_after_frontmatter
 test_legacy_header_task_is_not_discovered
@@ -334,5 +359,6 @@ test_unterminated_frontmatter_task_is_not_discovered
 test_legacy_frontmatter_keys_are_not_discovered
 test_frontmatter_without_mode_is_not_discovered
 test_frontmatter_diff_context_task_attaches_diff_and_strips_header
+test_investigate_task_accepts_only_a_question_and_uses_repository_context
 
 echo "PASS: cg-task-frontmatter"

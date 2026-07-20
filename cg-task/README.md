@@ -46,6 +46,7 @@ Legacy `# codegiant:` task headers and legacy scoping keys are no longer support
 | `code-style` | context | Readability/maintainability |
 | `discrepancy-check` | context | Archived OpenSpec vs code |
 | `explore-prep` | context | Targeted understanding brief for a planned change or subsystem |
+| `investigate` | context | Evidence-grounded diagnosis of any repository question; needs only a question |
 
 ## Usage
 
@@ -58,6 +59,7 @@ cg-task.sh document-review             # document review (halts on untracked)
 cg-task.sh architecture-review         # full context review
 cg-task.sh architecture-review "focus on module boundaries"  # with hint
 cg-task.sh explore-prep "add elasticsearch as a new information source"  # targeted recon brief
+cg-task.sh investigate "why is the executive summary inaccurate?"          # evidence-grounded diagnosis
 ```
 
 ## Output files

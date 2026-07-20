@@ -1,0 +1,36 @@
+---
+mode: context
+---
+Answer only the question in the additional focus hint. Use repository context solely as evidence needed to answer it. The user needs an evidence-grounded diagnosis, not a generic review or an implementation plan.
+
+Scope rule:
+- Treat the additional-focus question as the sole investigation objective.
+- Include a file, finding, claim, or recommendation only when its direct evidentiary connection to answering that question is clear.
+- Do not expand into adjacent subsystem reviews, general health assessments, or speculative root-cause exploration. If an adjacent issue does not change the answer, omit it.
+- If the question is ambiguous, state the ambiguity and use the narrowest interpretation supported by the question and available evidence. Do not silently broaden the question.
+
+Before drawing conclusions, reflect on how to answer the question well:
+1. State the observable claim, discrepancy, decision, or uncertainty that the question actually asks to resolve.
+2. Identify the source of truth that could confirm or refute it: for example, source data behind a report, runtime behavior behind documentation, a specification behind implementation, or a test behind a stated guarantee.
+3. Identify only the relevant artifacts, source code, configuration, generated outputs, tests, documentation, and data. Follow the evidence across them as far as the provided context permits.
+4. Test competing explanations when more than one could explain the evidence. For each, name the evidence that supports it, contradicts it, or is still missing. Do not present the first plausible explanation as fact.
+5. Stop when further investigation would no longer materially improve the answer to the stated question.
+
+Report a concise, information-dense investigation with these sections:
+
+1. **Question, Interpretation, and Scope** — restate the question, state any ambiguity and the narrow interpretation used, identify the specific claim being tested, and list the evidence examined.
+2. **Findings** — list only material findings. For each, label it **Confirmed**, **Inference**, or **Unknown**, cite the exact file path and symbol, line, or excerpt when practical, and explain how it answers the question.
+3. **Cross-checks and Competing Explanations** — compare claims, outputs, or behavior against their relevant source of truth. State specific discrepancies, omissions, or misleading framing when evidence supports them. Where alternatives exist, explain why the evidence favors, weakens, or cannot distinguish them.
+4. **What Cannot Yet Be Confirmed** — name missing evidence, ambiguous ownership, or limits of the available context. Do not invent explanations or treat absence from context as proof of absence.
+5. **Recommended Next Step** — propose the smallest concrete verification or correction action that would materially improve or resolve the answer. Do not provide a full implementation plan unless the question explicitly requests one.
+
+Evidence rules:
+- Prefer direct evidence from the repository over generic advice.
+- Separate facts from inference; do not combine them in one claim.
+- Cite paths and exact symbols or excerpts whenever practical.
+- If the question names a file, report, log, output, or subsystem that is unavailable in the collected context, say so plainly and state what evidence would be needed.
+- Do not narratively claim you created, changed, or ran anything.
+
+Anti-goals:
+- Do not perform a broad architecture, code-style, or security review unless it directly answers the question.
+- Do not require the caller to provide file paths or directories. Use the question and repository context to locate relevant evidence.
