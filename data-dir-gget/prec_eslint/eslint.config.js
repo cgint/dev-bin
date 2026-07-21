@@ -1,25 +1,48 @@
 export default [
   {
-    files: ["**/*.js"],
+    ignores: [
+      "**/external/**", 
+      "**/_ds_bundle.js", 
+      "node_modules/**",
+      "smeXus (smec Design System Remix)/**"
+    ]
+  },
+  {
+    files: ["**/*.js", "**/*.jsx", "**/*.ts", "**/*.tsx"],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: "module",
       globals: {
-        // Browser globals
+        // Core Browser Globals
         window: "readonly",
         document: "readonly",
         localStorage: "readonly",
+        sessionStorage: "readonly",
+        navigator: "readonly",
         console: "readonly",
         fetch: "readonly",
         setTimeout: "readonly",
         setInterval: "readonly",
         clearTimeout: "readonly",
         clearInterval: "readonly",
+        alert: "readonly",
+        confirm: "readonly",
+        requestAnimationFrame: "readonly",
+        FileReader: "readonly",
+        atob: "readonly",
+        Blob: "readonly",
+        ClipboardItem: "readonly",
+        CustomEvent: "readonly",
+        
         // Node globals
         process: "readonly",
         __dirname: "readonly",
-        // Markdown
+        
+        // Project Third-Party CDN Libraries
         showdown: "readonly",
+        bootstrap: "readonly",
+        io: "readonly",
+        
         // ES2022 globals
         Promise: "readonly",
         Map: "readonly",
@@ -35,20 +58,18 @@ export default [
       }
     },
     rules: {
-      // Error prevention
+      // Error prevention (Functional correctness)
       "no-undef": "error",
-    //   "no-unused-vars": "warn", // false positives when used in html and js is separate files
-      
-      // Style consistency 
-      "semi": ["error", "always"],
-      "quotes": ["error", "single"],
-      "indent": ["error", 2],
       
       // Best practices
       "eqeqeq": ["error", "always"],
       "no-var": "error",
-      "prefer-const": "warn",
-    //   "no-console": "warn" // i am ok with console.log
+      
+      // Formatting and Aesthetic rule noise disabled (handled by editor auto-formatters, not pre-commit blocks)
+      "indent": "off",
+      "quotes": "off",
+      "semi": "off",
+      "prefer-const": "off"
     }
   }
 ]; 

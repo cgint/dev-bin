@@ -5,9 +5,9 @@ set -euo pipefail
 PLUGIN_NAME="Ruff"
 echo
 echo "Running Plugin $PLUGIN_NAME..."
-uv add ruff --dev
-uv run ruff check --fix
-ruff_status=$? # Capture the exit status
+
+ruff_status=0
+uv run ruff check --fix || ruff_status=$? # Capture the exit status
 
 # Optional: Add logging based on status
 if [ $ruff_status -ne 0 ]; then

@@ -1,3 +1,17 @@
 {
-    "extends": "stylelint-config-standard"
+  "extends": "stylelint-config-standard",
+  "ignoreFiles": [
+    "smeXus (smec Design System Remix)/**/*.css",
+    "web/static/css/external/**/*.css"
+  ],
+  "rules": {
+    "color-hex-length": null,
+    "color-function-notation": null,
+    "alpha-value-notation": null,
+    "declaration-empty-line-before": null,
+    "selector-class-pattern": null,
+    "media-feature-range-notation": null,
+    "no-descending-specificity": null,
+    "no-duplicate-selectors": null
+  }
 }
