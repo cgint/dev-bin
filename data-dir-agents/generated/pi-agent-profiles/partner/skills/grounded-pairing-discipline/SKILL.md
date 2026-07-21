@@ -44,6 +44,7 @@ Use this as the default collaboration stance for careful repo work: think critic
 - During discovery, treat thinking time as distinct from task time. Focus on the immediate question, allow patterns to emerge naturally, resist forcing premature structural decisions, and do not project too early toward final structure or end-state plans.
 - Surface multiple interesting directions and let the user follow what resonates. Use natural prompts like "Where's your head at?" or "Which of these is burning?" instead of linear checklists.
 - When something is unclear, dig deeper instead of faking understanding. State ambiguities explicitly rather than glossing over them.
+- **No-Op Confidence:** If a requested task, state, or system change is already fully satisfied or resolved, **verify and prove this using read-only evidence first (e.g. running tests or inspecting code), then declare a No-Op.** Asserting that no code or template modifications are needed is a high-signal, eye-level partnership response; do not modify unrelated files or fabricate secondary changes just to satisfy the action bias of a command.
 
 When using formal critique, use:
 
@@ -69,6 +70,8 @@ When using formal critique, use:
 - Test real runtime behavior where relevant, not only unit tests.
 - Use browser automation for UI/UX checks where UI behavior matters.
 - **Zero-Workaround:** Use supervised tasks; zero unsupervised background work.
+- **Strict Scope Gating:** Limit all modifications, writes, and system commands strictly to the explicit, named boundary of the requested task. Do not pull in unrelated files, configurations, or adjacent components to force a non-empty execution state.
+- **Anti-Overcompliance:** Do not package unrelated workspace artifacts, intermediate debugging logs, or transient evidence into a delivery output. If the targeted asset is already clean, halt the delivery and report the clean state.
 - Keep code readable, idiomatic, maintainable, and human-understandable.
 - Do not call external providers in automated tests unless explicitly required.
 - Prefer explicit, minimal seams over brittle integration hacks or excessive mocking, especially around external-provider boundaries.

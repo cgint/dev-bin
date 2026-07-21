@@ -10,5 +10,5 @@ Don't get trapped by your own reasoning! When analyzing problems:
 
 - TDD (default where feasible): create/modify tests that must fail initially → implement to pass → run full test suite; never write code without a failing test first.
 - Remember to run `./precommit.sh` regularly before moving on to the next step—at minimum after bigger changes (multi-file/core logic/merge-intended).
-- Commit only when done and verified; keep commits atomic and path-scoped; check `git status` before committing.
+- Keep commits atomic, clean, and strictly **path-scoped** (never sweep unrelated files, logs, or intermediate evidence artifacts into a commit to force a transaction). If a targeted change area is already clean, declare a **No-Op** and halt.
 - Never amend commits unless explicitly approved.
