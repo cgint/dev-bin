@@ -5,6 +5,25 @@
 Files managed in this repo may be copied to **multiple locations** on disk.
 Changing one copy does **not** automatically update the others — manual sync is required.
 
+## Automated Sync Script (`sync-extensions.sh`)
+
+A dynamic sync script `./sync-extensions.sh` is available in the repository root. It automatically scans all `extensions/*.ts` files (dynamically discovered via globbing, not hardcoded) and updates matching copies across `~/.pi`:
+
+```bash
+# Preview pending updates (dry-run summary)
+./sync-extensions.sh
+
+# Apply pending updates automatically
+./sync-extensions.sh --yes
+```
+
+How it works:
+1. Dynamically scans `extensions/*.ts` for any extension files in the repository.
+2. Searches `~/.pi` for existing matching files by filename (`find ~/.pi -type f -name "<filename>"`).
+3. Compares content using `cmp`.
+4. Displays a dry-run summary showing `[UP TO DATE]` vs `[NEEDS UPDATE]` targets and exact `cp` commands.
+5. Asks for user confirmation before performing copies (unless `--yes` is passed).
+
 ## How to find all copies
 
 **Always run this first — never rely on the list below alone.** Locations change.
