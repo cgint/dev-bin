@@ -9,7 +9,8 @@ context: |
   - The Laptop Test: Success is defined by a zero-friction experience where users can resume work after a break (laptop open/close) without being interrupted by re-authentication prompts.
   - Strategic Roadmap Split: For complex, multi-phased changes, maintain a master "Strategic Roadmap" document to preserve long-term context while using separate execution changes for surgical implementation.
   - Frequency of Pain: Prioritize fixing the most frequent user interruptions first.
-  - During implementation you MUST tick off the tasks timely after then change is completed.
+  - Task Ownership: During implementation you MUST tick off agent implementation and verification tasks timely after completing them with observable evidence. Do NOT tick off "Final verification by the user" tasks—those belong exclusively to the human user.
+  - OpenSpec Pre-Merge Invariant: An OpenSpec change MUST NOT be merged into main or archived while agent implementation tasks remain unchecked in tasks.md.
 
 # Per-artifact rules (optional)
 rules:
@@ -27,5 +28,6 @@ rules:
     - Break tasks into chunks that are small enough to be simply manageable and self contained.
     - Always check for existing tests at the beginning of the implementation - this MUST be a task to remind about doing TDD - the word "TDD" MUST be in the task description.
     - Always include specific "Verification" tasks that specify what should be verified before getting back to the user.
-    - Always include specific "Final verification by the user" tasks that specify what the user should check finally to know the change is complete.
+    - Always include specific "Final verification by the user" tasks (prefixed with `[User Verification]`) that specify what the user should check finally to know the change is complete.
+    - Explicitly state in task descriptions that `[User Verification]` tasks are reserved exclusively for the human user and MUST NOT be checked off by the AI agent under any circumstances.
     - Do not put CLI commands like 'openspec validate' in the tasks list.
