@@ -43,6 +43,6 @@ It is very important to note that this phase focues on e.g. changing of sourceco
 - NEVER use `gemini-1*` or `gemini-2.0-*` (too old).
 - NEVER change the model that the user specified unless specifically asked to do so.
 - Preferred defaults (explicit IDs):
-  - `gemini-3.5-flash` (general purpose)
-  - `gemini-3.1-flash-lite` (most cost-efficient)
+  - `gemini-3.6-flash` (general purpose)
+  - `gemini-3.5-flash-lite` (most cost-efficient)
 - Avoid PRO variants and deprecated/preview model IDs unless explicitly requested.

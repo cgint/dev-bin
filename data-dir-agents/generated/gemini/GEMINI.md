@@ -161,7 +161,7 @@ If the user request is ambiguous, the agent must ask a short clarifying question
 - **Never do destructive git ops** (e.g. `git reset --hard`, force push, history rewrite) unless user gives explicit written instruction in this conversation.
 - **Never edit `.env` / env var files.** Only the user may change them.
 - **Shell commands:** never prefix commands with unnecessary `cd` when already in project root; don't postfix commands with `| cat`.
-- **AI model selection:** never change the model the user specified unless explicitly asked; NEVER use gemini-1* / gemini-2.0-*; prefer `gemini-3.5-flash` (general) or `gemini-3.1-flash-lite` (cheap) and avoid PRO variants + deprecated/preview model IDs unless explicitly requested.
+- **AI model selection:** never change the model the user specified unless explicitly asked; NEVER use gemini-1* / gemini-2.0-*; prefer `gemini-3.6-flash` (general) or `gemini-3.5-flash-lite` (cheap) and avoid PRO variants + deprecated/preview model IDs unless explicitly requested.
 - **Web research:** when the user requests web research, use both built-in web search **and Perplexity search tools (if available)**; avoid sensitive data in queries; use year 2026 for "latest" lookups.
 - If other files are modified but unrelated: **ignore them** (don't revert, don't commit them); only speak up on overlapping/conflicting edits.
 - **Never restore or revert unrelated changes.** If unrelated changes are present, assume they are there for a reason; do not discard them unless the user explicitly asks.
@@ -197,8 +197,8 @@ Use ripgrep over grep when searching in the filesystem as it automatically respe
 - NEVER use gemini-1* or gemini-2.0-* as it is way old!
 - NEVER change the model that the user specified unless specifically asked to do so
 - Preferred defaults (explicit IDs):
-  - `gemini-3.5-flash` (general, strong default)
-  - `gemini-3.1-flash-lite` (most cost-efficient)
+  - `gemini-3.6-flash` (general, strong default)
+  - `gemini-3.5-flash-lite` (most cost-efficient)
 - Avoid PRO variants and deprecated/preview model IDs unless explicitly requested
 
 # Guidelines for planning/architect

@@ -137,13 +137,13 @@ usage() {
 build_generation_config() {
   case "$LLM_VARIANT_SELECTED" in
     flash_no_think)
-      LLM_MODEL="gemini-3.5-flash"
+      LLM_MODEL="gemini-3.6-flash"
       ;;
     pro_low)
       LLM_MODEL="gemini-2.5-pro"
       ;;
     flash3_minimal)
-      LLM_MODEL="gemini-3.5-flash"
+      LLM_MODEL="gemini-3.6-flash"
       ;;
     *)
       echo "Error: Invalid LLM_VARIANT_SELECTED value: $LLM_VARIANT_SELECTED" >&2

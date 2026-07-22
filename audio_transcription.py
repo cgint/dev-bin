@@ -264,7 +264,7 @@ class UploadCache:
 class GeminiAudioTranscriber:
     """High-quality audio transcription using Gemini"""
     
-    def __init__(self, api_key: Optional[str] = None, model_name: str = "gemini-3.5-flash"):
+    def __init__(self, api_key: Optional[str] = None, model_name: str = "gemini-3.6-flash"):
         """Initialize the transcriber with API key."""
         self.api_key = api_key or os.getenv('GEMINI_API_KEY')
         if not self.api_key:
@@ -311,7 +311,7 @@ class GeminiAudioTranscriber:
                 "output_price_per_million": 10.00,
                 "output_price_per_million_high": 15.00,
             },
-            "gemini-3.5-flash": {
+            "gemini-3.6-flash": {
                 "input_price_per_million": 1.50,
                 "input_price_per_million_high": 1.50,
                 "output_price_per_million": 9.00,
@@ -319,7 +319,7 @@ class GeminiAudioTranscriber:
             },
             # Note: Flash-Lite pricing differs for audio vs text; this tool is audio-oriented,
             # so we use the audio input price.
-            "gemini-3.1-flash-lite": {
+            "gemini-3.5-flash-lite": {
                 "input_price_per_million": 0.50,
                 "input_price_per_million_high": 0.50,
                 "output_price_per_million": 1.50,
@@ -761,7 +761,7 @@ def main() -> None:
         file_to_process = input_file_path
 
     # THINKING_MIN_FOR_PRO=128
-    model_name = "gemini-3.5-flash"
+    model_name = "gemini-3.6-flash"
     TEMPERATURE = 1
     MAX_OUTPUT_TOKENS_SUMMARY = 8192
     MAX_OUTPUT_TOKENS_TRANSCRIPT = 16384

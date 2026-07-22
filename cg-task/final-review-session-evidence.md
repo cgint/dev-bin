@@ -80,7 +80,7 @@ include_transcript: False
 Error seeking advice from advisor 8081-twins/qwen36-27b-nvidia-nvfp4!
       -> model not found
 
-Advice from google/gemini-3.5-flash:
+Advice from google/gemini-3.6-flash:
 
 ### 1. Situation
 The executor needs to add YAML-like frontmatter support to `cg-task.sh` (mapping `mode`, `scan-dirs`, and `ignore-dirs` to `codegiant.py` flags) while preserving the legacy `# codegiant:` format. Currently, task discovery relies on checking if the first line starts with `# codegiant:`. Introducing frontmatter complicates discovery, metadata parsing, and body extraction.
@@ -390,7 +390,7 @@ include_transcript: False
 Error seeking advice from advisor 8081-twins/qwen36-27b-nvidia-nvfp4!
       -> model not found
 
-Advice from google/gemini-3.5-flash:
+Advice from google/gemini-3.6-flash:
 
 ### 1. Situation
 The executor is designing YAML-like frontmatter parsing for `cg-task` with a legacy fallback to `# codegiant:` first-line headers. The main ambiguity is whether legacy `# codegiant:` lines should be stripped from the prompt body passed to `codegiant.py`, and how to cleanly preserve the prompt body in both modes.
@@ -958,7 +958,7 @@ include_transcript: False
 Error seeking advice from advisor 8081-twins/qwen36-27b-nvidia-nvfp4!
       -> model not found
 
-Advice from google/gemini-3.5-flash:
+Advice from google/gemini-3.6-flash:
 
 ### 1. Situation
 The executor has successfully implemented the `cg-task` frontmatter migration. This includes refactoring `./cg-task.sh` with `awk` frontmatter parsing, converting task files (`./cg-task/defaults/*.txt`), updating `./cg-task/README.md`, and adding `./tests/cg-task-frontmatter.test.sh` (which passes).
@@ -1164,7 +1164,7 @@ _timestamp: 2026-07-13T06:39:57.173000+00:00_
 Error seeking advice from advisor 8081-twins/qwen36-27b-nvidia-nvfp4!
       -> model not found
 
-Advice from google/gemini-3.5-flash:
+Advice from google/gemini-3.6-flash:
 
 ### 1. Situation
 The executor has successfully updated `cg-task.sh` to support only YAML-like frontmatter configurations (`---`), entirely stripping legacy support and fallback parsing logic. Real task definitions in `cg-task/defaults/*.txt` have been migrated. The test suite (`tests/cg-task-frontmatter.test.sh`) verifies frontmatter parsing, exclusion of legacy files, and edge cases. 
@@ -1252,7 +1252,7 @@ _timestamp: 2026-07-13T06:42:45.745000+00:00_
 Error seeking advice from advisor 8081-twins/qwen36-27b-nvidia-nvfp4!
       -> model not found
 
-Advice from google/gemini-3.5-flash:
+Advice from google/gemini-3.6-flash:
 
 ### 1. Situation
 The executor has successfully addressed the auditor's gap by introducing strict frontmatter validation in `cg-task.sh`. It now enforces an explicit allowlist of supported keys (`mode`, `scan-dirs`, `ignore-dirs`, `add`, `ext`, `check_ut`, `omit`) and rejects any legacy headers (such as `# codegiant`) or unsupported keys (such as `dirs` and `xdirs`). The newly added regression suite in `tests/cg-task-frontmatter.test.sh` explicitly verifies these rejection paths and successfully passes.
@@ -1356,7 +1356,7 @@ _timestamp: 2026-07-13T06:49:03.654000+00:00_
 Error seeking advice from advisor 8081-twins/qwen36-27b-nvidia-nvfp4!
       -> model not found
 
-Advice from google/gemini-3.5-flash:
+Advice from google/gemini-3.6-flash:
 
 ### 1. Situation
 The executor has completed the migration to strict frontmatter-only task definitions in `./cg-task.sh`. Legacy formats (such as `# codegiant` headers and keys like `dirs`/`xdirs`) are rejected. Discovery logic (`prompt_file_is_valid_task`) enforces frontmatter and mandates a valid `mode` field. Default tasks in `./cg-task/defaults/*.txt` have been updated, and a comprehensive test suite `./tests/cg-task-frontmatter.test.sh` covers all migration edge cases and error states.

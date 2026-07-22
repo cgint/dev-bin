@@ -10,7 +10,7 @@ if not access_pwd:
 # Deprecated (June 2026 policy): keep constant for backwards-compatibility but avoid as default.
 MODEL_NAME_GEMINI_2_5_FLASH = "gemini-2.5-flash"
 
-MODEL_NAME_GEMINI_3_5_FLASH = "gemini-3.5-flash"
+MODEL_NAME_GEMINI_3_5_FLASH = "gemini-3.6-flash"
 MODEL_NAME_GEMINI_2_5_PRO = "gemini-2.5-pro"
 
 default_llm_model_name = os.getenv("GEMINI_MODEL_NAME", MODEL_NAME_GEMINI_3_5_FLASH)

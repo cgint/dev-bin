@@ -12,12 +12,12 @@
  *
  * Recommended env for a local executor:
  *   export PI_ADVISOR_PROVIDER=openai-codex
- *   export PI_ADVISOR_MODEL=gemini-3.5-flash
+ *   export PI_ADVISOR_MODEL=gemini-3.6-flash
  *
  * Alternatively, configure a fallback chain (tries left-to-right on error):
  *   export PI_ADVISOR_MODELS="provider/model:effort#provider2/model2:effort2"
  *   # Example: try local qwen first, fall back to Gemini:
- *   export PI_ADVISOR_MODELS="8081-twins/qwen36-27b-nvidia-nvfp4:off#google/gemini-3.5-flash:medium"
+ *   export PI_ADVISOR_MODELS="8081-twins/qwen36-27b-nvidia-nvfp4:off#google/gemini-3.6-flash:medium"
  *
  * When PI_ADVISOR_MODELS is set, PI_ADVISOR_PROVIDER / PI_ADVISOR_MODEL are
  * ignored (backward compat: unset PI_ADVISOR_MODELS to use the old behavior).
@@ -160,7 +160,7 @@ function getConfig(): AdvisorConfig {
 
   return {
     provider: env("PI_ADVISOR_PROVIDER", "google"),
-    model: env("PI_ADVISOR_MODEL", "gemini-3.5-flash"),
+    model: env("PI_ADVISOR_MODEL", "gemini-3.6-flash"),
     requireAllow,
     allowed: boolEnv("PI_ADVISOR_ALLOWED", !requireAllow),
     redact: boolEnv("PI_ADVISOR_REDACT", true),
@@ -233,7 +233,7 @@ function resolveAdvisorChain(cfg: AdvisorConfig): AdvisorAttempt[] {
 
   // --- Fast path: no chain configured → use built-in default chain ---
   if (!chainRaw) {
-    const defaultChain = "8081-twins/qwen36-27b-nvidia-nvfp4:off#google/gemini-3.5-flash:medium";
+    const defaultChain = "8081-twins/qwen36-27b-nvidia-nvfp4:off#google/gemini-3.6-flash:medium";
     const attempts: AdvisorAttempt[] = defaultChain
       .split("#")
       .map((raw) => parseAdvisorEntry(raw, ""))

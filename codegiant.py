@@ -20,8 +20,8 @@ LLM_API_KEY = os.environ.get("GEMINI_API_KEY")
 
 # User-facing presets only choose the model. Generation settings stay global.
 LLM_MODEL_PRESETS = {
-    "quality": "gemini-3.5-flash",
-    "fast": "gemini-3.5-flash",
+    "quality": "gemini-3.6-flash",
+    "fast": "gemini-3.5-flash-lite",
 }
 
 # Default generation settings shared by all presets.
