@@ -392,8 +392,8 @@ fi
     fi
 } > "$TMP_PRMPT"
 
-# Build codegiant args
-CODEGIANT_ARGS=(-y -F -o "./$OUT_NAME" -f "$TMP_PRMPT")
+# Build codegiant args ### add '-F' for fast - but quality is more valuable than speed
+CODEGIANT_ARGS=(-y -o "./$OUT_NAME" -f "$TMP_PRMPT")
 
 if [[ ${#DIRS[@]} -gt 0 ]]; then
     for dir in "${DIRS[@]}"; do
