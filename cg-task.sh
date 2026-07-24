@@ -44,12 +44,14 @@ fi
 
 # If explicit -h/--help, show minimal help and exit before discovery
 if [[ "$HELP_REQUEST" == true ]]; then
-    echo "Usage: $SCRIPT_NAME <task> [--staged] [--diff-only] [hint]"
+    echo "Usage: $SCRIPT_NAME <task> [-d <dir>] [-e <exts>] [--staged] [--diff-only] [hint]"
     echo ""
     echo "Options:"
-    echo "  --staged      Review staged changes instead of working tree"
-    echo "  --diff-only   Override task mode to diff-only (no repo context)"
-    echo "  -h, --help    Show this help"
+    echo "  -d, --dir, --scan-dir <dir> Limit context collection to specified directory (can be used multiple times)"
+    echo "  -e, --ext, --extensions <exts> Limit file extensions (e.g. py,sh or 'py,sh')"
+    echo "  --staged                     Review staged changes instead of working tree"
+    echo "  --diff-only                  Override task mode to diff-only (no repo context)"
+    echo "  -h, --help                   Show this help"
     echo ""
     echo "Hint:"
     echo "  Any trailing argument is appended to the prompt as dynamic focus."
@@ -246,7 +248,7 @@ prompt_preview_line() {
 }
 
 usage() {
-    echo "Usage: $SCRIPT_NAME <task> [--staged] [--diff-only] [hint]"
+    echo "Usage: $SCRIPT_NAME <task> [-d <dir>] [-e <exts>] [--staged] [--diff-only] [hint]"
     echo ""
     echo "Tasks (from $(basename "$PROMPT_DIR")):"
     printf '%s\n' "$TASK_LIST" | while read -r t; do
@@ -258,9 +260,11 @@ usage() {
     done
     echo ""
     echo "Options:"
-    echo "  --staged      Review staged changes instead of working tree"
-    echo "  --diff-only   Override task mode to diff-only (no repo context)"
-    echo "  -h, --help    Show this help"
+    echo "  -d, --dir, --scan-dir <dir> Limit context collection to specified directory (can be used multiple times)"
+    echo "  -e, --ext, --extensions <exts> Limit file extensions (e.g. py,sh or 'py,sh')"
+    echo "  --staged                     Review staged changes instead of working tree"
+    echo "  --diff-only                  Override task mode to diff-only (no repo context)"
+    echo "  -h, --help                   Show this help"
     echo ""
     echo "Hint:"
     echo "  Any trailing argument is appended to the prompt as dynamic focus."
@@ -294,15 +298,63 @@ fi
 
 STAGED=false
 FORCE_DIFF_ONLY=false
-HINT=""
+CLI_DIRS=()
+CLI_EXTS=()
+HINT_PARTS=()
 
-for arg in "$@"; do
-    case "$arg" in
-        --staged) STAGED=true ;;
-        --diff-only) FORCE_DIFF_ONLY=true ;;
-        *) HINT="$arg" ;;
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --staged)
+            STAGED=true
+            shift
+            ;;
+        --diff-only)
+            FORCE_DIFF_ONLY=true
+            shift
+            ;;
+        -d|--dir|--scan-dir)
+            if [[ $# -lt 2 ]]; then
+                echo "Error: $1 requires a directory argument" >&2
+                exit 1
+            fi
+            CLI_DIRS+=("$2")
+            shift 2
+            ;;
+        -d=*|--dir=*|--scan-dir=*)
+            CLI_DIRS+=("${1#*=}")
+            shift
+            ;;
+        -e|--ext|--extensions)
+            if [[ $# -lt 2 ]]; then
+                echo "Error: $1 requires an extensions argument" >&2
+                exit 1
+            fi
+            CLI_EXTS+=("$2")
+            shift 2
+            ;;
+        -e=*|--ext=*|--extensions=*)
+            CLI_EXTS+=("${1#*=}")
+            shift
+            ;;
+        --)
+            shift
+            while [[ $# -gt 0 ]]; do
+                HINT_PARTS+=("$1")
+                shift
+            done
+            ;;
+        -*)
+            echo "Unknown option: $1" >&2
+            exit 1
+            ;;
+        *)
+            HINT_PARTS+=("$1")
+            shift
+            ;;
     esac
 done
+
+HINT="${HINT_PARTS[*]:-}"
 
 PROMPT_FILE="$PROMPT_DIR/${TASK}.txt"
 
@@ -325,8 +377,45 @@ else
     MODE="$DEFAULT_MODE"
 fi
 
+# Helper: Normalize raw extensions into a comma-separated list for codegiant.py -e
+normalize_ext_for_codegiant() {
+    local raw="$1"
+    [[ -z "$raw" ]] && return 0
+    local cleaned
+    cleaned="$(echo "$raw" | tr ',' ' ')"
+    local items=()
+    for item in $cleaned; do
+        item="${item#\*}"
+        item="${item#.}"
+        if [[ -n "$item" ]]; then
+            items+=("$item")
+        fi
+    done
+    local IFS=","
+    echo "${items[*]:-}"
+}
+
+# Helper: Convert raw extensions into pathspecs for git diff
+normalize_ext_for_git() {
+    local raw="$1"
+    [[ -z "$raw" ]] && return 0
+    local cleaned
+    cleaned="$(echo "$raw" | tr ',' ' ')"
+    local pathspecs=()
+    for item in $cleaned; do
+        if [[ "$item" == *\** || "$item" == */* ]]; then
+            pathspecs+=("$item")
+        elif [[ "$item" == .* ]]; then
+            pathspecs+=("*$item")
+        else
+            pathspecs+=("*.$item")
+        fi
+    done
+    echo "${pathspecs[@]:-}"
+}
+
 # Extract config values
-EXT="$(frontmatter_value "$PROMPT_FILE" ext)"
+EXT_FRONTMATTER="$(frontmatter_value "$PROMPT_FILE" ext)"
 CHECK_UT="$(frontmatter_value "$PROMPT_FILE" check_ut)"
 CHECK_UT="${CHECK_UT:-no}"
 DIRS_RAW="$(frontmatter_value "$PROMPT_FILE" scan-dirs)"
@@ -343,6 +432,21 @@ OMIT_FILES=()
 [[ -n "$EXCLUDE_DIRS_RAW" ]] && read -r -a EXCLUDE_DIRS <<< "$EXCLUDE_DIRS_RAW"
 [[ -n "$OMIT_RAW" ]] && read -r -a OMIT_FILES <<< "$OMIT_RAW"
 
+# Override DIRS if CLI -d was specified
+if [[ ${#CLI_DIRS[@]} -gt 0 ]]; then
+    DIRS=("${CLI_DIRS[@]}")
+fi
+
+# Override EXT if CLI -e was specified, else use frontmatter ext
+if [[ ${#CLI_EXTS[@]} -gt 0 ]]; then
+    RAW_EXT="${CLI_EXTS[*]}"
+else
+    RAW_EXT="$EXT_FRONTMATTER"
+fi
+
+CODEGIANT_EXT="$(normalize_ext_for_codegiant "$RAW_EXT")"
+read -r -a GIT_DIFF_PATHSPECS <<< "$(normalize_ext_for_git "$RAW_EXT")"
+
 # Output filename
 OUT_NAME="cg-task-result-${TASK}.md"
 
@@ -355,8 +459,8 @@ trap cleanup EXIT
 # Diff-based modes: generate diff
 if [[ "$MODE" == diff-context || "$MODE" == diff-only ]]; then
     # Untracked check
-    if [[ "$CHECK_UT" == "yes" && -n "$EXT" ]]; then
-        UT=$(git ls-files --others --exclude-standard -- $EXT 2>/dev/null || true)
+    if [[ "$CHECK_UT" == "yes" && ${#GIT_DIFF_PATHSPECS[@]} -gt 0 ]]; then
+        UT=$(git ls-files --others --exclude-standard -- "${GIT_DIFF_PATHSPECS[@]}" 2>/dev/null || true)
         if [[ -n "$UT" ]]; then
             echo "Error: untracked files detected (not included in review):" >&2
             echo "$UT" | sed 's/^/  /' >&2
@@ -367,11 +471,11 @@ if [[ "$MODE" == diff-context || "$MODE" == diff-only ]]; then
     fi
 
     # Generate diff
-    if [[ -n "$EXT" ]]; then
+    if [[ ${#GIT_DIFF_PATHSPECS[@]} -gt 0 ]]; then
         if [[ "$STAGED" == true ]]; then
-            git diff --cached -- $EXT > "$TMP_DIFF" 2>/dev/null
+            git diff --cached -- "${GIT_DIFF_PATHSPECS[@]}" > "$TMP_DIFF" 2>/dev/null
         else
-            git diff -- $EXT > "$TMP_DIFF" 2>/dev/null
+            git diff -- "${GIT_DIFF_PATHSPECS[@]}" > "$TMP_DIFF" 2>/dev/null
         fi
     else
         if [[ "$STAGED" == true ]]; then
@@ -399,6 +503,9 @@ if [[ ${#DIRS[@]} -gt 0 ]]; then
     for dir in "${DIRS[@]}"; do
         CODEGIANT_ARGS+=(-d "$dir")
     done
+fi
+if [[ -n "$CODEGIANT_EXT" ]]; then
+    CODEGIANT_ARGS+=(-e "$CODEGIANT_EXT")
 fi
 if [[ ${#ADD_FILES[@]} -gt 0 ]]; then
     for file in "${ADD_FILES[@]}"; do
