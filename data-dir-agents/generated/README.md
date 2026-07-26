@@ -12,6 +12,7 @@ Layout:
 
 - `definitions/agents/`
   - `AGENTS_GEMINI.md` → source for Gemini CLI `GEMINI.md`
+  - `AGENTS_CLAUDE.md` → source for Claude Code `CLAUDE.md`
   - `AGENTS_GPT52.md` → source for Codex (`~/.codex/AGENTS.md`), Copilot CLI instructions, and pi-agent `AGENTS.md`
   - `AGENTS_SHORT.md`, `AGENTS_LONG.md` → optional variants (currently not used by the generator)
 - `definitions/skills/<skill>/...`
@@ -54,6 +55,19 @@ See: [`definitions/targets/`](../definitions/targets/README.md)
 - `definitions/skills/<skill>/...`
   → `generated/gemini/skills/<skill>/...`
   → `~/.gemini/skills/<skill>/...`
+
+### Claude Code
+- `definitions/agents/AGENTS_CLAUDE.md`
+  → `generated/claude/CLAUDE.md`
+  → `~/.claude/CLAUDE.md`
+
+- `definitions/prompts/*.md`
+  → `generated/claude/commands/*.md`
+  → `~/.claude/commands/*.md`
+
+- `definitions/skills/<skill>/...`
+  → `generated/claude/skills/<skill>/...`
+  → `~/.claude/skills/<skill>/...`
 
 ### Codex
 - `definitions/agents/AGENTS_GPT52.md`

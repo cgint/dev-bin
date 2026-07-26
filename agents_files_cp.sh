@@ -53,10 +53,12 @@ USER_HOME_DIR="$HOME"
 GENERATED_DIR="$AGENTS_SRC_DATA_DIR/generated"
 
 GEMINI_AGENTS_DIR="$USER_HOME_DIR/.gemini"
+CLAUDE_AGENTS_DIR="$USER_HOME_DIR/.claude"
 CODEX_AGENTS_DIR="$USER_HOME_DIR/.codex"
 COPILOT_AGENTS_DIR="$USER_HOME_DIR/.copilot"
 
 GEMINI_AGENTS_FILE="$GEMINI_AGENTS_DIR/GEMINI.md"
+CLAUDE_AGENTS_FILE="$CLAUDE_AGENTS_DIR/CLAUDE.md"
 CODEX_AGENTS_FILE="$CODEX_AGENTS_DIR/AGENTS.md"
 COPILOT_AGENTS_FILE="$COPILOT_AGENTS_DIR/copilot-instructions.md"
 
@@ -87,6 +89,18 @@ if [ -d "$GENERATED_DIR" ]; then
   fi
   if [ -d "$GEMINI_AGENTS_DIR" ] && [ -d "$GENERATED_DIR/gemini/skills" ]; then
     rsync_copy_dir "$GENERATED_DIR/gemini/skills" "$GEMINI_AGENTS_DIR/skills"
+  fi
+
+  # Claude Code: copy CLAUDE.md + commands + skills into ~/.claude/
+  if [ -d "$CLAUDE_AGENTS_DIR" ] && [ -f "$GENERATED_DIR/claude/CLAUDE.md" ]; then
+    mkdir -p "$CLAUDE_AGENTS_DIR"
+    cp -v "$GENERATED_DIR/claude/CLAUDE.md" "$CLAUDE_AGENTS_FILE"
+  fi
+  if [ -d "$CLAUDE_AGENTS_DIR" ] && [ -d "$GENERATED_DIR/claude/commands" ]; then
+    rsync_copy_dir "$GENERATED_DIR/claude/commands" "$CLAUDE_AGENTS_DIR/commands"
+  fi
+  if [ -d "$CLAUDE_AGENTS_DIR" ] && [ -d "$GENERATED_DIR/claude/skills" ]; then
+    rsync_copy_dir "$GENERATED_DIR/claude/skills" "$CLAUDE_AGENTS_DIR/skills"
   fi
 
   # Codex: copy AGENTS.md into ~/.codex/AGENTS.md

@@ -27,6 +27,10 @@ Generated output (ephemeral build artifacts):
 
   - generated/codex/AGENTS.md
 
+  - generated/claude/CLAUDE.md
+  - generated/claude/commands/*.md         (prompt templates derived from definitions/prompts)
+  - generated/claude/skills/<skill>/...    (copied 1:1 from definitions/skills)
+
   - generated/copilot/copilot-instructions.md
   - generated/copilot/skills/<skill>/...
 
@@ -141,6 +145,11 @@ def plan_global_agent_files(out_root: Path, definitions_root: Path):
     gemini_src = agents_root / "AGENTS_GEMINI.md"
     if gemini_src.exists():
         _resolve_and_plan(gemini_src, out_root / "gemini" / "GEMINI.md")
+
+    # Claude Code
+    claude_src = agents_root / "AGENTS_CLAUDE.md"
+    if claude_src.exists():
+        _resolve_and_plan(claude_src, out_root / "claude" / "CLAUDE.md")
 
     # Codex / copilot base (pi-agent AGENTS.md is now handled per-profile)
     gpt52_src = agents_root / "AGENTS_GPT52.md"
@@ -315,6 +324,43 @@ def plan_gemini_skill_copies(spec_root: Path, out_root: Path):
     return planned
 
 
+def plan_claude_command_files(spec_root: Path, out_root: Path):
+    """Generate Claude Code slash command templates.
+
+    Prompts from definitions/prompts/*.md are copied 1:1 into generated/claude/commands/.
+    Claude Code discovers user commands from ~/.claude/commands/*.md.
+    """
+
+    planned = []
+
+    prompts_root = spec_root / "prompts"
+    if prompts_root.exists():
+        for prompt_file in sorted(prompts_root.glob("*.md")):
+            dest = out_root / "claude" / "commands" / prompt_file.name
+            planned.append(plan_file_copy(prompt_file, dest))
+
+    return planned
+
+
+def plan_claude_skill_copies(spec_root: Path, out_root: Path):
+    """Generate Claude Code Agent Skills.
+
+    Claude Code discovers user skills from ~/.claude/skills/<skill>/...
+    Same format as Copilot: full skill directories 1:1.
+    """
+
+    skills_root = spec_root / "skills"
+    if not skills_root.exists():
+        return []
+
+    planned = []
+    for skill_dir in sorted([p for p in skills_root.iterdir() if p.is_dir()]):
+        dest = out_root / "claude" / "skills" / skill_dir.name
+        planned.append(plan_dir_copy(skill_dir, dest))
+
+    return planned
+
+
 def plan_copilot_skill_copies(spec_root: Path, out_root: Path):
     """Generate Copilot Agent Skills.
 
@@ -444,7 +490,7 @@ def main(argv=None):
     if args.list:
         print("Global agent sources:")
         agents_root = spec_root / "agents"
-        for p in [agents_root / "AGENTS_GEMINI.md", agents_root / "AGENTS_GPT52.md", agents_root / "AGENTS_LONG.md", agents_root / "AGENTS_SHORT.md"]:
+        for p in [agents_root / "AGENTS_GEMINI.md", agents_root / "AGENTS_CLAUDE.md", agents_root / "AGENTS_GPT52.md", agents_root / "AGENTS_LONG.md", agents_root / "AGENTS_SHORT.md"]:
             if p.exists():
                 print(" -", p.relative_to(REPO_ROOT))
         print("\nCopilot profiles:")
@@ -484,6 +530,8 @@ def main(argv=None):
     # Tool-specific derived artifacts
     planned += plan_gemini_command_files(spec_root, out_root)
     planned += plan_gemini_skill_copies(spec_root, out_root)
+    planned += plan_claude_command_files(spec_root, out_root)
+    planned += plan_claude_skill_copies(spec_root, out_root)
     planned += plan_copilot_skill_copies(spec_root, out_root)
     planned += plan_cursor_skill_copies(spec_root, out_root)
 
