@@ -1,44 +1,25 @@
 #!/bin/bash
 
-# gopen.sh
+# gopen.sh — quick-launcher for dev projects
+# Searches $HOME/dev* up to depth 3, matches on root-qualified labels.
 #
-# A quick-launcher for development projects. It searches for directories within 
-# $HOME/dev* (e.g., dev, dev-archive, dev-external, dev/clients) and opens them in an editor.
-#
-# Usage: ./gopen.sh <search_query> [editor_command]
-#        ./gopen.sh <search_query> --path
-#        ./gopen.sh install
-#
-# Options:
-#   install: Creates a 'gopen.command' in the home directory for Spotlight Search access.
-#   <search_query>: Substring match for the project directory name.
-#   [editor_command]: The command to open the directory (defaults to 'cursor').
-#   --path: Output only the selected directory path on stdout (for use with gcd.sh).
-#
-# Features:
-# - Lists available directories if only a partial match is found.
-# - Sorts results by modification time (most recent first).
-# - Special query 'bin' opens the script's own directory.
+# Usage: gopen.sh <query> [--path] [<editor>]
+#        gopen.sh install
 
 if [ "$1" = "install" ]; then
     echo "Installing gopen.command in home directory so you can open it with Spotlight Search"
     COMMAND_FILE="${HOME}/gopen.command"
-    echo '#!/bin/bash' > "$COMMAND_FILE"
-    echo '${HOME}/.local/bin/gopen.sh "$@"' >> "$COMMAND_FILE"
+    printf '#!/bin/bash\n%s/.local/bin/gopen.sh "$@"\n' "$HOME" > "$COMMAND_FILE"
     chmod u+x "$COMMAND_FILE"
     echo "Done. You can now open gopen with Spotlight Search"
     exit 0
 fi
 
-
 SCRIPT_DIR=$(dirname "$0")
-
-DEV_HOME_ALL="$HOME/dev*"
-
 QUERY=$1
 OPEN_WITH="code"
 PATH_MODE=false
-if [ ! -z "$2" ]; then
+if [ $# -ge 2 ]; then
     if [ "$2" = "--path" ]; then
         PATH_MODE=true
         OPEN_WITH="--path"
@@ -47,46 +28,85 @@ if [ ! -z "$2" ]; then
     fi
 fi
 
-# Print available directories
-get_available_dev_dirs() {
-    local dir="${1}"
-    local min_depth="${2}"
-    local max_depth="${3}"
-    find "$dir" -type d -mindepth "$min_depth" -maxdepth "$max_depth" -not -path '*/\.*' 2>/dev/null | xargs stat -f '%m %N' 2>/dev/null | sort -rn | cut -d' ' -f2- | tail -r
+# --- Noise filter ---
+is_noise() {
+    case "$1" in
+        node_modules|deps|.uv-cache|.uv_cache|_build|__pycache__|.git|.next|dist|build|.venv|venv|logs|tmp|cache) return 0 ;;
+        *) return 1 ;;
+    esac
 }
 
-AVAILABLE_DIRS_DEV=""
-AVAILABLE_DIRS_CLIENT=""
-for base in $DEV_HOME_ALL; do
+FIND_IGNORE=(-name node_modules -o -name deps -o -name .uv-cache -o -name .uv_cache -o -name _build -o -name __pycache__ -o -name '.next' -o -name dist -o -name build -o -name '.venv' -o -name venv -o -name logs -o -name tmp -o -name cache)
+
+# --- Temp files (in allowed directory) ---
+_G_OPEN_TMP="${HOME}/.local/bin/.gopen_tmp"
+mkdir -p "$_G_OPEN_TMP"
+ENTRIES_F="$_G_OPEN_TMP/e_$$.txt"
+SORTED_F="$_G_OPEN_TMP/s_$$.txt"
+MATCH_F="$_G_OPEN_TMP/m_$$.txt"
+CANDIDATES_F="$_G_OPEN_TMP/c_$$.txt"
+trap 'rm -f "$ENTRIES_F" "$SORTED_F" "$MATCH_F" "$CANDIDATES_F"' EXIT
+
+# --- Phase 1: collect all candidate paths (no stat yet) ---
+: > "$CANDIDATES_F"
+
+for base in $HOME/dev*; do
     [ -d "$base" ] || continue
-    dirs=$(get_available_dev_dirs "$base" 1 1)
-    dirs=$(echo "$dirs" | while IFS= read -r d; do
-        name=$(basename "$d"); [[ "$name" == clients || "$name" == external ]] || echo "$d"
-    done)
-    AVAILABLE_DIRS_DEV="${AVAILABLE_DIRS_DEV:+$AVAILABLE_DIRS_DEV$'\n'}$dirs"
-    if [ -d "$base/clients" ]; then
-        client_dirs=$(get_available_dev_dirs "$base/clients" 1 1)
-        AVAILABLE_DIRS_CLIENT="${AVAILABLE_DIRS_CLIENT:+$AVAILABLE_DIRS_CLIENT$'\n'}$client_dirs"
-    fi
+    root=$(basename "$base")
+
+    # Projects with .git at depth <= 3
+    find "$base" -maxdepth 3 -type d -name '.git' -prune -o -type d \( ${FIND_IGNORE[*]} \) -prune -o -type d -print 2>/dev/null | \
+    while IFS= read -r d; do
+        [ -e "$d/.git" ] && echo "$d"
+    done >> "$CANDIDATES_F"
+
+    # VCS-less leaves at depth 1 only
+    for child in "$base"/*/; do
+        [ -d "$child" ] || continue
+        child="${child%/}"
+        bname=$(basename "$child")
+        [[ "$bname" == .* ]] && continue
+        is_noise "$bname" && continue
+        [ -e "$child/.git" ] && continue
+        if find "$child" -maxdepth 3 -name '.git' -type d -quit 2>/dev/null | grep -q .; then
+            continue
+        fi
+        echo "$child" >> "$CANDIDATES_F"
+    done
 done
 
+# --- Phase 2: batch stat all candidates at once ---
+# stat -f '%m %N' outputs: mtime space path (one per line)
+# We join this with the label computed from the path
+: > "$ENTRIES_F"
+if [ -s "$CANDIDATES_F" ]; then
+    # Batch stat all paths (handles spaces via careful parsing)
+    xargs stat -f '%m %N' < "$CANDIDATES_F" 2>/dev/null | \
+    while IFS= read -r line; do
+        mtime="${line%% *}"
+        path="${line#* }"
+        # Derive label from path: strip $HOME/ prefix
+        label="${path#${HOME}/}"
+        # Ensure root is the first component (dev, dev-archive, etc.)
+        printf '%s\t%s\t%s\n' "$mtime" "$path" "$label"
+    done >> "$ENTRIES_F"
+fi
+
+# Sort by mtime desc, dedup by label (field 3), output path<TAB>label
+sort -rn -t"$(printf '\t')" -k1,1 "$ENTRIES_F" | \
+awk -F'\t' '!seen[$3]++ {print $2"\t"$3}' > "$SORTED_F"
+
+TOTAL=$(wc -l < "$SORTED_F" | tr -d ' ')
+
+# Print listing (unless --path)
 if [ "$PATH_MODE" != true ]; then
     echo
-    echo "Available directories in $DEV_HOME_ALL:"
-    echo "$AVAILABLE_DIRS_DEV" | while IFS= read -r dir; do
-        [ -n "$dir" ] && echo " $(basename "$dir")"
-    done
-    echo
-    echo "Available directories in dev*/clients:"
-    echo "$AVAILABLE_DIRS_CLIENT" | while IFS= read -r dir; do
-        [ -n "$dir" ] && echo " $(basename "$dir")"
-    done
+    echo "Available directories ($TOTAL entries):"
+    awk -F'\t' '{print "  "$3}' "$SORTED_F"
     echo
 fi
 
-AVAILABLE_DIRS="$AVAILABLE_DIRS_DEV
-$AVAILABLE_DIRS_CLIENT"
-
+# Require query
 if [ -z "$QUERY" ]; then
     echo "Please provide a search query" >&2
     read QUERY
@@ -96,83 +116,104 @@ if [ -z "$QUERY" ]; then
     fi
 fi
 
-# If query is 'bin', open the directory containing this script
+# Special: bin
 if [ "$QUERY" = "bin" ]; then
     if [ "$PATH_MODE" = true ]; then
         echo "$SCRIPT_DIR"
-        exit 0
     else
         echo "Opening bin directory: $SCRIPT_DIR"
         echo
         "$OPEN_WITH" "$SCRIPT_DIR"
-        exit 1
     fi
+    exit 0
 fi
 
+# --- Match: exact > component > substring ---
+# Priority: 1=exact, 2=component, 3=substring
+# Output: path<TAB>label<TAB>priority
+QUERY_LOWER=$(printf '%s' "$QUERY" | tr '[:upper:]' '[:lower:]')
+awk -F'\t' -v q="$QUERY_LOWER" '
+{
+    path = $1
+    label = $2
+    ll = tolower(label)
 
-QUERY_LOWER=$(echo "$QUERY" | tr '[:upper:]' '[:lower:]')
-matches=()
-while IFS= read -r dir; do
-    dir_name=$(basename "$dir" | tr '[:upper:]' '[:lower:]')
-    
-    # Calculate similarity score (case insensitive)
-    # Direct match gets highest priority (100 points)
-    if [ "$dir_name" = "$QUERY_LOWER" ]; then
-        matches=("$dir")
-        echo "Direct match found: $dir. Using only this match." >&2
-        break
-    fi
-    
-    # Contains as substring gets collected
-    if [[ "$dir_name" == *"$QUERY_LOWER"* ]]; then
-        matches+=("$dir")
-        echo "Substring match found: $dir" >&2
-    fi
-done <<< "$AVAILABLE_DIRS"
+    # Exact match
+    if (ll == q) {
+        printf "%s\t%s\t1\n", path, label
+        next
+    }
 
-if [ ${#matches[@]} -eq 0 ]; then
+    # Component match: split label on /
+    n = split(ll, parts, "/")
+    for (i = 1; i <= n; i++) {
+        if (parts[i] == q) {
+            printf "%s\t%s\t2\n", path, label
+            next
+        }
+    }
+
+    # Substring match
+    if (index(ll, q) > 0) {
+        printf "%s\t%s\t3\n", path, label
+    }
+}' "$SORTED_F" | sort -t"$(printf '\t')" -k3,3n | cut -f1,2 > "$MATCH_F"
+
+# No matches
+if [ ! -s "$MATCH_F" ]; then
     echo "No matching directory found for '$QUERY'" >&2
-    echo >&2
     exit 1
 fi
 
-selected_choices=()
-if [ ${#matches[@]} -gt 1 ]; then
-    
-    echo >&2
-    echo "Multiple matches found. Choose an option:" >&2
-    echo "Press 'a' to open all matches" >&2
-    for i in "${!matches[@]}"; do
-        echo "$((i+1)): ${matches[$i]}" >&2
-    done
+MATCH_COUNT=$(wc -l < "$MATCH_F" | tr -d ' ')
 
-    read -n 1 choice
-    echo >&2
-    if [ "$choice" = "a" ]; then
-        if [ "$PATH_MODE" = true ]; then
-            echo "Error: Cannot output multiple paths in --path mode" >&2
-            exit 1
-        fi
-        selected_choices=("${matches[@]}")
-    elif [ "$choice" = "" ] || ! [[ "$choice" =~ ^[0-9]+$ ]]; then
-        echo "You did not choose - exiting." >&2
-        exit 1
-    elif [ "$choice" -lt 1 ] || [ "$choice" -gt ${#matches[@]} ]; then
-        echo "Invalid choice. Please enter a number between 1 and ${#matches[@]} or a for all" >&2
-        exit 1
+# Single match — open directly
+if [ "$MATCH_COUNT" -eq 1 ]; then
+    IFS="$(printf '\t')" read -r path label < "$MATCH_F"
+    if [ "$PATH_MODE" = true ]; then
+        echo "$path"
     else
-        selected_choices=("${matches[$((choice-1))]}")
+        echo "Opening: $label ($path) with $OPEN_WITH"
+        "$OPEN_WITH" "$path"
     fi
-else
-    selected_choices=("${matches[0]}")
+    exit 0
 fi
 
-for choice in "${selected_choices[@]}"; do
+# Multiple matches — chooser
+echo >&2
+echo "Multiple matches found. Choose an option:" >&2
+echo "Press 'a' to open all matches" >&2
+
+choice_num=0
+while IFS="$(printf '\t')" read -r path label; do
+    choice_num=$((choice_num + 1))
+    echo "  $choice_num: $label" >&2
+done < "$MATCH_F"
+
+read -r choice
+if [ "$choice" = "a" ]; then
     if [ "$PATH_MODE" = true ]; then
-        echo "$choice"
-        exit 0
-    else
-        echo "Opening: $choice with $OPEN_WITH"
-        "$OPEN_WITH" "$choice"
+        echo "Error: Cannot output multiple paths in --path mode" >&2
+        exit 1
     fi
-done
+    while IFS="$(printf '\t')" read -r path label; do
+        echo "Opening: $label ($path) with $OPEN_WITH"
+        "$OPEN_WITH" "$path"
+    done < "$MATCH_F"
+elif [ -z "$choice" ] || ! [[ "$choice" =~ ^[0-9]+$ ]]; then
+    echo "You did not choose - exiting." >&2
+    exit 1
+elif [ "$choice" -lt 1 ] || [ "$choice" -gt "$choice_num" ]; then
+    echo "Invalid choice. Please enter a number between 1 and $choice_num or a for all" >&2
+    exit 1
+else
+    sel=$(sed -n "${choice}p" "$MATCH_F")
+    path=$(printf '%s' "$sel" | cut -f1)
+    label=$(printf '%s' "$sel" | cut -f2)
+    if [ "$PATH_MODE" = true ]; then
+        echo "$path"
+    else
+        echo "Opening: $label ($path) with $OPEN_WITH"
+        "$OPEN_WITH" "$path"
+    fi
+fi
