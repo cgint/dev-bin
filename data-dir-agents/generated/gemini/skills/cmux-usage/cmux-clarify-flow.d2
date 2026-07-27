@@ -1,0 +1,49 @@
+direction: down
+
+req: {
+  label: "**User asks for cmux work**\ne.g. \"open three new tabs\""
+  style.fill: "#e8f0fe"
+}
+
+look: {
+  label: "**Look first**\ncmux identify --json\ncmux tree"
+  style.fill: "#f3f7ec"
+}
+
+amb: {
+  label: "**Does the wording map to exactly one\ncmux object?**\ntab / window / split / screen / session\nare all ambiguous"
+}
+
+dis: {
+  label: "**Disambiguator present?**\n\"in the sidebar\", \"next to\", \"below\",\n\"in this workspace\", an explicit ref"
+}
+
+ask: {
+  label: "**Ask the decisive question**\n\"See them all at the same time,\nor switch between them?\"\nall at once -> panes\nbehind each other -> surfaces\nown sidebar entry -> workspace"
+  style.fill: "#fdf0e3"
+}
+
+act: {
+  label: "**Act**\nPick the matching verb\n(new-workspace / new-split / new-surface)\nCapture the returned ref"
+  style.fill: "#f3f7ec"
+}
+
+verify: {
+  label: "**Verify**\ncmux tree\ncmux read-screen"
+}
+
+report: {
+  label: "**Report in the user's words + the ref**\n\"3 tabs (horizontal tabs in pane:4:\nsurface:35/36/37)\"\nSay where to look on screen"
+  style.fill: "#e8f0fe"
+}
+
+req -> look
+look -> amb
+amb -> dis: "yes, ambiguous"
+amb -> act: "no, unambiguous"
+dis -> act: "yes, resolved"
+dis -> ask: "no"
+ask -> act: "user answers"
+act -> verify
+verify -> act: "wrong result — fix"
+verify -> report: "matches intent"

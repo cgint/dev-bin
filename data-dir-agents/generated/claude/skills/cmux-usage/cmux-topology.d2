@@ -1,0 +1,38 @@
+direction: right
+
+sidebar: {
+  label: "**Left sidebar — vertical tabs**\n(one entry per WORKSPACE)"
+  style.fill: "#e8f0fe"
+
+  a: "workspace:2\n\"π - smart-ai.blog\"  [selected]"
+  b: "workspace:3\n\"deliberate-agent\""
+  c: "workspace:4\n\"π - web-scrape-meno\""
+}
+
+main: {
+  label: "**Main area — the selected workspace**"
+  style.fill: "#f3f7ec"
+  direction: right
+
+  p1: {
+    label: "**pane:31** (split)"
+    t1: "surface:33\n\"npm run dev\""
+  }
+  p2: {
+    label: "**pane:3** (split)"
+    t1: "surface:3\n\"π - smart-ai.blog\""
+  }
+  p3: {
+    label: "**pane:4** (split)\nhorizontal tab strip"
+    style.fill: "#fdf0e3"
+    t1: "surface:4\n\"Research TL Draw\""
+    t2: "surface:34\n\"Create CMUX skill\"  [selected]"
+  }
+}
+
+sidebar.a -> main: "selected workspace\nis shown here"
+
+note: {
+  label: "**Both levels look like \"tabs\" to the user.**\nSidebar entries = workspaces (vertical tabs)\nStrip inside a pane = surfaces (horizontal tabs)\nA pane is a split, not a tab."
+  style.fill: "#fdecea"
+}

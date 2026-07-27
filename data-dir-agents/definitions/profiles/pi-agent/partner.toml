@@ -12,6 +12,7 @@ skills = [
   "gemini-model-rules",
   "sub-agent-handoff",
   "my-tools-toolbox",
+  "cmux-usage",
   "google-workspace-cli",
   "openspec-apply-change",
   "openspec-propose",

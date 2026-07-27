@@ -66,6 +66,7 @@ General-purpose helper skills.
 | Skill | Purpose |
 |-------|---------|
 | `my-tools-toolbox` | webs.sh, url2md.py, pi-session-to-md, and other utilities |
+| `cmux-usage` | Drive the cmux terminal (workspaces/panes/tabs), translate terminology with the user, clarify ambiguous "tab" |
 
 ### Web & external services
 Skills for browsing and searching the web.
