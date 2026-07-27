@@ -7,6 +7,9 @@ description: Drive the cmux terminal from the CLI as an active operator — wind
 
 **cmux is scriptable — be an active operator, not an observer.** If you run inside cmux (`$CMUX_WORKSPACE_ID` is set), you can create splits and tabs, tile a grid, start processes in them, read their screens, and drive other agents. Do it instead of asking the user to.
 
+> Verified against **cmux 0.64.20**, 2026-07-27. Run `cmux version` first — if it is meaningfully
+> ahead, the concepts below still hold but flags and output strings may have moved; see [NOTES.md](./NOTES.md).
+
 Three rules dominate everything below:
 
 1. **Never guess what the user's "tab" means.** In cmux the word is genuinely ambiguous — ask.
@@ -152,6 +155,8 @@ cmux new-workspace --name "Grid" --focus false --layout '{
 ```
 
 `split` is the fraction given to the first child. Layout surfaces define their own `command`.
+
+The layout schema is not in the upstream CLI contract — the keys above are the ones confirmed working. Before relying on anything beyond this shape (deeper nesting, `browser` surfaces in a layout, other pane keys), build it in a throwaway workspace and measure first.
 
 ### Two gotchas when tiling
 
@@ -317,3 +322,5 @@ curl -fsSL https://raw.githubusercontent.com/manaflow-ai/cmux/main/skills/cmux/S
 ```
 
 cmux ships browser automation on the same socket (`cmux browser open|goto|snapshot|click|eval|screenshot …`) — a real browser pane next to the terminal. Use `cmux docs browser` when a task needs it.
+
+**[NOTES.md](./NOTES.md)** — provenance, verified-against version, how each claim was established, and known unmapped edges. Read it when a claim here does not match reality, or before extending the skill.
