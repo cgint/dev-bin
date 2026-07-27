@@ -44,12 +44,13 @@ fi
 
 # If explicit -h/--help, show minimal help and exit before discovery
 if [[ "$HELP_REQUEST" == true ]]; then
-    echo "Usage: $SCRIPT_NAME <task> [-d <dir>] [-e <exts>] [--staged] [--diff-only] [hint]"
+    echo "Usage: $SCRIPT_NAME <task> [-d <dir>] [-e <exts>] [--staged] [--range <rev>] [--diff-only] [hint]"
     echo ""
     echo "Options:"
     echo "  -d, --dir, --scan-dir <dir> Limit context collection to specified directory (can be used multiple times)"
     echo "  -e, --ext, --extensions <exts> Limit file extensions (e.g. py,sh or 'py,sh')"
     echo "  --staged                     Review staged changes instead of working tree"
+    echo "  --range <rev>               Review a committed range (e.g. HEAD, HEAD~1..HEAD, abc..def)"
     echo "  --diff-only                  Override task mode to diff-only (no repo context)"
     echo "  -h, --help                   Show this help"
     echo ""
@@ -248,7 +249,7 @@ prompt_preview_line() {
 }
 
 usage() {
-    echo "Usage: $SCRIPT_NAME <task> [-d <dir>] [-e <exts>] [--staged] [--diff-only] [hint]"
+    echo "Usage: $SCRIPT_NAME <task> [-d <dir>] [-e <exts>] [--staged] [--range <rev>] [--diff-only] [hint]"
     echo ""
     echo "Tasks (from $(basename "$PROMPT_DIR")):"
     printf '%s\n' "$TASK_LIST" | while read -r t; do
@@ -263,6 +264,7 @@ usage() {
     echo "  -d, --dir, --scan-dir <dir> Limit context collection to specified directory (can be used multiple times)"
     echo "  -e, --ext, --extensions <exts> Limit file extensions (e.g. py,sh or 'py,sh')"
     echo "  --staged                     Review staged changes instead of working tree"
+    echo "  --range <rev>               Review a committed range (e.g. HEAD, HEAD~1..HEAD, abc..def)"
     echo "  --diff-only                  Override task mode to diff-only (no repo context)"
     echo "  -h, --help                   Show this help"
     echo ""
@@ -298,6 +300,7 @@ fi
 
 STAGED=false
 FORCE_DIFF_ONLY=false
+RANGE_SPEC=""
 CLI_DIRS=()
 CLI_EXTS=()
 HINT_PARTS=()
@@ -306,6 +309,18 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --staged)
             STAGED=true
+            shift
+            ;;
+        --range)
+            if [[ $# -lt 2 ]]; then
+                echo "Error: --range requires a revision argument" >&2
+                exit 1
+            fi
+            RANGE_SPEC="$2"
+            shift 2
+            ;;
+        --range=*)
+            RANGE_SPEC="${1#*=}"
             shift
             ;;
         --diff-only)
@@ -356,6 +371,26 @@ done
 
 HINT="${HINT_PARTS[*]:-}"
 
+# ── Validate diff-source flags ──
+diff_sources_set=0
+[[ "$STAGED" == true ]]       && ((++diff_sources_set)) || true
+[[ -n "$RANGE_SPEC" ]]        && ((++diff_sources_set)) || true
+if [[ "$diff_sources_set" -gt 1 ]]; then
+    echo "Error: --staged and --range are mutually exclusive" >&2
+    exit 1
+fi
+
+# Normalize range spec: if it looks like a single commit (no .., ..., or ^!), append ^!
+if [[ -n "$RANGE_SPEC" ]]; then
+    case "$RANGE_SPEC" in
+        *..*|*'^!'*) ;; # already a range or commit^! — pass through
+        *) RANGE_SPEC="${RANGE_SPEC}^!" ;;
+    esac
+fi
+
+# Warn if --range is used with a non-diff task (validated after mode is known)
+RANGE_ON_NON_DIFF=false
+
 PROMPT_FILE="$PROMPT_DIR/${TASK}.txt"
 
 # Parse config frontmatter
@@ -375,6 +410,12 @@ if [[ "$FORCE_DIFF_ONLY" == true ]]; then
     MODE=diff-only
 else
     MODE="$DEFAULT_MODE"
+fi
+
+# --range requires a diff-based mode
+if [[ -n "$RANGE_SPEC" && "$MODE" == "context" ]]; then
+    echo "Error: --range requires a diff-based task (diff-context or diff-only), but '$TASK' uses 'context' mode" >&2
+    exit 1
 fi
 
 # Helper: Normalize raw extensions into a comma-separated list for codegiant.py -e
@@ -458,8 +499,8 @@ trap cleanup EXIT
 
 # Diff-based modes: generate diff
 if [[ "$MODE" == diff-context || "$MODE" == diff-only ]]; then
-    # Untracked check
-    if [[ "$CHECK_UT" == "yes" && ${#GIT_DIFF_PATHSPECS[@]} -gt 0 ]]; then
+    # Untracked check (skip for historical range diffs)
+    if [[ "$CHECK_UT" == "yes" && -z "$RANGE_SPEC" && ${#GIT_DIFF_PATHSPECS[@]} -gt 0 ]]; then
         UT=$(git ls-files --others --exclude-standard -- "${GIT_DIFF_PATHSPECS[@]}" 2>/dev/null || true)
         if [[ -n "$UT" ]]; then
             echo "Error: untracked files detected (not included in review):" >&2
@@ -470,18 +511,24 @@ if [[ "$MODE" == diff-context || "$MODE" == diff-only ]]; then
         fi
     fi
 
+    # Build diff source array (bash 3.2 safe: empty array under set -u)
+    DIFF_SOURCE=()
+    if [[ "$STAGED" == true ]]; then
+        DIFF_SOURCE=(--cached)
+    elif [[ -n "$RANGE_SPEC" ]]; then
+        DIFF_SOURCE=("$RANGE_SPEC")
+    fi
+
     # Generate diff
     if [[ ${#GIT_DIFF_PATHSPECS[@]} -gt 0 ]]; then
-        if [[ "$STAGED" == true ]]; then
-            git diff --cached -- "${GIT_DIFF_PATHSPECS[@]}" > "$TMP_DIFF" 2>/dev/null
-        else
-            git diff -- "${GIT_DIFF_PATHSPECS[@]}" > "$TMP_DIFF" 2>/dev/null
+        if ! git diff "${DIFF_SOURCE[@]+"${DIFF_SOURCE[@]}"}" -- "${GIT_DIFF_PATHSPECS[@]}" > "$TMP_DIFF" 2>/dev/null; then
+            echo "Error: git diff failed for range '${RANGE_SPEC:-working tree}'" >&2
+            exit 1
         fi
     else
-        if [[ "$STAGED" == true ]]; then
-            git diff --cached > "$TMP_DIFF" 2>/dev/null
-        else
-            git diff > "$TMP_DIFF" 2>/dev/null
+        if ! git diff "${DIFF_SOURCE[@]+"${DIFF_SOURCE[@]}"}" > "$TMP_DIFF" 2>/dev/null; then
+            echo "Error: git diff failed for range '${RANGE_SPEC:-working tree}'" >&2
+            exit 1
         fi
     fi
 
