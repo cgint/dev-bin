@@ -264,7 +264,7 @@ class UploadCache:
 class GeminiAudioTranscriber:
     """High-quality audio transcription using Gemini"""
     
-    def __init__(self, api_key: Optional[str] = None, model_name: str = "gemini-3.6-flash"):
+    def __init__(self, api_key: Optional[str] = None, model_name: str = "gemini-3-flash-preview"):
         """Initialize the transcriber with API key."""
         self.api_key = api_key or os.getenv('GEMINI_API_KEY')
         if not self.api_key:
@@ -761,7 +761,7 @@ def main() -> None:
         file_to_process = input_file_path
 
     # THINKING_MIN_FOR_PRO=128
-    model_name = "gemini-3.6-flash"
+    model_name = "gemini-3-flash-preview"
     TEMPERATURE = 1
     MAX_OUTPUT_TOKENS_SUMMARY = 8192
     MAX_OUTPUT_TOKENS_TRANSCRIPT = 16384
