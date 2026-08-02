@@ -190,7 +190,14 @@ while IFS="$(printf '\t')" read -r path label; do
     echo "  $choice_num: $label" >&2
 done < "$MATCH_F"
 
-read -r choice
+if [ "$choice_num" -le 9 ]; then
+    # Keep the fast one-key UX when every option is single-digit.
+    IFS= read -r -n 1 choice
+    echo >&2
+else
+    # Preserve access to multi-digit options when there are 10+ matches.
+    read -r choice
+fi
 if [ "$choice" = "a" ]; then
     if [ "$PATH_MODE" = true ]; then
         echo "Error: Cannot output multiple paths in --path mode" >&2
