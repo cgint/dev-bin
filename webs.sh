@@ -1,138 +1,132 @@
 #!/bin/bash
 
-# webs.sh
-#
-# A web search wrapper for the Gemini CLI that performs grounded web searches.
-# Uses gem.sh to invoke Gemini with web search capabilities.
-#
-# Usage: 
-#   webs.sh "your search query"
-#   webs.sh @file.txt "additional prompt about the file"
-#   webs.sh @file.txt "find out more about this" -f output.txt
-#   webs.sh -f result.txt "your search query"
-#   webs.sh -o stream-json "your search query"
-#
-# Options:
-#   @file.txt     Reference a file whose content will be included in the prompt
-#   -f <file>     Also copy the streamed /tmp output to the specified file after completion
-#   -m <model>    Model to use: flash, pro (default: flash, avoid using pro as it usually takes too long)
-#   -o <format>   Output format: text, json, stream-json (default: text) - e.g. stream-json will contain the search queries used, json contains a lot of statistical details
-#   -h, --help    Show this help message
-#
-# Examples:
-#   webs.sh "What are the latest news about AI?"
-#   webs.sh @notes.txt "research this topic and find recent developments"
-#   webs.sh @code.py "find documentation for the libraries used" -f docs.txt
+# Search the web using Gemini or GitHub Copilot.
+# Usage: webs.sh [@file] [query ...] [-f output] [-m model] [-o format]
 
 set -e
 set -o pipefail
 
-SCRIPT_DIR="$(dirname "$0")"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/_env_loader.sh"
 
-show_help() {
-    sed -n '3,25p' "$0" | sed 's/^# //' | sed 's/^#//'
-    exit 0
-}
-
-# Parse arguments
+provider="${WEBS_PROVIDER:-gemini}"
 output_file=""
-model="flash"
 output_format="text"
 input_file=""
 prompt_parts=()
 
-while [[ $# -gt 0 ]]; do
-    case "$1" in
-        -h|--help)
-            show_help
-            ;;
-        -f)
-            if [[ -z "$2" || "$2" == -* ]]; then
-                echo "Error: -f requires a filename argument" >&2
-                exit 1
-            fi
-            output_file="$2"
-            shift 2
-            ;;
-        -m)
-            if [[ -z "$2" || "$2" == -* ]]; then
-                echo "Error: -m requires a model argument (flash, pro, lite)" >&2
-                exit 1
-            fi
-            model="$2"
-            shift 2
-            ;;
-        -o)
-            if [[ -z "$2" || "$2" == -* ]]; then
-                echo "Error: -o requires a format argument (text, json, stream-json)" >&2
-                exit 1
-            fi
-            output_format="$2"
-            shift 2
-            ;;
-        @*)
-            # File reference - strip the @ prefix
-            input_file="${1#@}"
-            if [[ ! -f "$input_file" ]]; then
-                echo "Error: File not found: $input_file" >&2
-                exit 1
-            fi
-            shift
-            ;;
-        *)
-            # Collect as prompt part
-            prompt_parts+=("$1")
-            shift
-            ;;
-    esac
-done
-
-# Validate we have something to search
-if [[ ${#prompt_parts[@]} -eq 0 && -z "$input_file" ]]; then
-    echo "Error: No search query provided" >&2
-    echo "Usage: webs.sh [@file.txt] \"your search query\" [-f output.txt]" >&2
+die() {
+    echo "Error: $*" >&2
     exit 1
-fi
+}
 
-# Build the prompt
-prompt=""
+show_help() {
+    sed -n '3,7p' "$0" | sed 's/^# //' | sed 's/^#//'
+    cat >&2 <<'EOF'
 
-# Add file content if specified
-if [[ -n "$input_file" ]]; then
-    file_content=$(cat "$input_file")
-    prompt="--- FILE CONTENT ($input_file) ---
-$file_content
+Options:
+  @file.txt     Include a file in the search prompt
+  -f <file>     Copy the output to a file after completion
+  -o <format>   text, json, or stream-json (stream-json is Gemini-only)
+  -h, --help    Show this help
+
+Environment (.env or shell):
+  WEBS_PROVIDER=gemini|copilot  (default: gemini)
+  COPILOT_MODEL=gpt-5.6-luna
+  COPILOT_EFFORT=none
+EOF
+    exit 0
+}
+
+parse_args() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -h|--help) show_help ;;
+            -f)
+                [[ -n "${2:-}" && "$2" != -* ]] || die "-f requires a filename argument"
+                output_file="$2"; shift 2 ;;
+            -o)
+                [[ -n "${2:-}" && "$2" != -* ]] || die "-o requires a format argument"
+                output_format="$2"; shift 2 ;;
+            @*)
+                input_file="${1#@}"
+                [[ -f "$input_file" ]] || die "File not found: $input_file"
+                shift ;;
+            -*) die "Unknown option: $1" ;;
+            *) prompt_parts+=("$1"); shift ;;
+        esac
+    done
+
+    [[ ${#prompt_parts[@]} -gt 0 || -n "$input_file" ]] || die "No search query provided"
+    case "$provider" in
+        gemini|copilot) ;;
+        *) die "WEBS_PROVIDER must be 'gemini' or 'copilot', got '$provider'" ;;
+    esac
+    [[ "$output_format" == text || "$output_format" == json || "$output_format" == stream-json ]] || \
+        die "Output format must be text, json, or stream-json"
+    [[ "$provider" != copilot || "$output_format" != stream-json ]] || \
+        die "stream-json output is only supported with the Gemini provider"
+}
+
+build_prompt() {
+    local prompt=""
+    if [[ -n "$input_file" ]]; then
+        prompt="--- FILE CONTENT ($input_file) ---
+$(cat "$input_file")
 --- END FILE CONTENT ---
 
 "
-fi
+    fi
 
-# Add the user's prompt parts
-user_prompt="${prompt_parts[*]}"
-if [[ -n "$user_prompt" ]]; then
-    prompt="${prompt}${user_prompt}"
-else
-    prompt="${prompt}Please analyze and research the above content using web search."
-fi
+    if [[ ${#prompt_parts[@]} -gt 0 ]]; then
+        prompt+="${prompt_parts[*]}"
+    else
+        prompt+="Please analyze and research the above content using web search."
+    fi
 
-# Add instruction to use web search
-full_prompt="Use google_web_search to research the following and provide a comprehensive answer with sources:
+    if [[ "$provider" == gemini ]]; then
+        printf 'Use google_web_search to research the following and provide a comprehensive answer with sources:\n\n%s' "$prompt"
+    else
+        printf 'Use the native web_search tool to research the following and provide a comprehensive answer with sources. Do not use webs.sh, Gemini, or external wrappers:\n\n%s' "$prompt"
+    fi
+}
 
-$prompt"
+run_gemini() {
+    local prompt="$1"
+    local disable_mcp="__DISABLE_ALL_MCP__"
+    echo "$prompt" | GEMINI_CLI_TRUST_WORKSPACE=true "$SCRIPT_DIR/gem.sh" flash \
+        -o "$output_format" --allowed-mcp-server-names "$disable_mcp"
+}
 
-# Execute gemini via gem.sh
-#
-# Intent: disallow all MCP servers.
-# Gemini CLI's Policy Engine rejects an empty mcpName, so we pass an allowlist
-# entry that (practically) matches no server.
-DISABLE_ALL_MCP_NAME="__DISABLE_ALL_MCP__"
-tmp_out_file=$(mktemp /tmp/webs_output.XXXXXX)
-echo "Searching the web..." >&2
-echo "Streaming results to: $tmp_out_file" >&2
-echo "You can read partial output from that file while this search is running." >&2
-echo "$full_prompt" | GEMINI_CLI_TRUST_WORKSPACE=true "$SCRIPT_DIR/gem.sh" "$model" -o "$output_format" --allowed-mcp-server-names "$DISABLE_ALL_MCP_NAME" | tee "$tmp_out_file"
+run_copilot() {
+    local prompt="$1"
+    local copilot_model="${COPILOT_MODEL:-auto}"
+    local copilot_effort="${COPILOT_EFFORT:-none}"
+    command -v copilot >/dev/null 2>&1 || die "Copilot CLI not found on PATH"
+    copilot -p "$prompt" \
+        --model "$copilot_model" --effort "$copilot_effort" \
+        --allow-tool=web_search --allow-all-urls --output-format "$output_format"
+}
 
-if [[ -n "$output_file" ]]; then
-    cp "$tmp_out_file" "$output_file"
-    echo "Results written to your configured output file: $output_file" >&2
-fi
+main() {
+    parse_args "$@"
+    local prompt
+    prompt="$(build_prompt)"
+    local tmp_out_file
+    tmp_out_file="$(mktemp /tmp/webs_output.XXXXXX)"
+
+    echo "Searching the web with $provider..." >&2
+    echo "Streaming results to: $tmp_out_file" >&2
+    if [[ "$provider" == gemini ]]; then
+        run_gemini "$prompt"
+    else
+        run_copilot "$prompt"
+    fi | tee "$tmp_out_file"
+
+    if [[ -n "$output_file" ]]; then
+        cp "$tmp_out_file" "$output_file"
+        echo "Results written to your configured output file: $output_file" >&2
+    fi
+}
+
+main "$@"
