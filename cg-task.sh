@@ -37,6 +37,14 @@ DEFAULTS_DIR="$SDIR/cg-task/defaults"
 LOCAL_DIR="./codegiant-tasks"
 
 # Detect help request early so we can skip discovery
+scope_guidance() {
+    echo "💡 Best Practice: Optimizing Context Scope"
+    echo "  - To prevent model hallucinations, it is crucial to provide sufficient codebase context."
+    echo "  - However, to avoid hitting token limits or diluting focus, spare out massive folders"
+    echo "    (like 'tests/' or 'docs/') if your task focuses purely on frontend/backend source behavior."
+    echo "  - Use '-d <dir>' to target specific directories, or '-e <exts>' to filter by file extensions."
+}
+
 HELP_REQUEST=false
 if [[ "${1:-}" == "-h" ]] || [[ "${1:-}" == "--help" ]]; then
     HELP_REQUEST=true
@@ -44,18 +52,21 @@ fi
 
 # If explicit -h/--help, show minimal help and exit before discovery
 if [[ "$HELP_REQUEST" == true ]]; then
-    echo "Usage: $SCRIPT_NAME <task> [-d <dir>] [-e <exts>] [--staged] [--range <rev>] [--diff-only] [hint]"
+    echo "Usage: $SCRIPT_NAME <task> [-d <dir>] [-e <exts>] [-f <files>] [--staged] [--range <rev>] [--diff-only] [hint]"
     echo ""
     echo "Options:"
-    echo "  -d, --dir, --scan-dir <dir> Limit context collection to specified directory (can be used multiple times)"
-    echo "  -e, --ext, --extensions <exts> Limit file extensions (e.g. py,sh or 'py,sh')"
-    echo "  --staged                     Review staged changes instead of working tree"
-    echo "  --range <rev>               Review a committed range (e.g. HEAD, HEAD~1..HEAD, abc..def)"
-    echo "  --diff-only                  Override task mode to diff-only (no repo context)"
-    echo "  -h, --help                   Show this help"
+    echo "  -d <dir>    Limit context to specified directory (can be used multiple times)"
+    echo "  -e <exts>   Limit context to specified extensions (e.g., py,sh)"
+    echo "  -f <files>  Limit context strictly to comma-separated files (e.g., src/main.py,src/config.py)"
+    echo "  --staged    Review staged changes instead of working tree"
+    echo "  --range     Review a committed range (e.g., HEAD~1..HEAD)"
+    echo "  --diff-only Override task mode to diff-only (no repo context)"
+    echo "  -h          Show this help"
     echo ""
     echo "Hint:"
     echo "  Any trailing argument is appended to the prompt as dynamic focus."
+    echo ""
+    scope_guidance
     echo ""
     echo "Run without arguments to see available tasks."
     exit 0
@@ -249,7 +260,7 @@ prompt_preview_line() {
 }
 
 usage() {
-    echo "Usage: $SCRIPT_NAME <task> [-d <dir>] [-e <exts>] [--staged] [--range <rev>] [--diff-only] [hint]"
+    echo "Usage: $SCRIPT_NAME <task> [-d <dir>] [-e <exts>] [-f <files>] [--staged] [--range <rev>] [--diff-only] [hint]"
     echo ""
     echo "Tasks (from $(basename "$PROMPT_DIR")):"
     printf '%s\n' "$TASK_LIST" | while read -r t; do
@@ -261,15 +272,18 @@ usage() {
     done
     echo ""
     echo "Options:"
-    echo "  -d, --dir, --scan-dir <dir> Limit context collection to specified directory (can be used multiple times)"
-    echo "  -e, --ext, --extensions <exts> Limit file extensions (e.g. py,sh or 'py,sh')"
-    echo "  --staged                     Review staged changes instead of working tree"
-    echo "  --range <rev>               Review a committed range (e.g. HEAD, HEAD~1..HEAD, abc..def)"
-    echo "  --diff-only                  Override task mode to diff-only (no repo context)"
-    echo "  -h, --help                   Show this help"
+    echo "  -d <dir>    Limit context to specified directory (can be used multiple times)"
+    echo "  -e <exts>   Limit context to specified extensions (e.g., py,sh)"
+    echo "  -f <files>  Limit context strictly to comma-separated files (e.g., src/main.py,src/config.py)"
+    echo "  --staged    Review staged changes instead of working tree"
+    echo "  --range     Review a committed range (e.g., HEAD~1..HEAD)"
+    echo "  --diff-only Override task mode to diff-only (no repo context)"
+    echo "  -h          Show this help"
     echo ""
     echo "Hint:"
     echo "  Any trailing argument is appended to the prompt as dynamic focus."
+    echo ""
+    scope_guidance
 }
 
 extract_prompt_body() {
@@ -303,6 +317,7 @@ FORCE_DIFF_ONLY=false
 RANGE_SPEC=""
 CLI_DIRS=()
 CLI_EXTS=()
+CLI_FILES=""
 HINT_PARTS=()
 
 while [[ $# -gt 0 ]]; do
@@ -327,29 +342,33 @@ while [[ $# -gt 0 ]]; do
             FORCE_DIFF_ONLY=true
             shift
             ;;
-        -d|--dir|--scan-dir)
+        -d)
             if [[ $# -lt 2 ]]; then
-                echo "Error: $1 requires a directory argument" >&2
+                echo "Error: -d requires a directory argument" >&2
                 exit 1
             fi
             CLI_DIRS+=("$2")
             shift 2
             ;;
-        -d=*|--dir=*|--scan-dir=*)
-            CLI_DIRS+=("${1#*=}")
-            shift
-            ;;
-        -e|--ext|--extensions)
+        -e)
             if [[ $# -lt 2 ]]; then
-                echo "Error: $1 requires an extensions argument" >&2
+                echo "Error: -e requires an extensions argument" >&2
                 exit 1
             fi
             CLI_EXTS+=("$2")
             shift 2
             ;;
-        -e=*|--ext=*|--extensions=*)
-            CLI_EXTS+=("${1#*=}")
-            shift
+        -f)
+            if [[ $# -lt 2 ]]; then
+                echo "Error: -f requires a comma-separated file list argument" >&2
+                exit 1
+            fi
+            if [[ -n "$CLI_FILES" ]]; then
+                CLI_FILES="${CLI_FILES},$2"
+            else
+                CLI_FILES="$2"
+            fi
+            shift 2
             ;;
         --)
             shift
@@ -553,6 +572,9 @@ if [[ ${#DIRS[@]} -gt 0 ]]; then
 fi
 if [[ -n "$CODEGIANT_EXT" ]]; then
     CODEGIANT_ARGS+=(-e "$CODEGIANT_EXT")
+fi
+if [[ -n "$CLI_FILES" ]]; then
+    CODEGIANT_ARGS+=(-i "$CLI_FILES")
 fi
 if [[ ${#ADD_FILES[@]} -gt 0 ]]; then
     for file in "${ADD_FILES[@]}"; do

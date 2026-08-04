@@ -294,6 +294,69 @@ def process_grounding_info(raw_output_file, search_enabled):
 
     return md
 
+def handle_http_error(e, markdown_output_file):
+    try:
+        error_msg = e.read().decode('utf-8', errors='replace')
+    except Exception:
+        error_msg = "Could not decode error payload."
+        
+    print_err(f"Error: HTTP request failed with code {e.code}")
+    print_err(error_msg)
+    
+    # Detect if this is a token/context limit error versus a standard rate/quota limit
+    error_msg_lower = error_msg.lower()
+    
+    # Token limits are 400 (Bad Request) or 413 (Payload Too Large) with specific context size keywords
+    is_token_limit = (e.code in (400, 413)) and any(kw in error_msg_lower for kw in ("token count", "exceeds the maximum", "input token", "context limit", "max token", "too many tokens"))
+    
+    # Rate limits are strictly 429 status codes, or quota/exhausted keywords ONLY if not already a 400/413 token limit
+    is_rate_limit = (e.code == 429) or ((not is_token_limit) and any(kw in error_msg_lower for kw in ("quota", "rate limit", "exhausted")))
+
+    # Write technical error and helpful 3-part guide to the markdown response file
+    try:
+        with open(markdown_output_file, 'a') as md_f:
+            md_f.write(f"\n\n# ❌ Run Aborted - API Error (HTTP {e.code})\n\n")
+            md_f.write("### Technical Details\n")
+            md_f.write(f"```json\n{error_msg}\n```\n\n")
+            
+            if is_token_limit:
+                md_f.write("### What Happened? (The Problem)\n")
+                md_f.write("The request failed because the collected codebase context exceeded the Gemini API input token limit.\n\n")
+                md_f.write("### Why It Happened? (The Cause)\n")
+                md_f.write("The combined size of the files scanned by `codecollector` (including large documentation, tests, or build outputs) is too large to fit inside the model's active attention window (Limit: 1,048,576 tokens).\n\n")
+                md_f.write("### What to Do Next? (The Solution / Action)\n")
+                md_f.write("Please scope down your task context:\n")
+                md_f.write("1. Use `-d <dir>` to target only the directory containing the relevant source code (e.g., `-d src`).\n")
+                md_f.write("2. Use `-e <exts>` (e.g., `-e py,js`) to restrict scanning strictly to matching code extensions.\n\n")
+            elif is_rate_limit:
+                md_f.write("### What Happened? (The Problem)\n")
+                md_f.write("The request to the Gemini API failed because your API rate limit or quota was exceeded.\n\n")
+                md_f.write("### Why It Happened? (The Cause)\n")
+                md_f.write("You have exceeded the maximum allowed requests per minute (RPM), tokens per minute (TPM), or your total account funding limits for the Gemini API.\n\n")
+                md_f.write("### What to Do Next? (The Solution / Action)\n")
+                md_f.write("1. Wait 1–2 minutes before retrying your task to let your active request windows clear.\n")
+                md_f.write("2. Check your billing status and remaining usage limits in the Google AI Studio console.\n\n")
+            else:
+                md_f.write("### What Happened? (The Problem)\n")
+                md_f.write(f"The request to the Gemini API failed with HTTP status code {e.code}.\n\n")
+                md_f.write("### Why It Happened? (The Cause)\n")
+                if e.code in (401, 403):
+                    md_f.write("This is typically caused by an invalid, expired, or missing GEMINI_API_KEY environment variable.\n\n")
+                elif e.code == 404:
+                    md_f.write("The requested model endpoint was not found. Please verify the model ID matches current supported models.\n\n")
+                else:
+                    md_f.write("The API gateway rejected the request. Check the Technical Details block above for the API server's response message.\n\n")
+                
+                md_f.write("### What to Do Next? (The Solution / Action)\n")
+                if e.code in (401, 403):
+                    md_f.write("Please verify that your GEMINI_API_KEY environment variable is configured correctly and has permission to make API calls.\n\n")
+                elif e.code == 404:
+                    md_f.write("Please check your model configuration and ensure the specified model ID is valid.\n\n")
+                else:
+                    md_f.write("Review the error description above to resolve the API gateway rejection.\n\n")
+    except Exception as write_err:
+        print_err(f"Warning: Failed to write error details to {markdown_output_file}: {write_err}")
+
 def main():
     global TIMESTAMP
     
@@ -608,8 +671,7 @@ def main():
                         except json.JSONDecodeError:
                             pass
     except urllib.error.HTTPError as e:
-        print_err(f"Error: HTTP request failed with code {e.code}")
-        print_err(e.read().decode('utf-8'))
+        handle_http_error(e, markdown_output_file)
         sys.exit(1)
     except Exception as e:
         print_err(f"Error during API call: {e}")
