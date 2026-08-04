@@ -52,12 +52,12 @@ fi
 
 # If explicit -h/--help, show minimal help and exit before discovery
 if [[ "$HELP_REQUEST" == true ]]; then
-    echo "Usage: $SCRIPT_NAME <task> [-d <dir>] [-e <exts>] [-f <files>] [--staged] [--range <rev>] [--diff-only] [hint]"
+    echo "Usage: $SCRIPT_NAME <task> [-d <dir>] [-e <exts>] [-i <files>] [--staged] [--range <rev>] [--diff-only] [hint]"
     echo ""
     echo "Options:"
     echo "  -d <dir>    Limit context to specified directory (can be used multiple times)"
     echo "  -e <exts>   Limit context to specified extensions (e.g., py,sh)"
-    echo "  -f <files>  Limit context strictly to comma-separated files (e.g., src/main.py,src/config.py)"
+    echo "  -i <files>  Limit context strictly to comma-separated files (e.g., src/main.py,src/config.py)"
     echo "  --staged    Review staged changes instead of working tree"
     echo "  --range     Review a committed range (e.g., HEAD~1..HEAD)"
     echo "  --diff-only Override task mode to diff-only (no repo context)"
@@ -260,7 +260,7 @@ prompt_preview_line() {
 }
 
 usage() {
-    echo "Usage: $SCRIPT_NAME <task> [-d <dir>] [-e <exts>] [-f <files>] [--staged] [--range <rev>] [--diff-only] [hint]"
+    echo "Usage: $SCRIPT_NAME <task> [-d <dir>] [-e <exts>] [-i <files>] [--staged] [--range <rev>] [--diff-only] [hint]"
     echo ""
     echo "Tasks (from $(basename "$PROMPT_DIR")):"
     printf '%s\n' "$TASK_LIST" | while read -r t; do
@@ -274,7 +274,7 @@ usage() {
     echo "Options:"
     echo "  -d <dir>    Limit context to specified directory (can be used multiple times)"
     echo "  -e <exts>   Limit context to specified extensions (e.g., py,sh)"
-    echo "  -f <files>  Limit context strictly to comma-separated files (e.g., src/main.py,src/config.py)"
+    echo "  -i <files>  Limit context strictly to comma-separated files (e.g., src/main.py,src/config.py)"
     echo "  --staged    Review staged changes instead of working tree"
     echo "  --range     Review a committed range (e.g., HEAD~1..HEAD)"
     echo "  --diff-only Override task mode to diff-only (no repo context)"
@@ -358,9 +358,9 @@ while [[ $# -gt 0 ]]; do
             CLI_EXTS+=("$2")
             shift 2
             ;;
-        -f)
+        -i)
             if [[ $# -lt 2 ]]; then
-                echo "Error: -f requires a comma-separated file list argument" >&2
+                echo "Error: -i requires a comma-separated file list argument" >&2
                 exit 1
             fi
             if [[ -n "$CLI_FILES" ]]; then

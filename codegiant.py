@@ -328,6 +328,7 @@ def handle_http_error(e, markdown_output_file):
                 md_f.write("Please scope down your task context:\n")
                 md_f.write("1. Use `-d <dir>` to target only the directory containing the relevant source code (e.g., `-d src`).\n")
                 md_f.write("2. Use `-e <exts>` (e.g., `-e py,js`) to restrict scanning strictly to matching code extensions.\n\n")
+                md_f.write("3. Use `-i <files>` to include specific files exclusively\n\n")
             elif is_rate_limit:
                 md_f.write("### What Happened? (The Problem)\n")
                 md_f.write("The request to the Gemini API failed because your API rate limit or quota was exceeded.\n\n")
