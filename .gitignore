@@ -22,3 +22,7 @@ testing_tmp/
 .venv*
 
 .pi/goals
+
+# cg-task
+cg-task-result-*.md
+._*
