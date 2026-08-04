@@ -1283,33 +1283,33 @@ async function fetchConfluencePageHistoryImpl(
 }
 
 export default function atlassianReaderExtension(pi: ExtensionAPI) {
-	pi.registerTool({
-		name: "atlassian_chat",
-		label: "Atlassian chat",
-		description: "Query Atlassian's Jira/Confluence via AI chat gateway.",
-		parameters: Type.Object({
-			query: Type.String({ description: "Question or search query" }),
-			session_id: Type.Optional(Type.String({ description: "Optional session id for continuity" })),
-			model_category: Type.Optional(Type.String({ description: "Model category (default: medium)" })),
-		}),
-		async execute(_toolCallId, params, signal, _onUpdate, ctx) {
-			try {
-				const res = await atlassianChatImpl(params.query, params.session_id, params.model_category, signal);
-				return {
-					content: [
-						{
-							type: "text",
-							text: `${res.answer}\n\nSession ID: ${res.sessionId}`,
-						},
-					],
-					details: { session_id: res.sessionId },
-				};
-			} catch (e: any) {
-				log(ctx, "ERROR", "atlassian_chat failed", String(e?.message ?? e));
-				throw e;
-			}
-		},
-	});
+	// pi.registerTool({
+	// 	name: "atlassian_chat",
+	// 	label: "Atlassian chat",
+	// 	description: "Query Atlassian's Jira/Confluence via AI chat gateway.",
+	// 	parameters: Type.Object({
+	// 		query: Type.String({ description: "Question or search query" }),
+	// 		session_id: Type.Optional(Type.String({ description: "Optional session id for continuity" })),
+	// 		model_category: Type.Optional(Type.String({ description: "Model category (default: medium)" })),
+	// 	}),
+	// 	async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+	// 		try {
+	// 			const res = await atlassianChatImpl(params.query, params.session_id, params.model_category, signal);
+	// 			return {
+	// 				content: [
+	// 					{
+	// 						type: "text",
+	// 						text: `${res.answer}\n\nSession ID: ${res.sessionId}`,
+	// 					},
+	// 				],
+	// 				details: { session_id: res.sessionId },
+	// 			};
+	// 		} catch (e: any) {
+	// 			log(ctx, "ERROR", "atlassian_chat failed", String(e?.message ?? e));
+	// 			throw e;
+	// 		}
+	// 	},
+	// });
 
 	pi.registerTool({
 		name: "fetch_confluence_page",
@@ -1610,29 +1610,29 @@ export default function atlassianReaderExtension(pi: ExtensionAPI) {
 	});
 
 	// Convenience commands (manual use)
-	pi.registerCommand("atlassian-chat", {
-		description: "Run atlassian_chat for a query (usage: /atlassian-chat <query>)",
-		handler: async (args, ctx) => {
-			const query = args.trim();
-			if (!query) {
-				ctx.ui.notify("Usage: /atlassian-chat <query>", "info");
-				return;
-			}
-			ctx.ui.setStatus("atlassian-reader", "Querying Atlassian...");
-			try {
-				const res = await atlassianChatImpl(query, undefined, "medium", undefined);
-				const lines = String(res.answer).split("\n");
-				const max = 30;
-				ctx.ui.setWidget(
-					"atlassian-reader",
-					(lines.length > max ? lines.slice(0, max).concat(["… (truncated)"]) : lines).slice(0, max + 1)
-				);
-				ctx.ui.notify(`Done. Session ID: ${res.sessionId}`, "success");
-			} finally {
-				ctx.ui.setStatus("atlassian-reader", "");
-			}
-		},
-	});
+	// pi.registerCommand("atlassian-chat", {
+	// 	description: "Run atlassian_chat for a query (usage: /atlassian-chat <query>)",
+	// 	handler: async (args, ctx) => {
+	// 		const query = args.trim();
+	// 		if (!query) {
+	// 			ctx.ui.notify("Usage: /atlassian-chat <query>", "info");
+	// 			return;
+	// 		}
+	// 		ctx.ui.setStatus("atlassian-reader", "Querying Atlassian...");
+	// 		try {
+	// 			const res = await atlassianChatImpl(query, undefined, "medium", undefined);
+	// 			const lines = String(res.answer).split("\n");
+	// 			const max = 30;
+	// 			ctx.ui.setWidget(
+	// 				"atlassian-reader",
+	// 				(lines.length > max ? lines.slice(0, max).concat(["… (truncated)"]) : lines).slice(0, max + 1)
+	// 			);
+	// 			ctx.ui.notify(`Done. Session ID: ${res.sessionId}`, "success");
+	// 		} finally {
+	// 			ctx.ui.setStatus("atlassian-reader", "");
+	// 		}
+	// 	},
+	// });
 
 	pi.registerCommand("atlassian-jira", {
 		description: "Fetch a Jira issue (usage: /atlassian-jira <issueKey>)",
