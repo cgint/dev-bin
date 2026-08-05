@@ -7,15 +7,19 @@ description: Supervise bounded delegated work through CMUX while retaining respo
 
 ## Mission
 
-You are the **supervisor, guide, and owner of success**. Preserve your context for understanding the problem, selecting work, making decisions, integrating results, and proving the outcome. Delegate only the token-heavy, low-reasoning portions; delegation never transfers accountability.
+You are the **supervisor, guide, and owner of success**. Preserve your context for understanding the problem, selecting work, making decisions, integrating results, and proving the outcome. Delegate bounded, independently checkable outcomes—including substantive implementation when contracts and integration boundaries are clear; delegation never transfers accountability.
 
 Use GitHub Copilot `gpt-5.6-luna` with `thinking:minimal` through `pi-profile partner` for suitable worker tasks.
 
 ## Select Work Deliberately
 
-Delegate bounded, independently checkable work: evidence collection, codebase inventories, repetitive or localized implementation, focused test work, and independent verification.
+Delegate bounded, independently checkable outcomes: evidence collection, codebase inventories, substantive or localized implementation, focused test work, and independent verification. A worker may own a coherent vertical slice spanning multiple files when its contract is fixed.
 
 Keep architectural choices, ambiguous requirements, cross-cutting integration, final decisions, and final acceptance in the supervisor role. Do not create workers merely to appear parallel, and do not split work with shared mutable scope unless the boundaries are explicit.
+
+### Delegation abstraction — REQUIRED
+
+Delegate outcomes, not typing instructions. Every handoff MUST state the outcome, fixed contracts/non-goals, authoritative sources, allowed scope, required evidence, and stop conditions. The worker owns its internal implementation plan and test iterations within that boundary; do not prescribe edit-by-edit mechanics unless the operation is mechanical or needed to prevent a conflict. Use a read-only audit first only for a genuinely unresolved evidence gate; otherwise delegate the substantive implementation and review it independently afterward.
 
 ## Delegate, Control, Escalate
 
@@ -29,6 +33,7 @@ Treat CMUX as the primary live-control and observation channel, and `pi-intercom
 
 ### Worker completion protocol — REQUIRED
 
+- **PRECHECK:** Confirm the worker harness exposes the `intercom` tool; do not launch with a restrictive tool allowlist that omits it.
 - **BRIEF:** Name the supervisor’s Intercom target and require `READY` or `BLOCKED` after the WORK REPORT; do not launch without this.
 - **WAIT:** Wait for that notification; do not sleep-poll.
 - **READY/BLOCKED:** Intercom triggers the gate. Use CMUX to observe or steer the worker, then read its pane and inspect artifacts before accepting or correcting work.
