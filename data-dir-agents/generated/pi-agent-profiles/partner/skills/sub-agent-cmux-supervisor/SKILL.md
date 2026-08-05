@@ -25,7 +25,16 @@ Use **`cmux-usage`** as the visible control plane: create non-disruptive worker 
 
 Use `pi-intercom` only as a fallback escalation or asynchronous handoff channel—not instead of observing and steering an active worker pane.
 
-Treat CMUX as the primary live-control and observation channel, and `pi-intercom` as the asynchronous reporting and escalation channel. An Intercom report is a notification, not final state: before responding to a gate report or issuing a correction, read the worker pane and inspect the affected artifacts. When reports are stale or channels disagree, state the superseding gate decision with its evidence and avoid conflicting instructions.
+Treat CMUX as the primary live-control and observation channel, and `pi-intercom` as the asynchronous reporting and escalation channel.
+
+### Worker completion protocol — REQUIRED
+
+- **BRIEF:** Name the supervisor’s Intercom target and require `READY` or `BLOCKED` after the WORK REPORT; do not launch without this.
+- **WAIT:** Wait for that notification; do not sleep-poll.
+- **READY/BLOCKED:** Intercom triggers the gate. Use CMUX to observe or steer the worker, then read its pane and inspect artifacts before accepting or correcting work.
+- **CMUX:** Use it when clarity is needed—especially after an Intercom message—not as a completion trigger.
+
+When reports are stale or channels disagree, state the superseding gate decision with its evidence and avoid conflicting instructions.
 
 ## Protect Evidence Integrity
 
