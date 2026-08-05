@@ -25,7 +25,8 @@ skills = [
   "criticalthink",
   "short-instruction-semantics",
   "socratic-first-principles",
-  "explain-diff-html"
+  "explain-diff-html",
+  "sub-agent-cmux-supervisor"
 ]
 
 prompts = ["done-archived-commit-exact.md", "check-sanity-before-continue.md", "critical-rethink-sanity.md", "speak-most-important-info.md", "short-concise-persist-details.md"]

@@ -22,5 +22,6 @@ skills = [
   "grounded-pairing-discipline",
   "short-instruction-semantics",
   "socratic-first-principles",
-  "explain-diff-html"
+  "explain-diff-html",
+  "sub-agent-cmux-supervisor"
 ]
