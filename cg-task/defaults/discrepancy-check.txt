@@ -1,7 +1,7 @@
 ---
 mode: context
 ---
-Compare the four archived OpenSpec changes against the current codebase to find deviations between what the specs/designs commit to and what the code actually delivers. Check each archived change's spec requirements, design decisions, and task checklist against the corresponding source files, tests, and frontend assets.
+Compare the archived OpenSpec changes against the current codebase to find deviations between what the specs/designs commit to and what the code actually delivers. Check each archived change's spec requirements, design decisions, and task checklist against the corresponding source files, tests, and frontend assets.
 
 Only report findings that meet BOTH criteria:
 1. They are grounded in evidence from the provided files — never invent paths, filenames, or missing files that are actually present in the context.
