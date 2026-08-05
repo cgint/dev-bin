@@ -11,6 +11,24 @@
 
 set -euo pipefail
 
+usage() {
+  echo "Usage: pi-profile [profile] [pi args...]"
+  echo
+  echo "Profiles:"
+  echo "  default             run the default profile"
+  echo "  NAME                run a named deployed profile"
+  echo
+  echo "Options:"
+  echo "  -h, --help          show this help"
+  echo "  -l, --list          list deployed profiles"
+  echo "      --update-all    run \"pi update --all\" on every profile"
+}
+
+if [ "$#" -gt 0 ] && { [ "$1" = "-h" ] || [ "$1" = "--help" ]; }; then
+  usage
+  exit 0
+fi
+
 PI_BASE="$HOME/.pi"
 
 list_profiles() {
