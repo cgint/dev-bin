@@ -32,8 +32,8 @@ Options:
 
 Environment (.env or shell):
   WEBS_PROVIDER=gemini|copilot  (default: gemini)
-  COPILOT_MODEL=gpt-5.6-luna
-  COPILOT_EFFORT=none
+  COPILOT_MODEL=auto
+  COPILOT_EFFORT=minimal  (used only when COPILOT_MODEL is not auto)
 EOF
     exit 0
 }
@@ -101,10 +101,14 @@ run_gemini() {
 run_copilot() {
     local prompt="$1"
     local copilot_model="${COPILOT_MODEL:-auto}"
-    local copilot_effort="${COPILOT_EFFORT:-none}"
+    local copilot_effort="${COPILOT_EFFORT:-minimal}"
+    local -a copilot_model_args=(--model "$copilot_model")
+    if [[ "$copilot_model" != "auto" ]]; then
+        copilot_model_args+=(--effort "$copilot_effort")
+    fi
     command -v copilot >/dev/null 2>&1 || die "Copilot CLI not found on PATH"
     copilot -p "$prompt" \
-        --model "$copilot_model" --effort "$copilot_effort" \
+        "${copilot_model_args[@]}" \
         --allow-tool=web_search --allow-all-urls --output-format "$output_format"
 }
 
