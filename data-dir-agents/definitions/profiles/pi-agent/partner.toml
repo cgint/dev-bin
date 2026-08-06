@@ -10,6 +10,7 @@ skills = [
   "web-browser-use",
   "diagrams",
   "gemini-model-rules",
+  "gemini-model-rules-extreme",
   "sub-agent-handoff",
   "my-tools-toolbox",
   "cmux-usage",
