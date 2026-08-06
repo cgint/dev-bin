@@ -33,7 +33,7 @@ Treat CMUX as the primary live-control and observation channel, and `pi-intercom
 
 ### Worker completion protocol — REQUIRED
 
-- **PRECHECK:** Confirm the worker harness exposes the `intercom` tool; do not launch with a restrictive tool allowlist that omits it.
+- **PRECHECK:** Verify one end-to-end Pi Intercom send reaches the supervisor before relying on `READY`/`BLOCKED`; callable tool lists alone do not prove the available extension/command path.
 - **BRIEF:** Name the supervisor’s Intercom target and require `READY` or `BLOCKED` after the WORK REPORT; do not launch without this.
 - **WAIT:** Wait for that notification; do not sleep-poll.
 - **READY/BLOCKED:** Intercom triggers the gate. Use CMUX to observe or steer the worker, then read its pane and inspect artifacts before accepting or correcting work.
