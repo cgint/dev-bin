@@ -249,6 +249,22 @@ cmux send-key --surface surface:35 Enter
 
 Sending twice without an Enter in between concatenates on one line (`ssh sparkyssh sparky` → `Could not resolve hostname sparkyssh`). **One command per call, then verify.**
 
+### Sending to a Pi agent surface: one physical line only
+
+`cmux send` types into the target terminal. In a Pi agent TUI, **each embedded newline is delivered as a separate queued `Steering:` message**. A multi-line report, table, paragraph, or code block therefore becomes many disruptive steering injections, not one message.
+
+- Send exactly **one physical line** to a Pi agent surface, followed by the final `\n` that submits it.
+- Put detailed reports in an approved file at an absolute path. Notify the agent with one line only:
+
+  ```bash
+  cmux send --surface "$SUPERVISOR_SURFACE_ID" \
+    'CMUX WORK REPORT — <one-sentence headline>. Full report: <absolute-path>\n'
+  ```
+
+- Do not split a report into evidence rows, commands, measurements, or task checkoffs through CMUX steering.
+- When the recipient surface is known, use its exact `surface:` reference or UUID. Do not guess from a pane number or retry the same report through alternate panes/panels.
+- Read the intended surface after sending before claiming delivery. A message visible on the sender's own surface is not delivery.
+
 **Key names** (`send-key`): `enter` / `Enter` / `ENTER`, `ctrl+c`, `ctrl+u`, `Tab`, `Escape`. tmux-style names are rejected — `C-c` → `Error: invalid_params: Unknown key`.
 
 **Recover a garbled prompt** before retyping:
@@ -281,8 +297,11 @@ When a pane holds a session (an SSH login, a running agent, a REPL), that pane *
 
 ## 12. Driving other agents in panes
 
+- Establish one explicit return route in the work brief: an exact supervisor `surface:` reference or UUID, never a guessed pane/panel.
 - One clear instruction per message, with absolute file paths.
-- Wait for completion before the next instruction. Queued steering messages confuse an agent mid-task.
+- Treat CMUX as a one-line notification channel for Pi agents, not a chat transport (§9). The worker writes the full report to an approved absolute path and sends one `CMUX WORK REPORT — … Full report: …` line.
+- Wait for the worker's complete report before replying. Send at most one consolidated acceptance, rejection, or correction message; never steer clause-by-clause while it is working or reporting.
+- A correction is one bounded slice followed by one new complete report, not a sequence of evidence-row steering messages.
 - Track each pane's state independently when several run in parallel.
 - Ask for cross-checks only after the agent reported completion.
 

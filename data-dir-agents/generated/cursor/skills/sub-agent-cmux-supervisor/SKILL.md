@@ -33,13 +33,13 @@ Treat CMUX as the primary live-control and observation channel, and `pi-intercom
 
 ### Worker completion protocol — REQUIRED
 
-- **PRECHECK:** Verify one end-to-end Pi Intercom send reaches the supervisor before relying on `READY`/`BLOCKED`; callable tool lists alone do not prove the available extension/command path.
-- **BRIEF:** Name the supervisor’s Intercom target and require `READY` or `BLOCKED` after the WORK REPORT; do not launch without this.
-- **WAIT:** Wait for that notification; do not sleep-poll.
-- **READY/BLOCKED:** Intercom triggers the gate. Use CMUX to observe or steer the worker, then read its pane and inspect artifacts before accepting or correcting work.
-- **CMUX:** Use it when clarity is needed—especially after an Intercom message—not as a completion trigger.
+The supervisor or user selects **one** completion/control channel in the work brief. Do not assume Intercom reaches sessions in different profile roots, and do not duplicate the same report across channels.
 
-When reports are stale or channels disagree, state the superseding gate decision with its evidence and avoid conflicting instructions.
+- **CMUX-only:** State the supervisor's exact CMUX `surface:` reference or UUID. The worker writes the full report to an approved absolute file path, then sends exactly one physical-line notification: `CMUX WORK REPORT — <headline>. Full report: <absolute-path>`. Embedded newlines in `cmux send` become separate Pi `Steering:` messages; never send multi-line reports, tables, or evidence rows to a Pi surface. The supervisor reads the file and returns at most one consolidated acceptance/revision line through the named CMUX route.
+- **Intercom:** Use only when selected in the brief and after one end-to-end delivery test succeeds. Name the supervisor target and require one `READY` or `BLOCKED` notification that points to the full report file; do not use Intercom for repeated progress chatter.
+- **No working route:** The worker stops after its local evidence/report file is complete and makes one best-effort notification through the selected route. It does not guess alternate panes, panels, sessions, or channels.
+
+Use CMUX to observe an active worker pane and inspect artifacts before accepting or correcting work. When reports are stale or channels disagree, state the superseding gate decision with its evidence and avoid conflicting instructions.
 
 ## Protect Evidence Integrity
 
