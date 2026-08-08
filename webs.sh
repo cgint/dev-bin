@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Search the web using Gemini or GitHub Copilot.
+# Search the web using Gemini, GitHub Copilot, or Codex.
 # Usage: webs.sh [@file] [query ...] [-f output] [-m model] [-o format]
 
 set -e
@@ -31,9 +31,10 @@ Options:
   -h, --help    Show this help
 
 Environment (.env or shell):
-  WEBS_PROVIDER=gemini|copilot  (default: gemini)
+  WEBS_PROVIDER=gemini|copilot|codex  (default: gemini)
   COPILOT_MODEL=auto
   COPILOT_EFFORT=minimal  (used only when COPILOT_MODEL is not auto)
+  CODEX_MODEL=             (uses Codex's configured default when unset)
 EOF
     exit 0
 }
@@ -59,12 +60,12 @@ parse_args() {
 
     [[ ${#prompt_parts[@]} -gt 0 || -n "$input_file" ]] || die "No search query provided"
     case "$provider" in
-        gemini|copilot) ;;
-        *) die "WEBS_PROVIDER must be 'gemini' or 'copilot', got '$provider'" ;;
+        gemini|copilot|codex) ;;
+        *) die "WEBS_PROVIDER must be 'gemini', 'copilot', or 'codex', got '$provider'" ;;
     esac
     [[ "$output_format" == text || "$output_format" == json || "$output_format" == stream-json ]] || \
         die "Output format must be text, json, or stream-json"
-    [[ "$provider" != copilot || "$output_format" != stream-json ]] || \
+    [[ "$provider" == gemini || "$output_format" != stream-json ]] || \
         die "stream-json output is only supported with the Gemini provider"
 }
 
@@ -112,6 +113,28 @@ run_copilot() {
         --allow-tool=web_search --allow-all-urls --output-format "$output_format"
 }
 
+run_codex() {
+    local prompt="$1"
+    local codex_model="${CODEX_MODEL:-}"
+    local last_message_file
+    local -a codex_model_args=()
+    last_message_file="$(mktemp /tmp/webs_codex_last_message.XXXXXX)"
+    trap 'rm -f "$last_message_file"' RETURN
+
+    command -v codex >/dev/null 2>&1 || die "Codex CLI not found on PATH"
+    if [[ -n "$codex_model" ]]; then
+        codex_model_args=(--model "$codex_model")
+    fi
+    if [[ "$output_format" == json ]]; then
+        codex --search --sandbox read-only --ask-for-approval never exec --ephemeral --skip-git-repo-check \
+            "${codex_model_args[@]}" --json "$prompt"
+    else
+        codex --search --sandbox read-only --ask-for-approval never exec --ephemeral --skip-git-repo-check \
+            "${codex_model_args[@]}" --output-last-message "$last_message_file" "$prompt" >&2
+        cat "$last_message_file"
+    fi
+}
+
 main() {
     parse_args "$@"
     local prompt
@@ -121,11 +144,11 @@ main() {
 
     echo "Searching the web with $provider..." >&2
     echo "Streaming results to: $tmp_out_file" >&2
-    if [[ "$provider" == gemini ]]; then
-        run_gemini "$prompt"
-    else
-        run_copilot "$prompt"
-    fi | tee "$tmp_out_file"
+    case "$provider" in
+        gemini) run_gemini "$prompt" ;;
+        copilot) run_copilot "$prompt" ;;
+        codex) run_codex "$prompt" ;;
+    esac | tee "$tmp_out_file"
 
     if [[ -n "$output_file" ]]; then
         cp "$tmp_out_file" "$output_file"
