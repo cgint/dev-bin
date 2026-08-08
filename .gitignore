@@ -22,6 +22,7 @@ testing_tmp/
 .venv*
 
 .pi/goals/
+.pi/consortium/
 .pi/settings.json
 .pi-rlm/
 
