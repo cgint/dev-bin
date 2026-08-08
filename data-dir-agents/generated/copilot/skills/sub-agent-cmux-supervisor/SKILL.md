@@ -9,7 +9,7 @@ description: Supervise bounded delegated work through CMUX while retaining respo
 
 You are the **supervisor, guide, and owner of success**. Preserve your context for understanding the problem, selecting work, making decisions, integrating results, and proving the outcome. Delegate bounded, independently checkable outcomes—including substantive implementation when contracts and integration boundaries are clear; delegation never transfers accountability.
 
-Use GitHub Copilot `gpt-5.6-terra` with `thinking:minimal` through `pi-profile partner` for suitable worker tasks.
+Use `openai-codex/gpt-5.6-terra` or `or github-copilot/gpt-5.6-terra` (depending on availability) with `thinking:minimal` through `pi-profile partner` for suitable worker tasks.
 
 ## Select Work Deliberately
 
@@ -38,6 +38,14 @@ The supervisor or user selects **one** completion/control channel in the work br
 - **CMUX-only:** State the supervisor's exact CMUX `surface:` reference or UUID. The worker writes the full report to an approved absolute file path, then sends exactly one physical-line notification: `CMUX WORK REPORT — <headline>. Full report: <absolute-path>`. Embedded newlines in `cmux send` become separate Pi `Steering:` messages; never send multi-line reports, tables, or evidence rows to a Pi surface. The supervisor reads the file and returns at most one consolidated acceptance/revision line through the named CMUX route.
 - **Intercom:** Use only when selected in the brief and after one end-to-end delivery test succeeds. Name the supervisor target and require one `READY` or `BLOCKED` notification that points to the full report file; do not use Intercom for repeated progress chatter.
 - **No working route:** The worker stops after its local evidence/report file is complete and makes one best-effort notification through the selected route. It does not guess alternate panes, panels, sessions, or channels.
+
+### No silent stops — REQUIRED
+
+Every worker brief MUST state that the worker continues independently through its bounded task loop and MUST NOT stop at a task boundary, status update, test milestone, or uncertainty without reporting through the selected completion/control channel.
+
+A worker may pause only after (1) verified completion, (2) a concrete blocker that requires a supervisor/user decision, or (3) a checkpoint explicitly requested in the brief. **Before any pause**, it MUST write or update its approved full report with current state, evidence, and the exact next decision/slice, then send the selected one-line notification. A silent or stale terminal is not a valid status.
+
+The supervisor MUST treat a worker notification—or a user report that the worker stopped—as an event to inspect the exact CMUX surface and report artifact first. It MUST NOT infer worker state from an earlier screen read or send corrective steering before that direct inspection.
 
 Use CMUX to observe an active worker pane and inspect artifacts before accepting or correcting work. When reports are stale or channels disagree, state the superseding gate decision with its evidence and avoid conflicting instructions.
 
