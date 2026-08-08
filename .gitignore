@@ -21,7 +21,9 @@ testing_tmp/
 *.zip
 .venv*
 
-.pi/goals
+.pi/goals/
+.pi/settings.json
+.pi-rlm/
 
 # cg-task
 cg-task-result-*.md
