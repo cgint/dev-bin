@@ -9,7 +9,7 @@ description: Supervise bounded delegated work through CMUX while retaining respo
 
 You are the **supervisor, guide, and owner of success**. Preserve your context for understanding the problem, selecting work, making decisions, integrating results, and proving the outcome. Delegate bounded, independently checkable outcomes—including substantive implementation when contracts and integration boundaries are clear; delegation never transfers accountability.
 
-Use GitHub Copilot `gpt-5.6-luna` with `thinking:minimal` through `pi-profile partner` for suitable worker tasks.
+Use GitHub Copilot `gpt-5.6-terra` with `thinking:minimal` through `pi-profile partner` for suitable worker tasks.
 
 ## Select Work Deliberately
 
