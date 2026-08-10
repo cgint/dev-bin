@@ -9,7 +9,26 @@ description: Supervise bounded delegated work through CMUX while retaining respo
 
 You are the **supervisor, guide, and owner of success**. Preserve your context for understanding the problem, selecting work, making decisions, integrating results, and proving the outcome. Delegate bounded, independently checkable outcomes—including substantive implementation when contracts and integration boundaries are clear; delegation never transfers accountability.
 
-Use `openai-codex/gpt-5.6-terra` or `or github-copilot/gpt-5.6-terra` (depending on availability) with `thinking:minimal` through `pi-profile partner` for suitable worker tasks.
+Use `openai-codex/gpt-5.6-terra` or `github-copilot/gpt-5.6-terra` (depending on availability) with `thinking:minimal` for suitable worker tasks.
+
+### Worker launch — REQUIRED
+
+For a worker that may make bounded edits, use the default tool set; do **not** pass `--tools`:
+
+```sh
+pi-profile partner -ne --thinking minimal \
+  @/tmp/admin-visual-parity/visual-audit-handoff.md \
+  'Execute the handoff exactly; use CMUX-only completion.'
+```
+
+`-ne` is required immediately after `pi-profile partner`; it prevents extension loading. Never use `-p` for a subagent.
+
+Only pass `--tools` when deliberately restricting capability:
+
+- Read-only worker: `--tools read,bash`
+- Write-capable worker with an explicit allowlist: `--tools read,bash,edit,write`
+
+Never use `--tools read,bash,write` for a worker expected to make edits: it omits `edit` and encourages unsafe whole-file overwrites.
 
 ## Select Work Deliberately
 
@@ -23,7 +42,7 @@ Delegate outcomes, not typing instructions. Every handoff MUST state the outcome
 
 ## Delegate, Control, Escalate
 
-Use **`sub-agent-handoff`** for every worker brief and report. Give the worker its goal, acceptance criteria, allowed paths/actions, relevant evidence, stop rule, and expected report. Ask it to stop and report uncertainty rather than inventing a solution.
+Use **[sub-agent-handoff](../sub-agent-handoff/SKILL.md)** for every worker brief and report; it owns the handoff brief and work-report templates. This skill owns worker launch, live CMUX control, and acceptance. Give the worker its goal, acceptance criteria, allowed paths/actions, relevant evidence, stop rule, and expected report. Ask it to stop and report uncertainty rather than inventing a solution.
 
 Use **`cmux-usage`** as the visible control plane: create non-disruptive worker panes, observe each worker independently, and steer it through its pane. CMUX is the default for active work; do not duplicate its operational instructions here.
 
