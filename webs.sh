@@ -149,7 +149,8 @@ main() {
         copilot) run_copilot "$prompt" ;;
         codex) run_codex "$prompt" ;;
     esac | tee "$tmp_out_file"
-
+    echo "Full results were also written to: $tmp_out_file in case you need to look up later" >&2
+    
     if [[ -n "$output_file" ]]; then
         cp "$tmp_out_file" "$output_file"
         echo "Results written to your configured output file: $output_file" >&2
