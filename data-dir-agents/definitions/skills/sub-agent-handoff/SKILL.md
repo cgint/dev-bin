@@ -80,8 +80,9 @@ Provide this block verbatim (fill in placeholders). Keep it short but complete.
   - <files>
   - <commands>
   - <search terms>
+- **Completion/control channel:** CMUX-only (exact supervisor `surface:` ref + approved absolute report path) | Intercom (target name) | None
 - **Timebox:** <e.g. 15–30 min>
-- **Expected output format:** Use the “WORK REPORT” template below.
+- **Expected output format:** Use the "WORK REPORT" template below.
 
 ## Work report (required output)
 

@@ -1,6 +1,6 @@
 ---
 name: cmux-usage
-description: Drive the cmux terminal from the CLI as an active operator — window/workspace/pane/surface terminology, translating the user's words to cmux objects, mandatory clarification on ambiguous "tab", tiling several things visible at once (grids/2x2), targeting rules, send/read patterns, and verified failure modes.
+description: Drive the cmux terminal from the CLI as an active operator — window/workspace/pane/surface terminology, translating the user's words to cmux objects, mandatory clarification on ambiguous "tab", tiling several things visible at once (grids/2x2), targeting rules, Pi-surface submission via `cmux_submit_to_surface.sh`, and verified failure modes.
 ---
 
 # cmux Usage
@@ -14,7 +14,7 @@ Three rules dominate everything below:
 
 1. **Never guess what the user's "tab" means.** In cmux the word is genuinely ambiguous — ask.
 2. **"Visible at the same time" means panes, never tabs.** This one test resolves most confusion (§3).
-3. **Never assume a `send` worked.** Read the screen back.
+3. **Never assume a `send` worked.** For Pi agent surfaces, use `cmux_submit_to_surface.sh` — it sends, presses Enter, waits, and reads the screen back in one call. For raw `cmux send`, read the screen yourself.
 
 ## Diagrams
 
@@ -263,7 +263,7 @@ Sending twice without an Enter in between concatenates on one line (`ssh sparkys
 
 - Do not split a report into evidence rows, commands, measurements, or task checkoffs through CMUX steering.
 - When the recipient surface is known, use its exact `surface:` reference or UUID. Do not guess from a pane number or retry the same report through alternate panes/panels.
-- Read the intended surface after sending before claiming delivery. A message visible on the sender's own surface is not delivery.
+- When using `cmux_submit_to_surface.sh`, its printed output **is** the immediate submission verification — do not call `cmux read-screen` separately. For raw `cmux send`/`send-key` (non-Pi surfaces), read the screen yourself. A message visible on the sender's own surface is not delivery.
 
 **Key names** (`send-key`): `enter` / `Enter` / `ENTER`, `ctrl+c`, `ctrl+u`, `Tab`, `Escape`. tmux-style names are rejected — `C-c` → `Error: invalid_params: Unknown key`.
 
