@@ -9,7 +9,29 @@ description: Supervise bounded delegated work through CMUX while retaining respo
 
 You are the **supervisor, guide, and owner of success**. Preserve your context for understanding the problem, selecting work, making decisions, integrating results, and proving the outcome. Delegate bounded, independently checkable outcomes—including substantive implementation when contracts and integration boundaries are clear; delegation never transfers accountability.
 
-Use `openai-codex/gpt-5.6-terra` or `or github-copilot/gpt-5.6-terra` (depending on availability) with `thinking:minimal` through `pi-profile partner` for suitable worker tasks.
+Use `openai-codex/gpt-5.6-terra` or `github-copilot/gpt-5.6-terra` (depending on availability) with `thinking:minimal` for suitable worker tasks.
+
+### Worker launch — REQUIRED
+
+Use the wrappers; do not invoke `pi-profile` directly.
+
+Editable worker:
+
+```sh
+subagent.sh \
+  @/tmp/admin-visual-parity/visual-audit-handoff.md \
+  'Execute the handoff exactly; use CMUX-only completion.'
+```
+
+Read-only worker with classified read-only Bash:
+
+```sh
+subagent-readonly.sh \
+  @/tmp/admin-visual-parity/visual-audit-handoff.md \
+  'Execute the handoff exactly; use CMUX-only completion.'
+```
+
+`subagent.sh` uses `pi-profile partner -ne` with `thinking:minimal` and default tools. `subagent-readonly.sh` loads only `pi-focus-guard`, starts `--dm-read`, and permits `read,bash,grep,find,ls`; the guard blocks writes and non-read-only Bash. Neither wrapper uses `-p`.
 
 ## Select Work Deliberately
 
@@ -17,13 +39,17 @@ Delegate bounded, independently checkable outcomes: evidence collection, codebas
 
 Keep architectural choices, ambiguous requirements, cross-cutting integration, final decisions, and final acceptance in the supervisor role. Do not create workers merely to appear parallel, and do not split work with shared mutable scope unless the boundaries are explicit.
 
+### Worker continuity — REQUIRED
+
+Reuse a worker only for a direct follow-up within its existing goal, scope, and evidence context. For unrelated work, start a new worker with a new handoff brief; do not repurpose an existing worker merely because its pane is open. This keeps the worker context focused. Routine completion reporting, clarification, and supervisor-requested revision of the same work are direct follow-ups.
+
 ### Delegation abstraction — REQUIRED
 
 Delegate outcomes, not typing instructions. Every handoff MUST state the outcome, fixed contracts/non-goals, authoritative sources, allowed scope, required evidence, and stop conditions. The worker owns its internal implementation plan and test iterations within that boundary; do not prescribe edit-by-edit mechanics unless the operation is mechanical or needed to prevent a conflict. Use a read-only audit first only for a genuinely unresolved evidence gate; otherwise delegate the substantive implementation and review it independently afterward.
 
 ## Delegate, Control, Escalate
 
-Use **`sub-agent-handoff`** for every worker brief and report. Give the worker its goal, acceptance criteria, allowed paths/actions, relevant evidence, stop rule, and expected report. Ask it to stop and report uncertainty rather than inventing a solution.
+Use **[sub-agent-handoff](../sub-agent-handoff/SKILL.md)** for every worker brief and report; it owns the handoff brief and work-report templates. This skill owns worker launch, live CMUX control, and acceptance. Give the worker its goal, acceptance criteria, allowed paths/actions, relevant evidence, stop rule, and expected report. Ask it to stop and report uncertainty rather than inventing a solution.
 
 Use **`cmux-usage`** as the visible control plane: create non-disruptive worker panes, observe each worker independently, and steer it through its pane. CMUX is the default for active work; do not duplicate its operational instructions here.
 

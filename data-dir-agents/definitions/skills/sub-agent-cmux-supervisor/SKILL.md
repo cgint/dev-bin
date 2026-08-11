@@ -13,28 +13,35 @@ Use `openai-codex/gpt-5.6-terra` or `github-copilot/gpt-5.6-terra` (depending on
 
 ### Worker launch — REQUIRED
 
-For a worker that may make bounded edits, use the default tool set; do **not** pass `--tools`:
+Use the wrappers; do not invoke `pi-profile` directly.
+
+Editable worker:
 
 ```sh
-pi-profile partner -ne --thinking minimal \
+subagent.sh \
   @/tmp/admin-visual-parity/visual-audit-handoff.md \
   'Execute the handoff exactly; use CMUX-only completion.'
 ```
 
-`-ne` is required immediately after `pi-profile partner`; it prevents extension loading. Never use `-p` for a subagent.
+Read-only worker with classified read-only Bash:
 
-Only pass `--tools` when deliberately restricting capability:
+```sh
+subagent-readonly.sh \
+  @/tmp/admin-visual-parity/visual-audit-handoff.md \
+  'Execute the handoff exactly; use CMUX-only completion.'
+```
 
-- Read-only worker: `--tools read,bash`
-- Write-capable worker with an explicit allowlist: `--tools read,bash,edit,write`
-
-Never use `--tools read,bash,write` for a worker expected to make edits: it omits `edit` and encourages unsafe whole-file overwrites.
+`subagent.sh` uses `pi-profile partner -ne` with `thinking:minimal` and default tools. `subagent-readonly.sh` loads only `pi-focus-guard`, starts `--dm-read`, and permits `read,bash,grep,find,ls`; the guard blocks writes and non-read-only Bash. Neither wrapper uses `-p`.
 
 ## Select Work Deliberately
 
 Delegate bounded, independently checkable outcomes: evidence collection, codebase inventories, substantive or localized implementation, focused test work, and independent verification. A worker may own a coherent vertical slice spanning multiple files when its contract is fixed.
 
 Keep architectural choices, ambiguous requirements, cross-cutting integration, final decisions, and final acceptance in the supervisor role. Do not create workers merely to appear parallel, and do not split work with shared mutable scope unless the boundaries are explicit.
+
+### Worker continuity — REQUIRED
+
+Reuse a worker only for a direct follow-up within its existing goal, scope, and evidence context. For unrelated work, start a new worker with a new handoff brief; do not repurpose an existing worker merely because its pane is open. This keeps the worker context focused. Routine completion reporting, clarification, and supervisor-requested revision of the same work are direct follow-ups.
 
 ### Delegation abstraction — REQUIRED
 

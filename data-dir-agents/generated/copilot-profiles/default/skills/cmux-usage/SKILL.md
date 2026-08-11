@@ -253,12 +253,12 @@ Sending twice without an Enter in between concatenates on one line (`ssh sparkys
 
 `cmux send` types into the target terminal. In a Pi agent TUI, **each embedded newline is delivered as a separate queued `Steering:` message**. A multi-line report, table, paragraph, or code block therefore becomes many disruptive steering injections, not one message.
 
-- Send exactly **one physical line** to a Pi agent surface, followed by the final `\n` that submits it.
+- Send exactly **one physical line** to a Pi agent surface. Use `cmux_submit_to_surface.sh`; it rejects physical newlines and CMUX `\n`/`\r` escapes rather than silently corrupting wrapped paths, sends Enter separately, waits two seconds, then prints the target's last 22 screen lines.
 - Put detailed reports in an approved file at an absolute path. Notify the agent with one line only:
 
   ```bash
-  cmux send --surface "$SUPERVISOR_SURFACE_ID" \
-    'CMUX WORK REPORT — <one-sentence headline>. Full report: <absolute-path>\n'
+  cmux_submit_to_surface.sh "$SUPERVISOR_SURFACE_ID" \
+    'CMUX WORK REPORT — <one-sentence headline>. Full report: <absolute-path>'
   ```
 
 - Do not split a report into evidence rows, commands, measurements, or task checkoffs through CMUX steering.
@@ -299,7 +299,7 @@ When a pane holds a session (an SSH login, a running agent, a REPL), that pane *
 
 - Establish one explicit return route in the work brief: an exact supervisor `surface:` reference or UUID, never a guessed pane/panel.
 - One clear instruction per message, with absolute file paths.
-- Treat CMUX as a one-line notification channel for Pi agents, not a chat transport (§9). The worker writes the full report to an approved absolute path and sends one `CMUX WORK REPORT — … Full report: …` line.
+- Treat CMUX as a one-line notification channel for Pi agents, not a chat transport (§9). The worker writes the full report to an approved absolute path and uses `cmux_submit_to_surface.sh` to send one `CMUX WORK REPORT — … Full report: …` line.
 - Wait for the worker's complete report before replying. Send at most one consolidated acceptance, rejection, or correction message; never steer clause-by-clause while it is working or reporting.
 - A correction is one bounded slice followed by one new complete report, not a sequence of evidence-row steering messages.
 - Track each pane's state independently when several run in parallel.
@@ -323,7 +323,7 @@ When a pane holds a session (an SSH login, a running agent, a REPL), that pane *
 | `Surface index not found` | bare number passed as ref | use `surface:14` |
 | `Invalid surface handle: OK surface:33 pane:3 workspace:2` | captured the whole status line | `\| awk '{print $2}'` |
 | `invalid_params: Unknown key` | tmux key name (`C-c`) | `ctrl+c` |
-| command typed but never runs | `send` does not press Enter | append `\n` or follow with `send-key Enter` |
+| Pi steering becomes multiple messages, or a command is not submitted | embedded newlines or reliance on `send` to press Enter | use `cmux_submit_to_surface.sh <surface-id> '<message>'` |
 | `ssh hostssh host` on the prompt | two `send`s without Enter | `send-key ctrl+u`, resend once |
 | `unknown flag '--no-focus'` | flag exists on `cmux ssh`, not `new-workspace` | `--focus false` |
 | every pane reports the same odd size (e.g. 29×88) | workspace never displayed, so not laid out | select it once, or don't trust background geometry |

@@ -116,25 +116,12 @@ The sub-agent must return the following sections.
 - Update the plan/status based on evidence.
 - Optionally delegate a **Reviewer/Verifier** sub-agent to independently confirm.
 
-## Optional: how to run a sub-agent (simple `pi-profile minimal`)
+## Worker launch
 
-When you just want a *simple, correct* delegated run, use the minimal profile in **print mode** and attach any context files with `@`:
-
-```bash
-pi-profile minimal -p \
-  @plan/research/adapter_parity/CONTEXT.md \
-  @lib/dspy/signature.ex \
-  "<HANDOFF BRIEF (or short goal) here>"
-```
-
-Notes:
-- You usually **do not need** to specify models, thinking levels, or tools; the profile + pi defaults handle that.
-- If you explicitly need read-only mode, add `--tools read,bash`.
+This skill owns handoff brief and work-report content, not worker launch. For CMUX-supervised workers, follow the required launch command and tool rules in [sub-agent-cmux-supervisor](../sub-agent-cmux-supervisor/SKILL.md#worker-launch--required). Do not duplicate them here.
 
 ## Practical learnings (from real runs)
 
-- **Keep it simple by default:** `pi-profile minimal -p @file ... "goal"` is the most reliable pattern.
-- **Only specify tools when needed:** Pi enables tools by default; use `--tools read,bash` only when you want strict read-only.
 - **Be careful with wrappers that force `--model`:** they can change provider selection and fail due to missing credentials.
 - **Use handoffs when they protect the main context window:** multi-file scouting, inventories, collecting evidence, or repetitive/mechanical edits.
 - **Avoid handoffs for tiny edits:** a one-liner or obvious local change is usually faster to do directly.
