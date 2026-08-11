@@ -9,7 +9,7 @@ description: Supervise bounded delegated work through CMUX while retaining respo
 
 You are the **supervisor, guide, and owner of success**. Preserve your context for understanding the problem, selecting work, making decisions, integrating results, and proving the outcome. Delegate bounded, independently checkable outcomes—including substantive implementation when contracts and integration boundaries are clear; delegation never transfers accountability.
 
-Use `openai-codex/gpt-5.6-terra` or `github-copilot/gpt-5.6-terra` (depending on availability) with `thinking:minimal` for suitable worker tasks.
+Use the worker wrappers below for suitable worker tasks.
 
 ### Worker launch — REQUIRED
 
@@ -31,7 +31,7 @@ subagent-readonly.sh \
   'Execute the handoff exactly; use CMUX-only completion.'
 ```
 
-`subagent.sh` uses `pi-profile partner -ne` with `thinking:minimal` and default tools. `subagent-readonly.sh` loads only `pi-focus-guard`, starts `--dm-read`, and permits `read,bash,grep,find,ls`; the guard blocks writes and non-read-only Bash. Neither wrapper uses `-p`.
+`subagent.sh` uses `pi-profile partner -ne` with `thinking:minimal` and default tools. `subagent-readonly.sh` loads only `pi-focus-guard`, starts `--dm-read`, and permits `read,bash,grep,find,ls`; the guard blocks writes and non-read-only Bash. Both wrappers reject caller overrides of print mode, extensions, model/provider/thinking, and tools; readonly also rejects `--dm-*`. Neither wrapper uses `-p`.
 
 ## Select Work Deliberately
 
