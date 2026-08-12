@@ -1,10 +1,53 @@
 #!/usr/bin/env bash
 set -euo pipefail
-if [[ $# -ne 1 ]]; then
-  echo "Usage: md2html <file.md>" >&2
+
+OPEN_IN_BROWSER=false
+INPUT_FILE=""
+
+show_usage() {
+  echo "Usage: md2html [options] <file.md>"
+  echo ""
+  echo "Convert a Markdown file into a self-contained, beautifully styled HTML file using pandoc."
+  echo ""
+  echo "Options:"
+  echo "  -h, --help    Show this help message and exit"
+  echo "  --open        Open the generated HTML file in the default browser"
+}
+
+# Parse options
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h|--help)
+      show_usage
+      exit 0
+      ;;
+    --open)
+      OPEN_IN_BROWSER=true
+      shift
+      ;;
+    -*)
+      echo "Error: Unknown option $1" >&2
+      show_usage >&2
+      exit 1
+      ;;
+    *)
+      if [[ -n "$INPUT_FILE" ]]; then
+        echo "Error: Multiple input files specified" >&2
+        show_usage >&2
+        exit 1
+      fi
+      INPUT_FILE="$1"
+      shift
+      ;;
+  esac
+done
+
+if [[ -z "$INPUT_FILE" ]]; then
+  echo "Usage: md2html [options] <file.md>" >&2
   exit 1
 fi
-input="$1"
+
+input="$INPUT_FILE"
 output="${input%.md}.html"
 title="$(basename "$input" .md)"
 
@@ -117,3 +160,13 @@ EOF
   "$input" -o "$output"
 
 echo "→ $output"
+
+if [[ "$OPEN_IN_BROWSER" == "true" ]]; then
+  if command -v open >/dev/null 2>&1; then
+    open "$output"
+  elif command -v xdg-open >/dev/null 2>&1; then
+    xdg-open "$output"
+  else
+    echo "Warning: Could not find 'open' or 'xdg-open' to open the file in browser." >&2
+  fi
+fi
