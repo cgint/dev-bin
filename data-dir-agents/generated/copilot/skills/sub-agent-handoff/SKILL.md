@@ -127,7 +127,6 @@ This skill owns handoff brief and work-report content, not worker launch. For CM
 
 ## Practical learnings (from real runs)
 
-- **Be careful with wrappers that force `--model`:** they can change provider selection and fail due to missing credentials.
 - **Use handoffs when they protect the main context window:** multi-file scouting, inventories, collecting evidence, or repetitive/mechanical edits.
 - **Avoid handoffs for tiny edits:** a one-liner or obvious local change is usually faster to do directly.
 - **After a handoff:** review the diff/output first; if follow-up edits are needed, prefer a second handoff or explicitly label any driver-made fixups.
