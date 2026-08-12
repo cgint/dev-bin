@@ -89,6 +89,8 @@ Skills for multi-agent coordination.
 | Skill | Purpose |
 |-------|---------|
 | `sub-agent-handoff` | Delegate bounded work to sub-agents with explicit context |
+| `sub-agent-cmux-supervisor` | Supervise bounded workers through CMUX |
+| `sub-agent-herdr-supervisor` | Supervise state-aware bounded workers through Herdr |
 
 ## Adding a new skill
 

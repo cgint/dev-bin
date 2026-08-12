@@ -24,5 +24,6 @@ skills = [
   "short-instruction-semantics",
   "socratic-first-principles",
   "explain-diff-html",
-  "sub-agent-cmux-supervisor"
+  "sub-agent-cmux-supervisor",
+  "sub-agent-herdr-supervisor"
 ]
