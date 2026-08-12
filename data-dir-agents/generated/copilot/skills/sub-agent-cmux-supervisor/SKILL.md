@@ -11,6 +11,10 @@ You are the **supervisor, guide, and owner of success**. Preserve your context f
 
 Use the worker wrappers below for suitable worker tasks.
 
+## Delegation threshold
+
+Use a subagent only when independent evidence, isolation, parallelism, or bounded execution provides more value than the launch, inspection, and cleanup overhead. Do trivial reads, obvious one-line edits, and immediate local checks directly. Do not delegate merely because a task can be split.
+
 ### Worker launch — REQUIRED
 
 Use the wrappers; do not invoke `pi-profile` directly.

@@ -13,6 +13,10 @@ Use this skill when delegating bounded work to a sub-agent that **cannot see** t
 
 If the sub-agent needs information, it must request it in the **Work report** (don’t guess).
 
+## Delegation threshold
+
+Use a subagent only when independent evidence, isolation, parallelism, or bounded execution provides more value than the launch, inspection, and cleanup overhead. Do trivial reads, obvious one-line edits, and immediate local checks directly. Do not delegate merely because a task can be split.
+
 ## When to delegate (good use-cases)
 
 - **Scouting (read-only):** locate code, summarize behavior, find tests/docs, collect evidence.
