@@ -12,6 +12,16 @@ for argument in "$@"; do
   esac
 done
 
+HERDR_REPORTER="$HOME/.pi/profiles/partner/agent/extensions/herdr-agent-state.ts"
+HERDR_EXTENSION_ARGS=()
+if [ "${HERDR_ENV:-}" = "1" ]; then
+  if [ ! -f "$HERDR_REPORTER" ]; then
+    printf 'subagent.sh: Herdr Pi reporter not found: %s\n' "$HERDR_REPORTER" >&2
+    exit 1
+  fi
+  HERDR_EXTENSION_ARGS=(-e "$HERDR_REPORTER")
+fi
+
 if pi-profile partner auth check --provider openai-codex 2>/dev/null | grep -qx 'ready'; then
   SUBAGENT_MODEL='openai-codex/gpt-5.6-terra'
 elif pi-profile partner auth check --provider github-copilot 2>/dev/null | grep -qx 'ready'; then
@@ -21,4 +31,4 @@ else
   exit 1
 fi
 
-exec pi-profile partner -ne --model "$SUBAGENT_MODEL" --thinking minimal "$@"
+exec pi-profile partner -ne "${HERDR_EXTENSION_ARGS[@]}" --model "$SUBAGENT_MODEL" --thinking minimal "$@"

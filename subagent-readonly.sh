@@ -14,10 +14,20 @@ for argument in "$@"; do
 done
 
 FOCUS_GUARD="$HOME/dev-external/pi-focus-guard/index.ts"
+HERDR_REPORTER="$HOME/.pi/profiles/partner/agent/extensions/herdr-agent-state.ts"
 
 if [ ! -f "$FOCUS_GUARD" ]; then
   printf 'subagent-readonly.sh: pi-focus-guard not found: %s\n' "$FOCUS_GUARD" >&2
   exit 1
+fi
+
+EXTENSION_ARGS=(-e "$FOCUS_GUARD")
+if [ "${HERDR_ENV:-}" = "1" ]; then
+  if [ ! -f "$HERDR_REPORTER" ]; then
+    printf 'subagent-readonly.sh: Herdr Pi reporter not found: %s\n' "$HERDR_REPORTER" >&2
+    exit 1
+  fi
+  EXTENSION_ARGS+=(-e "$HERDR_REPORTER")
 fi
 
 if pi-profile partner auth check --provider openai-codex 2>/dev/null | grep -qx 'ready'; then
@@ -30,7 +40,7 @@ else
 fi
 
 exec pi-profile partner -ne \
-  -e "$FOCUS_GUARD" \
+  "${EXTENSION_ARGS[@]}" \
   --model "$SUBAGENT_MODEL" \
   --thinking minimal \
   --tools read,bash,grep,find,ls \

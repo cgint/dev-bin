@@ -1,17 +1,59 @@
 ---
 name: sub-agent-herdr-supervisor
-description: Supervise bounded delegated work through Herdr while retaining responsibility for strategy, integration, evidence, and acceptance.
+description: Supervise bounded delegated work through Herdr while retaining responsibility for strategy, integration, evidence, acceptance, and owned-pane cleanup.
 ---
 
 # Herdr Worker Supervision
 
 ## Use this for
 
-Use Herdr to run a bounded Pi worker in a Herdr-managed pane. Use cmux for the outer desktop layout and existing hardened read-only workers.
+Use Herdr as the default control plane for bounded Pi workers: launch, observe, read, wait, and close through Herdr. The supervisor owns scope, decisions, integration, verification, acceptance, and **cleanup of every pane it creates**. A worker owns only its bounded assignment.
 
-The supervisor owns scope, decisions, integration, verification, and final acceptance. A worker owns only its bounded assignment.
+Use CMUX only for outer desktop layout and separately CMUX-managed workers. Never steer the same worker through both CMUX and Herdr.
 
-**Prerequisite:** install Herdr's Pi lifecycle integration with `herdr integration install pi` before relying on direct lifecycle reports. With that integration active, Pi reports `working`, `idle`, and `blocked` directly to Herdr. Herdr can also expose `done` as a terminal agent status. `screen_detection_skipped: true` is expected for direct Pi reporting; do not infer completion from a spinner or terminal appearance.
+**Prerequisite:** install Herdr's Pi lifecycle integration with `herdr integration install pi` before relying on lifecycle reports. Herdr can report `working`, `idle`, `blocked`, and `done`; `screen_detection_skipped: true` is expected for direct Pi reporting. Never infer completion from a terminal spinner or visual terminal appearance.
+
+## Delegation threshold
+
+Use a subagent only when independent evidence, isolation, parallelism, or bounded execution provides more value than the launch, inspection, and cleanup overhead. Do trivial reads, obvious one-line edits, and immediate local checks directly. Do not delegate merely because a task can be split.
+
+## Required launch model
+
+Use the reusable launcher by default:
+
+```sh
+~/.local/bin/herdr_start_subagent.sh \
+  --name <unique-worker-name> \
+  --mode <readonly|editable> \
+  --handoff /absolute/path/handoff.md \
+  --report /absolute/path/report.md \
+  --instruction 'Read the handoff exactly. <bounded instruction>. Stop.' \
+  --direction <right|down> \
+  --timeout-seconds 5
+```
+
+The launcher:
+
+1. validates worker name, mode, absolute handoff/report paths, working directory, and timeout;
+2. creates a sibling pane through `herdr pane split --no-focus`;
+3. submits one atomically quoted wrapper command through `herdr pane run`;
+4. starts either `subagent-readonly.sh` or `subagent.sh`;
+5. polls Herdr for worker detection, renames the detected agent, and prints structured JSON with `pane_id`, lifecycle snapshot, and `state_change_seq`.
+
+Use direct `herdr pane split` / `herdr agent start` only when the launcher is unavailable or has a verified defect; record why and preserve all equivalent safeguards.
+
+### Mode selection
+
+| Worker purpose | Mode | Evidence channel | Write rule |
+| --- | --- | --- | --- |
+| Source scouting, contract tracing, independent review | `readonly` | Herdr terminal `WORK REPORT` | `subagent-readonly.sh` blocks local writes. Do **not** expect or require a report artifact. |
+| Browser walkthrough, screenshot/report creation, bounded implementation | `editable` | Herdr terminal plus authorized artifact/diff | `subagent.sh` permits writes; handoff must name the exact allowed paths and checks. |
+
+`--report` is currently required by the launcher for both modes. For a read-only worker it is metadata only: its parent must exist and be writable, but no file may be created there. The handoff must explicitly say **terminal-only report; do not write artifacts**. For an editable worker, the handoff must explicitly authorize the report path and no broader write surface.
+
+### Focus boundary
+
+The launcher requests `--no-focus` when creating a sibling pane. Treat that as a creation request, **not proof of final focus state**: a worker was observed as `focused: true` after a non-focused launch request. If focus matters, inspect `herdr pane list` / `herdr agent get` after launch and act only on observed state. Do not claim a cause until Herdr trace evidence establishes one.
 
 ## Normal workflow
 
@@ -19,101 +61,93 @@ The supervisor owns scope, decisions, integration, verification, and final accep
 
 Use `sub-agent-handoff`. State:
 
-- goal and success criteria;
-- allowed paths, non-goals, and stop conditions;
-- authoritative starting evidence;
-- the approved absolute path for the complete report.
+- one coherent goal and measurable success criteria;
+- allowed paths/actions, non-goals, and stop rules;
+- authoritative starting evidence and current working-tree constraints;
+- exact evidence channel: terminal-only for read-only work, or approved absolute artifact path for editable work;
+- timebox and expected `WORK REPORT` format.
 
-Delegate a coherent, independently checkable outcome. Keep ambiguous requirements, architecture, cross-cutting decisions, and final acceptance with the supervisor.
+Do not delegate ambiguous requirements, architecture, cross-cutting decisions, or final acceptance.
 
-### 2. Create and start a worker
+### 2. Launch and record ownership
 
-```sh
-herdr pane split --current --direction right --no-focus
-herdr pane list
-herdr agent start <worker-name> --kind pi --pane <worker-pane-id>
-herdr agent list
-```
+Launch through `herdr_start_subagent.sh`. Record its JSON output in the supervisor’s task context:
 
-The target pane must be at an interactive shell prompt. Use the target from `herdr agent list`; do not guess from a pane title or ID.
+- worker name;
+- owned `pane_id`;
+- mode;
+- handoff and report path;
+- initial `agent_status` and `state_change_seq`.
 
-For enforced read-only work, retain the CMUX read-only wrapper until an equivalent restricted Herdr launch is verified. For write work, require user approval and state allowed paths and checks in the handoff.
+A returned `idle` immediately after launch is a lifecycle snapshot, **not completion evidence**. Do not send extra prompts merely because the initial snapshot is `idle`.
 
-### 3. Dispatch and wait
+### 3. Wait without steering
 
-Before dispatch, record `agent_status` and `state_change_seq` from `herdr agent get <worker-target>`. If the worker is already `working`, do not use `agent prompt --wait` as evidence that a new bounded assignment completed: Herdr does not track turns, so completion of the active turn can satisfy that wait. Let the current assignment settle and inspect it before dispatching the next one.
-
-Send one focused instruction that points to the handoff and report:
+Give the worker one complete instruction at launch. Do not steer a working worker clause-by-clause.
 
 ```sh
-herdr agent prompt <worker-target> \
-  'Read /absolute/path/handoff.md. Complete the task and write the report to /absolute/path/report.md.' \
-  --wait --timeout 1800000
+herdr agent wait <worker-name> --timeout 1800000
 ```
 
-For normal completion waits, **omit `--until`**. Herdr then waits for its complete default terminal set:
-
-```text
-idle, done, blocked
-```
-
-Do not use repeated messages as a substitute for a coherent handoff. Do not steer a working worker clause-by-clause.
+Use the installed CLI help if a timeout is rejected; respect its maximum. Normal waits use Herdr's default terminal set (`idle`, `done`, `blocked`). A terminal lifecycle state means **inspect now**, never **accept automatically**.
 
 ### 4. Inspect and decide
 
-A terminal state means **inspect now**. It does not mean **accept**.
+Read fresh output first:
 
 ```sh
-herdr agent read <worker-target> --source recent-unwrapped --lines 160
+herdr agent get <worker-name>
+herdr agent read <worker-name> --source recent-unwrapped --lines 160
 ```
 
-Then inspect the report artifact. For write work, inspect the actual diff and run proportionate checks.
+Then apply the mode-specific acceptance check:
 
-- `idle` or `done`: accept, request one bounded revision, or continue with a direct follow-up.
-- `blocked`: inspect the question, then clarify, approve, redirect, or escalate.
-- completion: only the supervisor declares it after checking the evidence.
+- **Read-only:** require the requested terminal `WORK REPORT`, exact source/test/runtime evidence, stated uncertainties, and no unauthorized files. Do not reject it for lacking a physical report artifact.
+- **Editable:** inspect the required report, the actual diff/status, and proportionate checks. Verify that changes stay within the authorized path scope.
+
+`idle` or `done` can be accepted, redirected once with a bounded follow-up, or treated as incomplete after inspection. `blocked` requires reading the actual question/evidence before clarifying, redirecting, or escalating. Only the supervisor declares completion.
+
+### 5. Mandatory cleanup
+
+The supervisor owns every pane it creates. After terminal output, report/artifact, diff, and required checks have been inspected and no direct follow-up remains, close the owned pane immediately:
+
+```sh
+herdr pane close <owned-pane-id>
+herdr pane list --workspace <workspace-id>
+```
+
+Retain a failed or blocked worker pane only until diagnostic evidence has been captured; then close it. Never close the supervisor's main pane or any pane not created by the supervisor. Verify the resulting pane list instead of assuming close succeeded.
 
 ## Recovery
 
-Use this only when a wait timed out or was cancelled, prompt delivery is unclear, or a plain prompt was sent to a worker that was already `idle`.
+Use recovery only after a wait times out/is cancelled, delivery is unclear, or a worker does not produce the expected output.
 
 Do **not** resend the prompt first. Recover state and output:
 
 ```sh
-herdr agent get <worker-target>
-herdr agent read <worker-target> --source recent-unwrapped --lines 160
+herdr agent get <worker-name>
+herdr agent read <worker-name> --source recent-unwrapped --lines 160
 ```
 
-If delivery remains unclear, compare the current `state_change_seq` with the value recorded before dispatch:
+Compare the current `state_change_seq` with the launch snapshot:
 
-1. record `agent_status` and `state_change_seq` before the plain prompt;
-2. send the prompt;
-3. confirm that `state_change_seq` advanced;
-4. if the newer state is `working`, wait normally:
+1. an advanced sequence proves Herdr observed a lifecycle transition, not that the assignment was understood or completed;
+2. fresh output containing the handoff-specific work establishes delivery evidence;
+3. the terminal report or authorized artifact establishes the claimed result;
+4. supervisor inspection plus diff/checks establishes acceptance.
 
-   ```sh
-   herdr agent wait <worker-target> --timeout 1800000
-   ```
-
-5. if it is already terminal, read fresh output and inspect the report.
-
-An advanced sequence establishes only that Herdr observed a lifecycle transition; it does not prove that this prompt was submitted or processed. Fresh output, plus a report or artifact that contains a request-unique marker or was written after dispatch, establishes task delivery and completion. Diff and checks establish whether the result is acceptable.
-
-## Control boundary
-
-Use Herdr for Herdr-managed worker panes: create, start, prompt, read, and wait. Use cmux for outer layout, user-visible tiles, notifications, browser surfaces, and hardened CMUX-only workers.
-
-Do not control the same Herdr-managed worker through both cmux steering and Herdr prompts.
+If the worker is still active after a clear, complete handoff, wait again. If it is terminal but incomplete, send one explicit bounded follow-up or close it and start a new worker with a corrected handoff. Do not conceal ambiguity with repeated generic prompts.
 
 ## Before declaring completion
 
-- [ ] The handoff defined scope, evidence, stop rules, and a report path.
-- [ ] `herdr agent list` identified the intended worker.
-- [ ] A terminal state was observed through Herdr, not inferred from screen appearance.
-- [ ] Fresh output and the report artifact were read.
-- [ ] Changes and checks were independently verified where applicable.
-- [ ] The final result, limitation, and next action were recorded when durable.
+- [ ] The handoff states scope, evidence, stop rules, timebox, and the correct report channel.
+- [ ] The launcher JSON records the worker name, owned pane ID, mode, and lifecycle snapshot.
+- [ ] Herdr terminal state was observed; terminal appearance was not substituted for lifecycle evidence.
+- [ ] Fresh output was read.
+- [ ] Read-only work has terminal evidence and no unauthorized files; editable work has an inspected report/diff and checks.
+- [ ] The worker's owned pane was closed and `herdr pane list` verified cleanup.
+- [ ] The accepted result, limitation, next action, and any operational learning were recorded durably when relevant.
 
 ## Reference
 
-Use the installed Herdr version's `agent-automation` documentation and CLI help when behavior is uncertain. The project-specific experiment record belongs in the `herdr-knowhow` repository; it is not a dependency of this shared skill.
+Use the installed Herdr version's CLI help and `agent-automation` documentation when behavior is uncertain. Record verified project-specific experiments in `herdr-knowhow`; do not generalize a one-off observation into a tool guarantee.
