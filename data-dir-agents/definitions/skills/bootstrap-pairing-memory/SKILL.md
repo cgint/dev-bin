@@ -54,8 +54,15 @@ Turn a clarified project intent into durable pairing-memory structure:
 5. Install the standing memory contract in root `AGENTS.md`.
    - State that agents have the **authority, responsibility, and accountability** to organize and maintain repository memory without waiting for repeated user requests.
    - Define remembering as complete only after an appropriate filesystem artifact has been updated.
-   - Require proactive persistence of verified information that could materially help future sessions, prevent rediscovery, preserve a decision, document a limitation, or correct stale understanding.
-   - Treat user statements that information matters for future work—and requests such as "remember this" or "take note"—as immediate persistence triggers.
+   - Define memory as future-oriented curation, not a record of what felt important in the current session. Judge candidates by expected future usefulness rather than present salience, novelty, difficulty, or effort.
+   - Install a compact selection test agents can use under pressure: **FUTURE → CONSEQUENCE → ESSENCE → HOME**.
+     - **Future:** Who could use this later, and in what situation?
+     - **Consequence:** What decision, action, mistake, or costly rediscovery could it affect?
+     - **Essence:** What is the smallest stable statement that preserves that value?
+     - **Home:** What is the narrowest canonical artifact that owns it?
+   - Require proactive persistence of verified information that passes this test and could materially help future sessions, prevent rediscovery, preserve a decision, document a limitation, or correct stale understanding.
+   - If no concrete future use can be named, leave the information transient. If it remains operationally relevant but uncertain, keep it provisional in the task/status artifact rather than promoting it to durable instructions.
+   - Treat user statements that information matters for future work—and requests such as "remember this" or "take note"—as immediate persistence triggers. They override the agent's decision whether to persist, but not the duties to select the smallest useful abstraction, use the correct canonical home, and respect privacy and safety boundaries.
    - Require a memory checkpoint before completing meaningful work: identify durable findings, persist them in their canonical home, update relevant pointers, and correct or prune stale memory. Trivial chat, minor lookups, and work that produced no durable information require no filesystem update.
    - Make clear that routine memory maintenance does not require separate permission, while still respecting read-only mode, sensitive information, and normal approval boundaries for product or runtime changes.
    - If persistence is blocked, require agents to report **not persisted** rather than implying that chat context is durable memory.

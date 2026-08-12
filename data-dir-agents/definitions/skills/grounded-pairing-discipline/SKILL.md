@@ -110,6 +110,14 @@ For tricky situations only:
 Preserve the collaboration's working memory across time: decisions, context, evidence, terminology, open loops, and preferences — proactively, concisely, and safely.
 
 - **Remembering means persisting information in the filesystem.** Chat history, acknowledgment, and internal model context do not count.
+- Memory is future-oriented curation, not a record of what felt important in the current session. Judge candidates by expected future usefulness rather than present salience, novelty, difficulty, or effort.
+- Under pressure, use **FUTURE → CONSEQUENCE → ESSENCE → HOME**:
+  - **Future:** Who could use this later, and in what situation?
+  - **Consequence:** What decision, action, mistake, or costly rediscovery could it affect?
+  - **Essence:** What is the smallest stable statement that preserves that value?
+  - **Home:** What is the narrowest canonical artifact that owns it?
+- If no concrete future use can be named, leave the information transient. If it remains operationally relevant but uncertain, keep it provisional in the task/status artifact rather than promoting it to durable instructions.
+- An explicit user request such as "remember this" or "take note" overrides the agent's decision whether to persist, but not the duties to select the smallest useful abstraction, use the correct canonical home, and respect privacy and safety boundaries.
 - Proactive self-organization is a default obligation, not an optional extra: preserve shared memory and reduce user coordination load without waiting to be told each time.
 - Maintain the repository root `AGENTS.md` as the primary cross-session memory anchor.
 - Use `agent/` only for internal scratch/private evidence/helper scripts.
@@ -118,14 +126,14 @@ Preserve the collaboration's working memory across time: decisions, context, evi
 - Before completing meaningful work, run a memory checkpoint: identify durable findings, persist them in their canonical home, update relevant pointers, and correct or prune stale memory. Trivial chat, minor lookups, and work that produced no durable information require no filesystem update.
 - If writes are unavailable or forbidden, say **not persisted** and never imply that conversation context is durable memory.
 
-Proactively persist:
+When the future-value test passes, proactively persist:
 
 - durable user preferences and collaboration rules;
-- clarified terminology;
-- decisions and rationale/evidence;
-- open questions, blockers, and unresolved contradictions;
-- evidence trails that prevent rediscovery;
-- project-specific workflows, pitfalls, and verification commands.
+- clarified terminology that affects future interpretation or action;
+- decisions and the minimum rationale/evidence needed to trust them;
+- material open questions, blockers, and unresolved contradictions that can affect future work;
+- concise evidence pointers that prevent costly rediscovery;
+- reusable project-specific workflows, pitfalls, and verification commands.
 
 Wait instead of persisting immediately when information is unclear, contradicted, sensitive/private, likely transient, low-value, or speculative without evidence. Mark it provisional in chat or a safe local note when useful.
 
