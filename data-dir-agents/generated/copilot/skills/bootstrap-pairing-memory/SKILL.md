@@ -1,19 +1,26 @@
 ---
 name: bootstrap-pairing-memory
-description: User-invoked bootstrap workflow for initializing a repository's pairing memory, north-star context, and status structure.
+description: User-invoked workflow for initializing repository pairing memory and installing its standing self-organization contract.
 ---
 
 # Bootstrap Pairing Memory
 
 Use only when the user explicitly invokes this workflow to initialize or reset a repository's collaboration memory structure.
 
-This is a commanded setup procedure, not a standing behavior. It should stay out of the model's normal skill-invocation context.
+This skill is a commanded setup procedure, not an automatically invoked standing skill. However, the repository memory contract it installs is standing behavior for all future work in that repository.
+
+## Meaning of memory
+
+In this workflow, **remembering means persisting information in the filesystem**. Chat history, acknowledgment, internal model context, or an intention to write later do not count as memory.
+
+If filesystem writes are unavailable or forbidden, say explicitly that the information was not persisted. Never claim to remember information that exists only in conversation context.
 
 ## Purpose
 
 Turn a clarified project intent into durable pairing-memory structure:
 
 - root `AGENTS.md` as the primary cross-session memory anchor;
+- a standing contract that authorizes and requires agents to maintain organized repository memory;
 - concise project overview / status map;
 - north-star or plan document when useful;
 - clear pointers to detailed docs and evidence;
@@ -44,19 +51,29 @@ Turn a clarified project intent into durable pairing-memory structure:
    - Keep architecture/reference detail in `docs/`, not in `AGENTS.md`.
    - Add date/time context where it materially helps future sessions judge freshness or validity.
 
-5. Create or update a fast re-entry map.
+5. Install the standing memory contract in root `AGENTS.md`.
+   - State that agents have the **authority, responsibility, and accountability** to organize and maintain repository memory without waiting for repeated user requests.
+   - Define remembering as complete only after an appropriate filesystem artifact has been updated.
+   - Require proactive persistence of verified information that could materially help future sessions, prevent rediscovery, preserve a decision, document a limitation, or correct stale understanding.
+   - Treat user statements that information matters for future work—and requests such as "remember this" or "take note"—as immediate persistence triggers.
+   - Require a memory checkpoint before completing meaningful work: identify durable findings, persist them in their canonical home, update relevant pointers, and correct or prune stale memory. Trivial chat, minor lookups, and work that produced no durable information require no filesystem update.
+   - Make clear that routine memory maintenance does not require separate permission, while still respecting read-only mode, sensitive information, and normal approval boundaries for product or runtime changes.
+   - If persistence is blocked, require agents to report **not persisted** rather than implying that chat context is durable memory.
+
+6. Create or update a fast re-entry map.
    - Prefer a compact `PROJECT_OVERVIEW.md` or equivalent status/action map.
    - Put current state, blockers, next actions, and links at the top.
 
-6. Create supporting docs only when useful.
+7. Create supporting docs only when useful.
    - Examples: `docs/northstar.md`, `docs/release-plan.md`, `docs/decision-log.md`.
    - Prefer repository-owned docs over `agent/` when the information is durable and project-relevant.
    - Avoid creating document sediment.
    - Where status or knowledge can age, record time information explicitly (date, timestamp, or version context).
 
-7. Verify and report.
-   - Show changed files.
-   - Explain what future sessions should read first.
+8. Verify the installed behavior and report.
+   - Confirm that root `AGENTS.md` defines remembering as filesystem persistence and contains the standing authority, responsibility, and memory checkpoint.
+   - Confirm that important bootstrap knowledge is organized in repository-owned memory rather than left only in chat or `agent/`.
+   - Show changed files and explain what future sessions should read first.
    - Leave open questions explicit.
 
 ## Boundaries

@@ -109,11 +109,14 @@ For tricky situations only:
 
 Preserve the collaboration's working memory across time: decisions, context, evidence, terminology, open loops, and preferences — proactively, concisely, and safely.
 
+- **Remembering means persisting information in the filesystem.** Chat history, acknowledgment, and internal model context do not count.
 - Proactive self-organization is a default obligation, not an optional extra: preserve shared memory and reduce user coordination load without waiting to be told each time.
 - Maintain the repository root `AGENTS.md` as the primary cross-session memory anchor.
 - Use `agent/` only for internal scratch/private evidence/helper scripts.
 - Put repository knowledge in repo docs (`docs/`, overview/status files), not only in `agent/`.
 - Do not wait for the user to say "remember this" when information is clearly durable and relevant.
+- Before completing meaningful work, run a memory checkpoint: identify durable findings, persist them in their canonical home, update relevant pointers, and correct or prune stale memory. Trivial chat, minor lookups, and work that produced no durable information require no filesystem update.
+- If writes are unavailable or forbidden, say **not persisted** and never imply that conversation context is durable memory.
 
 Proactively persist:
 
