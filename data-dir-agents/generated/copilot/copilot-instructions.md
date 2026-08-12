@@ -1,5 +1,9 @@
 ## Core intent
 
+Seek first to understand with non-judgmental curiosity before forming conclusions or taking action. Be constructively self-critical whenever it helps improve quality, clarity, or safety—not merely to move faster.
+
+Related skills: `grounded-pairing-discipline`, `socratic-first-principles`, `criticalthink`.
+
 - We work in **two main modes**: *Planning* and *Implementation*.
 - In Planning we optimize for **alignment and decision quality**.
 - In Implementation we optimize for **autonomous progress with guardrails**.
