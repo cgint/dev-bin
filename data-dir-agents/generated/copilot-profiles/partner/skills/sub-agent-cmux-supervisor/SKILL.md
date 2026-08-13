@@ -22,7 +22,7 @@ Use the wrappers; do not invoke `pi-profile` directly.
 Editable worker:
 
 ```sh
-subagent.sh \
+subagent.sh --mode editable -- \
   @/tmp/admin-visual-parity/visual-audit-handoff.md \
   'Execute the handoff exactly; use CMUX-only completion.'
 ```
@@ -30,12 +30,12 @@ subagent.sh \
 Read-only worker with classified read-only Bash:
 
 ```sh
-subagent-readonly.sh \
+subagent.sh --mode readonly -- \
   @/tmp/admin-visual-parity/visual-audit-handoff.md \
   'Execute the handoff exactly; use CMUX-only completion.'
 ```
 
-`subagent.sh` uses `pi-profile partner -ne` with `thinking:minimal` and default tools. `subagent-readonly.sh` loads `pi-focus-guard`, starts `--dm-read`, and permits `read,bash,grep,find,ls`; the guard blocks writes and non-read-only Bash. When either wrapper runs inside a Herdr pane, it additionally loads the Herdr-installed `herdr-agent-state.ts` reporter explicitly; it remains inactive outside Herdr. Both wrappers reject caller overrides of print mode, extensions, model/provider/thinking, and tools; readonly also rejects `--dm-*`. Neither wrapper uses `-p`.
+`subagent.sh` requires exactly one `--mode readonly|editable` before `--` and uses `pi-profile partner -ne` with `thinking:minimal`. Editable mode retains default Pi tools. Read-only mode loads `pi-focus-guard`, starts `--dm-read`, and permits `read,bash,grep,find,ls`; the guard blocks writes and non-read-only Bash. In either mode, a Herdr pane additionally loads the installed `herdr-agent-state.ts` reporter explicitly; it remains inactive outside Herdr. The wrapper rejects caller overrides of print mode, extensions, model/provider/thinking, tools, and `--dm-*`. Neither mode uses `-p`.
 
 ## Select Work Deliberately
 

@@ -1,25 +1,67 @@
 #!/usr/bin/env bash
-# Launch an editable Pi subagent with the isolated partner profile.
+# Launch a Pi subagent with an explicit editable or read-only execution mode.
 set -euo pipefail
 
+usage_error() {
+  printf 'subagent.sh: requires exactly one --mode readonly|editable before --\n' >&2
+  exit 2
+}
+
+mode=""
+mode_count=0
+delimiter_seen=false
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --)
+      delimiter_seen=true
+      shift
+      break
+      ;;
+    --mode)
+      [ "$#" -ge 2 ] || usage_error
+      case "$2" in
+        readonly|editable) ;;
+        *) usage_error ;;
+      esac
+      mode="$2"
+      mode_count=$((mode_count + 1))
+      shift 2
+      ;;
+    *)
+      usage_error
+      ;;
+  esac
+done
+
+[ "$delimiter_seen" = true ] && [ "$mode_count" -eq 1 ] || usage_error
+
 for argument in "$@"; do
-  [ "$argument" = "--" ] && break
   case "$argument" in
-    --print|--print=*|-p|-p?*|--extension|--extension=*|-e|-e?*|--model|--model=*|--provider|--provider=*|--thinking|--thinking=*|--tools|--tools=*|-t|-t?*)
+    --print|--print=*|-p|-p?*|--extension|--extension=*|-e|-e?*|--model|--model=*|--provider|--provider=*|--thinking|--thinking=*|--tools|--tools=*|-t|-t?*|--dm-*)
       printf 'subagent.sh: caller may not override wrapper configuration: %s\n' "$argument" >&2
       exit 2
       ;;
   esac
 done
 
+FOCUS_GUARD="$HOME/dev-external/pi-focus-guard/index.ts"
 HERDR_REPORTER="$HOME/.pi/profiles/partner/agent/extensions/herdr-agent-state.ts"
-HERDR_EXTENSION_ARGS=()
+EXTENSION_ARGS=()
+
+if [ "$mode" = "readonly" ]; then
+  if [ ! -f "$FOCUS_GUARD" ]; then
+    printf 'subagent.sh: pi-focus-guard not found: %s\n' "$FOCUS_GUARD" >&2
+    exit 1
+  fi
+  EXTENSION_ARGS=(-e "$FOCUS_GUARD")
+fi
+
 if [ "${HERDR_ENV:-}" = "1" ]; then
   if [ ! -f "$HERDR_REPORTER" ]; then
     printf 'subagent.sh: Herdr Pi reporter not found: %s\n' "$HERDR_REPORTER" >&2
     exit 1
   fi
-  HERDR_EXTENSION_ARGS=(-e "$HERDR_REPORTER")
+  EXTENSION_ARGS+=(-e "$HERDR_REPORTER")
 fi
 
 if pi-profile partner auth check --provider openai-codex 2>/dev/null | grep -qx 'ready'; then
@@ -31,4 +73,14 @@ else
   exit 1
 fi
 
-exec pi-profile partner -ne "${HERDR_EXTENSION_ARGS[@]}" --model "$SUBAGENT_MODEL" --thinking minimal "$@"
+PI_ARGS=(partner -ne)
+if [ "${#EXTENSION_ARGS[@]}" -gt 0 ]; then
+  PI_ARGS+=("${EXTENSION_ARGS[@]}")
+fi
+PI_ARGS+=(--model "$SUBAGENT_MODEL" --thinking minimal)
+
+if [ "$mode" = "readonly" ]; then
+  PI_ARGS+=(--tools read,bash,grep,find,ls --dm-read)
+fi
+
+exec pi-profile "${PI_ARGS[@]}" "$@"

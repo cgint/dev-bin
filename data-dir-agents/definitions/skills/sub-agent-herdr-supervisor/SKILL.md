@@ -37,7 +37,7 @@ The launcher:
 1. validates worker name, mode, absolute handoff/report paths, working directory, and timeout;
 2. creates a sibling pane through `herdr pane split --no-focus`;
 3. submits one atomically quoted wrapper command through `herdr pane run`;
-4. starts either `subagent-readonly.sh` or `subagent.sh`;
+4. starts `subagent.sh --mode <readonly|editable> --`;
 5. polls Herdr for worker detection, renames the detected agent, and prints structured JSON with `pane_id`, lifecycle snapshot, and `state_change_seq`.
 
 Use direct `herdr pane split` / `herdr agent start` only when the launcher is unavailable or has a verified defect; record why and preserve all equivalent safeguards.
@@ -46,8 +46,8 @@ Use direct `herdr pane split` / `herdr agent start` only when the launcher is un
 
 | Worker purpose | Mode | Evidence channel | Write rule |
 | --- | --- | --- | --- |
-| Source scouting, contract tracing, independent review | `readonly` | Herdr terminal `WORK REPORT` | `subagent-readonly.sh` blocks local writes. Do **not** expect or require a report artifact. |
-| Browser walkthrough, screenshot/report creation, bounded implementation | `editable` | Herdr terminal plus authorized artifact/diff | `subagent.sh` permits writes; handoff must name the exact allowed paths and checks. |
+| Source scouting, contract tracing, independent review | `readonly` | Herdr terminal `WORK REPORT` | `subagent.sh --mode readonly --` blocks local writes. Do **not** expect or require a report artifact. |
+| Browser walkthrough, screenshot/report creation, bounded implementation | `editable` | Herdr terminal plus authorized artifact/diff | `subagent.sh --mode editable --` permits writes; handoff must name the exact allowed paths and checks. |
 
 `--report` is currently required by the launcher for both modes. For a read-only worker it is metadata only: its parent must exist and be writable, but no file may be created there. The handoff must explicitly say **terminal-only report; do not write artifacts**. For an editable worker, the handoff must explicitly authorize the report path and no broader write surface.
 

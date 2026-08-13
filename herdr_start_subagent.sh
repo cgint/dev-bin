@@ -6,8 +6,7 @@ set -euo pipefail
 
 readonly DEFAULT_TIMEOUT_SECONDS=5
 readonly POLL_INTERVAL_SECONDS=0.5
-readonly READONLY_WRAPPER="$HOME/.local/bin/subagent-readonly.sh"
-readonly EDITABLE_WRAPPER="$HOME/.local/bin/subagent.sh"
+readonly SUBAGENT_WRAPPER="$HOME/.local/bin/subagent.sh"
 
 usage() {
   cat <<'EOF'
@@ -22,8 +21,8 @@ Usage:
     [--cwd <absolute-directory>] \
     [--timeout-seconds <1-30>]
 
-Creates a non-focused sibling Herdr pane, starts the selected subagent wrapper with
-@<handoff> plus the initial instruction, and polls for Herdr agent detection.
+Creates a non-focused sibling Herdr pane, starts the unified subagent wrapper in the
+selected mode with @<handoff> plus the initial instruction, and polls for Herdr agent detection.
 
 On successful pane launch, prints one JSON object to stdout containing the pane ID.
 If Pi is detected before the bounded timeout, the JSON also contains its Herdr name,
@@ -135,11 +134,8 @@ if [[ -z "$instruction" ]]; then
   instruction="Read @$handoff. Complete the handoff exactly and write the required report to $report."
 fi
 
-case "$mode" in
-  readonly) wrapper="$READONLY_WRAPPER" ;;
-  editable) wrapper="$EDITABLE_WRAPPER" ;;
-esac
-[[ -x "$wrapper" ]] || fail 2 "selected wrapper is not executable: $wrapper"
+wrapper="$SUBAGENT_WRAPPER"
+[[ -x "$wrapper" ]] || fail 2 "subagent wrapper is not executable: $wrapper"
 
 command -v herdr >/dev/null 2>&1 || fail 2 "herdr is not on PATH"
 command -v jq >/dev/null 2>&1 || fail 2 "jq is not on PATH"
@@ -155,7 +151,7 @@ pane_id="$(jq -er '.result.pane.pane_id' <<<"$split_json")" \
 
 # printf %q produces a single shell command whose arguments preserve paths and
 # instruction text. pane run then submits that command atomically with Enter.
-printf -v launch_command '%q ' "$wrapper" "@$handoff" "$instruction"
+printf -v launch_command '%q ' "$wrapper" --mode "$mode" -- "@$handoff" "$instruction"
 launch_command="${launch_command% }"
 herdr pane run "$pane_id" "$launch_command" >/dev/null \
   || fail 1 "Herdr created pane $pane_id but failed to submit the wrapper command; inspect that pane"
