@@ -31,4 +31,4 @@ skills = [
   "sub-agent-herdr-supervisor"
 ]
 
-prompts = ["done-archived-commit-exact.md", "check-sanity-before-continue.md", "critical-rethink-sanity.md", "speak-most-important-info.md", "short-concise-persist-details.md"]
+prompts = ["done-archived-commit-exact.md", "check-sanity-before-continue.md", "critical-rethink-sanity.md", "speak-matter-outcome.md", "speak-process-status.md", "short-concise-persist-details.md"]
