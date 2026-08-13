@@ -444,7 +444,9 @@ normalize_ext_for_codegiant() {
     local cleaned
     cleaned="$(echo "$raw" | tr ',' ' ')"
     local items=()
-    for item in $cleaned; do
+    local raw_items=()
+    read -r -a raw_items <<< "$cleaned"
+    for item in "${raw_items[@]}"; do
         item="${item#\*}"
         item="${item#.}"
         if [[ -n "$item" ]]; then
@@ -462,7 +464,9 @@ normalize_ext_for_git() {
     local cleaned
     cleaned="$(echo "$raw" | tr ',' ' ')"
     local pathspecs=()
-    for item in $cleaned; do
+    local items=()
+    read -r -a items <<< "$cleaned"
+    for item in "${items[@]}"; do
         if [[ "$item" == *\** || "$item" == */* ]]; then
             pathspecs+=("$item")
         elif [[ "$item" == .* ]]; then

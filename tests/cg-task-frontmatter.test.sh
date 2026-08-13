@@ -313,6 +313,7 @@ test_frontmatter_diff_context_task_attaches_diff_and_strips_header() {
   args_log="$(cat "$tmp_dir/state/args.log")"
   assert_contains "$args_log" "-a"
   assert_contains "$args_log" "./cg-task-result-document-review.md"
+  assert_contains "$args_log" "md,txt,json"
 
   local diff_log
   diff_log="$(cat "$tmp_dir/state/diff.log")"
