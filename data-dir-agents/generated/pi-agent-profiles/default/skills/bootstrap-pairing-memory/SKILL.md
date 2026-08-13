@@ -1,26 +1,30 @@
 ---
 name: bootstrap-pairing-memory
-description: User-invoked workflow for initializing repository pairing memory and installing its standing self-organization contract.
+description: User-invoked workflow for establishing durable pairing memory and assigning its ongoing stewardship to agents.
 ---
 
 # Bootstrap Pairing Memory
 
-Use only when the user explicitly invokes this workflow to initialize or reset a repository's collaboration memory structure.
+Use only when the user explicitly invokes this workflow to initialize or reset a repository's durable pairing memory.
 
-This skill is a commanded setup procedure, not an automatically invoked standing skill. However, the repository memory contract it installs is standing behavior for all future work in that repository.
+This skill is a commanded setup procedure, not an automatically invoked standing skill. The stewardship contract it installs is standing behavior for all future work in that repository.
 
-## Meaning of memory
+## Durable pairing memory
 
-In this workflow, **remembering means persisting information in the filesystem**. Chat history, acknowledgment, internal model context, or an intention to write later do not count as memory.
+**Durable pairing memory** is repository-owned, filesystem-persisted knowledge that helps future agents continue collaborating with the user without losing important intent, decisions, terminology, constraints, or open loops.
 
-If filesystem writes are unavailable or forbidden, say explicitly that the information was not persisted. Never claim to remember information that exists only in conversation context.
+Remembering is complete only after the appropriate filesystem artifact is updated. Chat history, acknowledgment, internal model context, or an intention to write later do not count. If filesystem writes are unavailable or forbidden, report **not persisted**.
+
+## Stewardship
+
+**Stewardship** means agents take ongoing responsibility for proactively organizing, maintaining, connecting, correcting, and pruning durable pairing memory while collaborating with the user. It does not imply ownership or permission to bypass read-only, privacy, safety, or approval boundaries.
 
 ## Purpose
 
-Turn a clarified project intent into durable pairing-memory structure:
+Turn a clarified project intent into durable pairing memory and establish its stewardship:
 
 - root `AGENTS.md` as the primary cross-session memory anchor;
-- a standing contract that authorizes and requires agents to maintain organized repository memory;
+- a standing contract that authorizes and requires agents to steward durable pairing memory;
 - concise project overview / status map;
 - north-star or plan document when useful;
 - clear pointers to detailed docs and evidence;
@@ -42,18 +46,17 @@ Turn a clarified project intent into durable pairing-memory structure:
 
 3. Establish the memory boundary first.
    - `agent/` is only for internal scratch notes, private evidence, helper material, and other agent-internal working files.
-   - Repository knowledge must live in repository-owned files such as root `AGENTS.md`, `PROJECT_OVERVIEW.md`, `docs/`, decision logs, or status docs.
-   - Do not leave repository-relevant instructions or durable project knowledge only inside `agent/`.
-   - If something should help future humans or future sessions understand the repo, place it outside `agent/`.
+   - Durable pairing memory must live in repository-owned files such as root `AGENTS.md`, `PROJECT_OVERVIEW.md`, `docs/`, decision logs, or status docs.
+   - If something should help future humans or agents understand the repo, place it outside `agent/`.
 
 4. Create or update root memory.
    - Maintain `AGENTS.md` as concise durable directives, repo purpose, startup routine, key docs, workflows, risks, and open knowledge gaps.
    - Keep architecture/reference detail in `docs/`, not in `AGENTS.md`.
    - Add date/time context where it materially helps future sessions judge freshness or validity.
 
-5. Install the standing memory contract in root `AGENTS.md`.
-   - State that agents have the **authority, responsibility, and accountability** to organize and maintain repository memory without waiting for repeated user requests.
-   - Define remembering as complete only after an appropriate filesystem artifact has been updated.
+5. Install the standing stewardship contract in root `AGENTS.md`.
+   - Assign agents the **authority, responsibility, and accountability** to steward durable pairing memory without waiting for repeated user requests.
+   - Define stewardship and remembering using the meanings above.
    - Define memory as future-oriented curation, not a record of what felt important in the current session. Judge candidates by expected future usefulness rather than present salience, novelty, difficulty, or effort.
    - Install a compact selection test agents can use under pressure: **FUTURE → CONSEQUENCE → ESSENCE → HOME**.
      - **Future:** Who could use this later, and in what situation?
@@ -78,7 +81,8 @@ Turn a clarified project intent into durable pairing-memory structure:
    - Where status or knowledge can age, record time information explicitly (date, timestamp, or version context).
 
 8. Verify the installed behavior and report.
-   - Confirm that root `AGENTS.md` defines remembering as filesystem persistence and contains the standing authority, responsibility, and memory checkpoint.
+   - Confirm that root `AGENTS.md` defines durable pairing memory, assigns its stewardship to agents, and contains the memory checkpoint.
+   - Confirm that remembering requires filesystem persistence.
    - Confirm that important bootstrap knowledge is organized in repository-owned memory rather than left only in chat or `agent/`.
    - Show changed files and explain what future sessions should read first.
    - Leave open questions explicit.
@@ -88,6 +92,6 @@ Turn a clarified project intent into durable pairing-memory structure:
 - Do not implement product/code behavior as part of this workflow unless the user separately approves implementation.
 - Do not store secrets or credentials.
 - Keep raw/private evidence in ignored/local areas unless explicit approval is given.
-- `agent/` must not become the only home of durable repository knowledge.
+- `agent/` must not become the only home of durable pairing memory.
 - Prefer concise pointers over duplicated long-form context.
 - Time-sensitive memory should be marked with enough date/time context to avoid false permanence.
