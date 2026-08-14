@@ -12,9 +12,11 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# Print usage if no arguments provided
-if [ $# -eq 0 ]; then
-    echo -e "${YELLOW}Usage:${NC} $0 <file.puml> [output_format]"
+show_usage() {
+    echo -e "${YELLOW}Usage:${NC} $0 [options] <file.puml> [output_format]"
+    echo ""
+    echo "Options:"
+    echo "  -h, --help     Show this help message"
     echo ""
     echo "Arguments:"
     echo "  file.puml      Path to PlantUML source file (required)"
@@ -26,6 +28,24 @@ if [ $# -eq 0 ]; then
     echo "  $0 diagram.puml png"
     echo "  $0 diagram.puml svg (default)"
     echo ""
+}
+
+# Parse options
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -h|--help)
+            show_usage
+            exit 0
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+# Print usage if no arguments provided
+if [ $# -eq 0 ]; then
+    show_usage
     exit 1
 fi
 
