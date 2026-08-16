@@ -44,17 +44,11 @@ for argument in "$@"; do
   esac
 done
 
-FOCUS_GUARD="$HOME/dev-external/pi-focus-guard/index.ts"
+FOCUS_GUARD="https://github.com/cgint/pi-focus-guard"
 HERDR_REPORTER="$HOME/.pi/profiles/partner/agent/extensions/herdr-agent-state.ts"
-EXTENSION_ARGS=()
+# Always use FOCUS_GUARD to start with write permission limited to current dir
+EXTENSION_ARGS=(-e "$FOCUS_GUARD") 
 
-if [ "$mode" = "readonly" ]; then
-  if [ ! -f "$FOCUS_GUARD" ]; then
-    printf 'subagent.sh: pi-focus-guard not found: %s\n' "$FOCUS_GUARD" >&2
-    exit 1
-  fi
-  EXTENSION_ARGS=(-e "$FOCUS_GUARD")
-fi
 
 if [ "${HERDR_ENV:-}" = "1" ]; then
   if [ ! -f "$HERDR_REPORTER" ]; then
