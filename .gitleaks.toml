@@ -1,0 +1,15 @@
+title = "Repository-specific Gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allow the literal Gemini API environment-variable token in documentation headers"
+condition = "AND"
+regexTarget = "secret"
+paths = [
+  '''(^|/)data-dir-gget/ai_rules/CODING_GUIDES_gemini_model\.md$''',
+]
+regexes = [
+  '''^GEMINI_API_KEY$''',
+]
