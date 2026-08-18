@@ -26,10 +26,10 @@ unset GOOGLE_CLOUD_LOCATION
 
 model=""
 if [[ "$1" == "flash" ]]; then
-  model="-m gemini-3.6-flash"
+  model="-m gemini-3.7-flash"
   shift
 elif [[ "$1" == "pro" ]]; then
-  model="-m gemini-3.6-flash"
+  model="-m gemini-3.7-flash"
   shift
 elif [[ "$1" == "lite" ]]; then
   model="-m gemini-3.5-flash-lite"
