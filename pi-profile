@@ -1,18 +1,21 @@
 #!/bin/bash
 # pi-profile [profile] [pi args...]
-#   profile: default, minimal, etc. (defaults to "default")
+#   profile: default, minimal, etc. (omit to list deployed profiles)
 #   pi args: passed through to pi
 #
 # Usage:
-#   pi-profile              # run default profile
+#   pi-profile              # list deployed profiles
 #   pi-profile minimal      # run minimal profile
 #   pi-profile --list       # list deployed profiles
-#   pi-profile --update-all # run "pi update --all" on every profile
+#   pi-profile --update-all # update every profile (default + each named profile
+#                           # under ~/.pi/profiles) via 'pi update --all'
 
 set -euo pipefail
 
 usage() {
   echo "Usage: pi-profile [profile] [pi args...]"
+  echo
+  echo "With no arguments, pi-profile lists the deployed profiles and exits."
   echo
   echo "Profiles:"
   echo "  default             run the default profile"
@@ -21,7 +24,11 @@ usage() {
   echo "Options:"
   echo "  -h, --help          show this help"
   echo "  -l, --list          list deployed profiles"
-  echo "      --update-all    run \"pi update --all\" on every profile"
+  echo "      --update-all    update every deployed profile (the default profile"
+  echo "                      plus each named profile under ~/.pi/profiles) by"
+  echo "                      running 'pi update --all' in each; prints a"
+  echo "                      per-profile success/failure summary and exits"
+  echo "                      non-zero if any update fails"
 }
 
 if [ "$#" -gt 0 ] && { [ "$1" = "-h" ] || [ "$1" = "--help" ]; }; then
@@ -49,6 +56,8 @@ list_profiles() {
 
 if [ $# -eq 0 ]; then
   list_profiles
+  echo
+  echo "Tip: 'pi-profile --update-all' updates every profile; 'pi-profile -h' for full help."
   exit 0
 fi
 
