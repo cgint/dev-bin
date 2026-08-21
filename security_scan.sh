@@ -21,9 +21,9 @@ PROJECT_ROOT="${1:-$PWD}"
 cd "$PROJECT_ROOT"
 mkdir -p .scan-results
 
-TRIVY_CACHE_VOLUME="trivy-db-cache"
-GITLEAKS_IMAGE="ghcr.io/gitleaks/gitleaks:latest"
-TRIVY_IMAGE="aquasec/trivy:0.60.0"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+GITLEAKS_PLUGIN="$SCRIPT_DIR/data-dir-gget/prec_gitleaks/pre_plugin_gitleaks.sh"
+TRIVY_PLUGIN="$SCRIPT_DIR/data-dir-gget/prec_trivy/pre_plugin_trivy.sh"
 
 # Colors
 RED='\033[0;31m'; GREEN='\033[0;32m'
@@ -40,10 +40,7 @@ GITLEAKS_EXIT=0
 
 if docker info >/dev/null 2>&1; then
     set +e
-    docker run --rm \
-        -v "$PROJECT_ROOT:/repo" \
-        "$GITLEAKS_IMAGE" \
-        git --report-format json --report-path /repo/.scan-results/gitleaks.json /repo 2>&1
+    bash "$GITLEAKS_PLUGIN" 2>&1
     GITLEAKS_EXIT=$?
     set -e
 
@@ -65,18 +62,7 @@ TRIVY_EXIT=0
 
 if docker info >/dev/null 2>&1; then
     set +e
-    docker run --rm \
-        -v "$PROJECT_ROOT:/work" \
-        -w /work \
-        -v "$TRIVY_CACHE_VOLUME:/root/.cache/" \
-        "$TRIVY_IMAGE" \
-        fs \
-        --scanners vuln \
-        --severity HIGH,CRITICAL \
-        --exit-code 1 \
-        --format json \
-        --output /work/.scan-results/trivy.json \
-        . 2>&1
+    bash "$TRIVY_PLUGIN" 2>&1
     TRIVY_EXIT=$?
     set -e
 
