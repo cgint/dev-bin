@@ -8,10 +8,12 @@ echo "Running Plugin $PLUGIN_NAME..."
 
 GITLEAKS_IMAGE="ghcr.io/gitleaks/gitleaks:latest"
 
+docker pull "$GITLEAKS_IMAGE"
+
 docker run --rm \
     -v "$PWD:/repo" \
     "$GITLEAKS_IMAGE" \
-    git --report-format json --report-path /repo/.scan-results/gitleaks.json /repo 2>&1
+    git --config /repo/.gitleaks.toml --report-format json --report-path /repo/.scan-results/gitleaks.json /repo 2>&1
 
 gitleaks_status=$?
 

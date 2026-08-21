@@ -6,8 +6,10 @@ PLUGIN_NAME="Trivy"
 echo
 echo "Running Plugin $PLUGIN_NAME..."
 
-TRIVY_IMAGE="aquasec/trivy:0.60.0"
+TRIVY_IMAGE="aquasec/trivy:latest"
 TRIVY_CACHE_VOLUME="trivy-db-cache"
+
+docker pull "$TRIVY_IMAGE"
 
 docker run --rm \
     -v "$PWD:/work" \
