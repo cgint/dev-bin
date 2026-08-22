@@ -11,41 +11,75 @@ Usage:
 
 Options:
   -h, --help         Show this help message
+  -v, --voice <name> Select the TTS voice (default: Puck)
   --wav <out.wav>    Write a WAV file using GenerateContent TTS (no playback)
 
 Examples:
-  $SCRIPT_NAME "Hello world"                 # stream playback (Live API)
-  $SCRIPT_NAME notes.md                       # stream playback from file (Live API)
-  $SCRIPT_NAME --wav out.wav "Hello world"   # write WAV (GenerateContent)
+  $SCRIPT_NAME "Hello world"                         # stream playback (Live API)
+  $SCRIPT_NAME --voice Fenrir notes.md                # stream playback from file (Live API)
+  $SCRIPT_NAME --wav out.wav --voice Kore "Hello"    # write WAV (GenerateContent)
 EOF
 }
 
-if [ $# -eq 0 ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+VOICE=""
+OUT=""
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -h|--help)
+            show_help
+            exit 0
+            ;;
+        -v|--voice)
+            if [ $# -lt 2 ] || [ -z "$2" ]; then
+                echo "Error: --voice requires a voice name." >&2
+                exit 2
+            fi
+            VOICE="$2"
+            shift 2
+            ;;
+        --wav)
+            if [ $# -lt 2 ] || [ -z "$2" ]; then
+                echo "Error: --wav requires an output path." >&2
+                exit 2
+            fi
+            OUT="$2"
+            shift 2
+            ;;
+        --)
+            shift
+            break
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+if [ $# -eq 0 ]; then
+    echo "Error: provide text or a file path." >&2
+    echo >&2
     show_help
-    exit 0
+    exit 2
+fi
+
+VOICE_ARGS=()
+if [ -n "$VOICE" ]; then
+    VOICE_ARGS=(--voice "$VOICE")
 fi
 
 # WAV output mode (GenerateContent TTS)
-if [ "$1" = "--wav" ]; then
-    OUT="$2"
-    shift 2
-    if [ -z "$OUT" ] || [ $# -eq 0 ]; then
-        echo "Error: --wav requires an output path and some text (or a file path)." >&2
-        echo >&2
-        show_help
-        exit 2
-    fi
-
+if [ -n "$OUT" ]; then
     # If a single arg is a file, read it and synthesize.
     if [ $# -eq 1 ] && [ -f "$1" ]; then
         FILE="$1"
         [[ "$FILE" != /* ]] && FILE="$(pwd)/$FILE"
-        (cd "$SPEAK_TO_ME_DIR" && uv run speakwavf -f "$FILE" -o "$OUT")
+        (cd "$SPEAK_TO_ME_DIR" && uv run speakwavf -f "$FILE" -o "$OUT" "${VOICE_ARGS[@]}")
         exit $?
     fi
 
     # Otherwise treat remaining args as text.
-    (cd "$SPEAK_TO_ME_DIR" && uv run speakwav -t "$*" -o "$OUT")
+    (cd "$SPEAK_TO_ME_DIR" && uv run speakwav -t "$*" -o "$OUT" "${VOICE_ARGS[@]}")
     exit $?
 fi
 
@@ -53,8 +87,8 @@ fi
 if [ $# -eq 1 ] && [ -f "$1" ]; then
     FILE="$1"
     [[ "$FILE" != /* ]] && FILE="$(pwd)/$FILE"
-    (cd "$SPEAK_TO_ME_DIR" && uv run speak -s -f "$FILE")
+    (cd "$SPEAK_TO_ME_DIR" && uv run speak -s "${VOICE_ARGS[@]}" -f "$FILE")
     exit $?
 fi
 
-(cd "$SPEAK_TO_ME_DIR" && uv run speak -s -t "$*")
+(cd "$SPEAK_TO_ME_DIR" && uv run speak -s "${VOICE_ARGS[@]}" -t "$*")
