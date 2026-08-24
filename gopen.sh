@@ -8,6 +8,17 @@
 #   dev-private/**/.git     (depth <= 3)
 # Matches on root-qualified labels.
 #
+# Behavior notes:
+#   - Only directories containing a .git directory are indexed.
+#     Git worktrees (.git is a file, not a dir) are excluded.
+#     VCS-less directories are not indexed.
+#   - dev-archive/ is intentionally excluded (archived projects).
+#   - No noise-dir pruning needed: globs only match top-level children,
+#     and find on dev-private targets .git dirs directly.
+#
+# Performance: targeted discovery (~200 dirs) vs the old generic
+# depth-3 find over all dev-* roots (~7200 dirs). ~50ms on M4 Max.
+#
 # Usage: gopen.sh <query> [--path] [<editor>]
 #        gopen.sh install
 
