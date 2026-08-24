@@ -40,8 +40,14 @@ data-dir-agents/
 │       ├── pluto.toml
 │       └── shuttle.toml
 ├── agents_files_cp.sh          ← existing (local, untouched)
-├── agents_files_cp_remote.sh   ← NEW (this handoff covers it)
+├── propagate_definitions.py    ← generator; remote script imports its resolve_placeholders
 └── generated/                  ← existing build output (local profiles only; NOT consumed by remote deploy)
+```
+
+`~/.local/bin/` (repo root, PATH):
+```text
+├── agents_files_cp.sh          ← local deploy tool
+└── agents_files_cp_remote.sh   ← NEW: remote deploy tool (this handoff covers it)
 ```
 
 Each `hosts/<host>.toml` (as shipped, self-contained):
@@ -179,7 +185,7 @@ Consequences (all implemented):
 - `homelab` profile deleted (`definitions/profiles/pi-agent/homelab.toml` +
   `generated/pi-agent-profiles/homelab/`); generator re-run, local profiles
   back to the original 5 (default, minimal, opsx, partner, zero).
-- `agents_files_cp_remote.sh` assembles the bundle **from `definitions/`
+- `agents_files_cp_remote.sh` (at repo root, sibling of `agents_files_cp.sh`) assembles the bundle **from `definitions/`
   sources**: renders `AGENTS.md` via `propagate_definitions.resolve_placeholders`
   (imported, not re-implemented), copies whitelisted skills/prompts into
   `.stage/<host>/` (gitignored), one rsync, md5 post-verify on `--apply`.
@@ -235,5 +241,5 @@ Status: DONE — committed in `a0cc8fd` (with regenerated copies).
   `doc-rocker-web-search`, `pi-session-to-md`, `url2md`, `ntfy-phone`) are
   protected by merge-only mode, but `--delete` would remove them — hence
   `delete = false` everywhere and `--delete` behind a dangerous flag.
-- First real deploy: run `./agents_files_cp_remote.sh --apply` and watch the
+- First real deploy: run `agents_files_cp_remote.sh --apply` (from `~/.local/bin/`) and watch the
   `[OK]` md5-verified lines; nothing else changes on hosts (merge semantics).

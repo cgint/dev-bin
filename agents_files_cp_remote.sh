@@ -22,11 +22,12 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-HOSTS_DIR="$SCRIPT_DIR/definitions/hosts"
-DEF_SKILLS="$SCRIPT_DIR/definitions/skills"
-DEF_PROMPTS="$SCRIPT_DIR/definitions/prompts"
-DEF_AGENTS="$SCRIPT_DIR/definitions/agents"
-STAGE="$SCRIPT_DIR/.stage"
+DATA_DIR="$SCRIPT_DIR/data-dir-agents"
+HOSTS_DIR="$DATA_DIR/definitions/hosts"
+DEF_SKILLS="$DATA_DIR/definitions/skills"
+DEF_PROMPTS="$DATA_DIR/definitions/prompts"
+DEF_AGENTS="$DATA_DIR/definitions/agents"
+STAGE="$DATA_DIR/.stage"
 
 usage() {
   cat <<'EOF'
@@ -108,7 +109,7 @@ for toml in "$HOSTS_DIR"/*.toml; do
   find "$stage" -depth -delete 2>/dev/null || true
   mkdir -p "$stage/skills" "$stage/prompts"
 
-  if ! python3 - "$SCRIPT_DIR" "$agents_file" "$stage/AGENTS.md" <<'PY'
+  if ! python3 - "$DATA_DIR" "$agents_file" "$stage/AGENTS.md" <<'PY'
 import sys, pathlib
 sys.path.insert(0, sys.argv[1])
 from propagate_definitions import resolve_placeholders

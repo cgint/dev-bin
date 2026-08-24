@@ -20,6 +20,7 @@ __pycache__/
 
 # remote deploy staging (agents_files_cp_remote.sh)
 .stage/
+data-dir-agents/.stage/
 
 testing_tmp/
 *.zip
