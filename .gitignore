@@ -18,6 +18,9 @@ web/
 
 __pycache__/
 
+# remote deploy staging (agents_files_cp_remote.sh)
+.stage/
+
 testing_tmp/
 *.zip
 .venv*

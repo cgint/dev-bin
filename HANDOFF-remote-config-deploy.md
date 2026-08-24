@@ -1,57 +1,39 @@
-# Handoff: remote config deploy for pi-agent profiles
+# HANDOFF: remote config deploy for pi-agent profiles
 
-as-of: 2026-08-24 · status: DESIGN (not implemented) · author: partner session (homelab repo)
+> **STATUS: TOOLING SHIPPED + DRY-RUN VERIFIED (2026-08-24).** `agents_files_cp_remote.sh`
+> is implemented, parses under system bash 3.2, and dry-runs cleanly against all 5 hosts.
+> Self-contained host TOMLs (no profile reference). Real `--apply` deploy not yet run.
+> See "Appendix: final state" at the bottom for the as-shipped design.
 
-## Intent
-Give this repo a `--remote` / sibling deploy capability so the generated
-pi-agent profile bundle can be synced to the 5 homelab hosts (sparky, sparkz,
-twins, pluto, shuttle) with md5-verified, merge-only semantics. `distribute-skill.sh`
-(lives in the homelab repo at `dev/concepts/homelab/scripts/`) stays the ad-hoc
-single-file emergency tool.
+Original handoff below (kept for the verified inventory/constraints — still accurate).
+
+---
 
 ## Goal
-From `generated/pi-agent-profiles/<profile>/` on this machine, deploy:
-- `AGENTS.md`
-- `skills/**`
-- `prompts/**`
+Build a **remote deploy** capability for pi-agent profiles: a sibling script
+`agents_files_cp_remote.sh` that ships the generated agent bundle to **5 homelab hosts**
+(sparky, sparkz, twins, pluto, shuttle) at `~/.pi/agent/`, with:
 
-into `host:~/.pi/agent/` for each configured host, with:
-- merge semantics (never `--delete` by default)
-- dry-run default
-- post-sync md5 manifest verification
-- per-host `[SKIP]` on ssh failure (non-fatal)
-- idempotent re-runs
+- **Merge-only by default** (never delete host-local files)
+- **Dry-run first** (`rsync -n`), apply is opt-in
+- **md5 verification** after each transfer
+- **Per-host `[SKIP]`** on ssh failure (some hosts are offline; don't fail the whole run)
+- **Idempotent** (re-runnable, no state drift)
 
-## Motive
-Today this is done by hand via `distribute-skill.sh` (single file at a time,
-manual loop). It does not handle multi-file skills (e.g. `cmux-usage` has 8 files)
-and has no "what deploys where" source of truth. The generated bundle here is
-the canonical source; the remotes are just consumers.
+The local sibling is `agents_files_cp.sh` (apply-by-default, single target). The remote
+script is the new piece.
 
-## Rationale for the chosen shape
-- **No Ansible** — 5 hosts, single user, rsync is already idempotent. Ansible
-  adds a control node that would have to be always-on (pluto is the only
-  always-on host; coupling the other 4 to it is a real risk).
-- **No Infisical/vault server** — same coupling argument. Secrets are out of
-  scope for this slice; SOPS+age may come later (flip criteria: 2nd human user,
-  dynamic credentials, audit/rotation need).
-- **New sibling script, not `--remote` flag** — remote path has different
-  failure modes (ssh reachability, partial transfer, md5 verify, per-host skip)
-  and a different default (dry-run vs apply-by-default). Keeping them separate
-  keeps `agents_files_cp.sh` (local, apply-by-default) untouched → zero
-  regression risk. Drift risk mitigated by only *consuming* `generated/`, never
-  re-implementing generation.
-- **TOML host configs in THIS repo, at `definitions/hosts/<host>.toml`** —
-  keeps deploy inputs versioned alongside the content they ship. Does NOT live
-  under `definitions/profiles/` because "profiles" there means personality
-  variants *within* one agent (pi-agent's partner/zero/opsx), a different axis
-  from host inventory.
+## How the existing pieces fit
 
-## Proposed layout
 ```
 data-dir-agents/
-├── definitions/
-│   └── hosts/                  ← NEW
+├── definitions/                    ← SOURCE (you edit these)
+│   ├── agents/                     # AGENTS templates + blocks
+│   ├── skills/<name>/SKILL.md      # skill sources
+│   ├── prompts/*.md                # prompt sources
+│   ├── profiles/pi-agent/*.toml    # local profile specs (default, minimal, opsx, partner, zero)
+│   ├── blocks/                     # shared md blocks
+│   └── hosts/                      ← NEW: remote host specs (one .toml per host)
 │       ├── sparky.toml
 │       ├── sparkz.toml
 │       ├── twins.toml
@@ -59,16 +41,18 @@ data-dir-agents/
 │       └── shuttle.toml
 ├── agents_files_cp.sh          ← existing (local, untouched)
 ├── agents_files_cp_remote.sh   ← NEW (this handoff covers it)
-└── generated/                  ← existing build output (consumed as-is)
+└── generated/                  ← existing build output (local profiles only; NOT consumed by remote deploy)
 ```
 
-Each `hosts/<host>.toml` (fields to be finalized):
+Each `hosts/<host>.toml` (as shipped, self-contained):
 ```toml
-host       = "sparky"
-target_dir = "~/.pi/agent"
-profile    = "default"
-ssh_opts   = ["-o", "ConnectTimeout=5", "-o", "BatchMode=yes"]
-delete     = false
+host        = "sparky"
+target_dir  = "~/.pi/agent"
+agents_file = "AGENTS_GPT52.md"
+skills      = [ ... explicit whitelist ... ]
+prompts     = [ ... explicit whitelist ... ]
+delete      = false
+ssh_opts    = [ "-o", "ConnectTimeout=5", "-o", "BatchMode=yes" ]
 ```
 
 ## Hard constraints (violating any of these is a bug)
@@ -82,7 +66,7 @@ delete     = false
    sparky/sparkz and is absent from the canonical source. A deploy must leave
    it in place.
 4. **Dry-run default.** First run against any host should be `rsync -avhn`.
-5. **md5 verification post-sync.** Compare the generated bundle's file hashes
+5. **md5 verification post-sync.** Compare the staged bundle's file hashes
    against what landed on the host; fail loudly on mismatch.
 
 ## Open risks to verify before implementing
@@ -92,26 +76,23 @@ delete     = false
   - `bootstrap-pairing-memory` → `a90c32ed…`
   - `short-instruction-semantics` → `8a04b2f6…`
   - `short-concise-persist-details.md` (prompt) → `dbd2339b…`
-  Run `diff -r` (or rsync dry-run) before first real deploy. If the generated
-  bundle has drifted, it would silently overwrite what was just hand-verified.
+  Run `diff -r` (or rsync dry-run) before first real deploy. If the source
+  has drifted, it would silently overwrite what was just hand-verified.
 - **`~` expansion in target_dir.** rsync over ssh handles `~` server-side; a
   local `mkdir -p` of a literal `~` does not. The tilde bug in
   `distribute-skill.sh`'s `-T` flag is known and unfixed; don't repeat it here.
-- **SOPS/age presence on the 5 hosts is unverified.** Out of scope for this
-  slice, but do not plan the secrets step on the assumption it's installed.
 
 ## Suggested first steps for the taking-over agent
 1. Read `agents_files_cp.sh` + `propagate_definitions.py` (local-only,
    apply-by-default — do not modify).
-2. Read `generated/pi-agent-profiles/default/.target` and the bundle tree.
+2. Read the bundle tree (`~/.pi/agent/`) to know what "the bundle" is.
 3. Run the read-only drift check:
-   `rsync -avhn --exclude-from=<generated bundle exclusions> generated/pi-agent-profiles/default/ sparky:~/.pi/agent/`
+   `rsync -avhn --exclude-from=<exclusions> <source bundle>/ sparky:~/.pi/agent/`
    and inspect the output: does merge mode leave `start-self-organising.md`
    alone? Does the layout match what's on the host?
 4. Draft `definitions/hosts/*.toml` for all 5 hosts.
 5. Implement `agents_files_cp_remote.sh`:
-   - parse TOML (use `yq`/`python3 -c 'import tomllib'` if no TOML lib is
-     installed on this Mac — check first)
+   - parse TOML (use `python3 -c 'import tomllib'` — no TOML lib needed)
    - per-host: ssh reachability probe (`ssh -o BatchMode=yes host true`),
      skip on failure
    - `rsync -avhzn` first (dry-run), print plan
@@ -147,99 +128,112 @@ delete     = false
   `definitions/prompts/`. It survives merge-only deploys (hard constraint #3),
   but is a candidate for promotion into `definitions/` — same class of drift as
   `start-self-organising.md` on sparky/sparkz.
-
-### Critique (objection to the proposed host TOML shape)
-
-`target_dir` is the **wrong axis** for a host file. In `definitions/profiles/`
-the same key distinguishes *agent personality variants*
-(`~/.pi/agent` vs `~/.pi/profiles/partner/agent/...`). For a host, the deploy
-unit is "ship profile X onto host Y", and a host can in principle run several
-profiles. A host TOML carrying both `profile` and `target_dir` is redundant and
-can silently diverge (profile renamed on the Mac, host TOML not updated).
-
-**Proposed host TOML:**
-
-```toml
-host   = "sparky"
-profile = "default"   # which generated/pi-agent-profiles/<profile>/ to ship
-delete = false
-ssh_opts = ["-o", "ConnectTimeout=5", "-o", "BatchMode=yes"]
-# optional, explicit override only:
-target_dir = ""        # empty = derive from bundle .target (recommended)
-```
-
-Target dir **derived from `generated/pi-agent-profiles/<profile>/.target`**
-— the existing single source of truth. The deploy script then has no
-`~`-expansion logic at all (rsync expands `~` server-side), which kills the
-known `distribute-skill.sh` tilde bug by construction.
+- **AGENTS.md variants on hosts:** sparky/sparkz run an older AGENTS.md variant
+  (`602c1279`); twins/pluto/shuttle have no AGENTS.md yet. The deploy will
+  converge all 5 to the freshly rendered template.
 
 ### Open questions — RESOLVED (2026-08-24)
 
 ### Q1: Schema — `target_dir` in host TOML?
-**Decision: No.** `target_dir` is **derived from** `generated/pi-agent-profiles/<profile>/.target`.
-Host TOMLs carry only: `host`, `profile`, `delete`, `ssh_opts`.
-Rationale: single source of truth (the `.target` file), kills the known tilde
-expansion bug by construction (rsync expands `~` server-side; the script never
-builds or `mkdir -p` the path locally). An optional `target_dir` override can
-be added later if a host genuinely needs a non-standard layout (YAGNI for v1).
+**Decision: Yes, explicit per host.** The remote deploy is fully independent
+from the local profile system, so there is no `.target` file to derive from.
+`target_dir = "~/.pi/agent"` is written in each host TOML; the script never
+builds the path locally and never `mkdir -p` — rsync and the remote shell
+expand `~` server-side, which kills the known `distribute-skill.sh` tilde bug
+by construction. The script fails loud on `target_dir` containing whitespace
+(it is interpolated unquoted in the remote check).
 
 ### Q2: Regenerate or consume `generated/`?
-**Decision: Strictly consume.** The deploy script reads `generated/` as-is.
-Rationale: mixing regeneration into the remote path adds a hidden side-effect
-(a broken generator could ship a half-baked bundle to 5 hosts). The operator
-builds locally first (`propagate_definitions.py --apply`), then deploys.
-The deploy script should **fail loudly** if `generated/` is missing, and
-**warn** if `definitions/` has a newer mtime than `generated/` (stale build).
+**Decision: Assemble from `definitions/` at deploy time — consume neither.**
+The remote bundle is built fresh from `definitions/` (the single source of
+truth) every run: `AGENTS.md` is rendered via `propagate_definitions.
+resolve_placeholders` (imported from the existing generator, not re-implemented),
+and whitelisted skills/prompts are copied 1:1 into a gitignored `.stage/<host>/`
+before a single rsync. No staleness check needed (no `generated/` involved).
 
 ### Q3: Which profile per host? — SUPERSEDED by Q5
 ~~`default` for all 5 hosts~~
 
-### Q5: Profile bounded to partner's maximum (2026-08-24)
-**Decision: New `homelab` profile** for all 5 remote hosts.
-- `definitions/profiles/pi-agent/homelab.toml`: partner's skill list + `ntfy-phone`,
-  partner's 6-prompt list, `target_dir = "~/.pi/agent"`, `agents_file = AGENTS_GPT52.md`.
-- Rationale: `default` ships all 28 skills + 7 prompts (78 files); the homelab
-  profile bounds the deploy to partner's curated maximum (25 skills + 6 prompts = 73 files).
-- All 5 host TOMLs updated: `profile = "homelab"`.
+### Q5: Self-contained host TOMLs, fully independent from profiles (final, 2026-08-24)
+
+**Decision: No `profile =` reference at all. Host TOMLs are self-contained deploy specs.**
+
+History: an intermediate design added a `homelab` profile (partner's list +
+`ntfy-phone`) and pointed all 5 host TOMLs at it. Rejected: a profile is a
+*local-deployable* unit, and `homelab.toml` targeting `~/.pi/agent` collides
+with `default` on this Mac. Remote hosts are not local agents — they don't
+need a profile at all.
+
+Final shape of `definitions/hosts/<host>.toml`:
+```toml
+host        = "sparky"
+target_dir  = "~/.pi/agent"      # explicit per host; rsync/remote shell expand ~
+agents_file = "AGENTS_GPT52.md"  # template in definitions/agents/ (rendered at deploy)
+skills      = [ ... 24 partner skills, + "ntfy-phone" for sparky/sparkz/twins ... ]
+prompts     = [ ... 6 partner prompts ... ]
+delete      = false              # per-host rsync --delete opt-in (DANGEROUS)
+ssh_opts    = [ "-o", "ConnectTimeout=5", "-o", "BatchMode=yes" ]
+```
+
+Consequences (all implemented):
+- `homelab` profile deleted (`definitions/profiles/pi-agent/homelab.toml` +
+  `generated/pi-agent-profiles/homelab/`); generator re-run, local profiles
+  back to the original 5 (default, minimal, opsx, partner, zero).
+- `agents_files_cp_remote.sh` assembles the bundle **from `definitions/`
+  sources**: renders `AGENTS.md` via `propagate_definitions.resolve_placeholders`
+  (imported, not re-implemented), copies whitelisted skills/prompts into
+  `.stage/<host>/` (gitignored), one rsync, md5 post-verify on `--apply`.
+  Dry-run default; merge-only unless `--delete`/`delete = true`.
+- The 5 host TOMLs are near-identical; only the host name and `ntfy-phone`
+  presence differ. Duplication is intentional: "what does sparky get?" must be
+  answerable from one file.
+- `ntfy-phone` ships to sparky/sparkz/twins only (not pluto/shuttle, not local
+  agents yet).
+- Bash 3.2 notes: system bash is 3.2.57; the script avoids `mapfile` and
+  top-level `local`, uses `while read` + process substitution; `.stage/` is in
+  the root `.gitignore`.
 
 ### Q4: `speak-most-important-info.md` — promote or preserve?
 **Decision: Promote into `definitions/prompts/`.**
 Rationale: it's a prompt (curated content), has been in active use since
 2026-08-06, and leaving it local-only means every new host needs a manual
 `distribute-skill.sh` call — the exact problem this tool eliminates.
-Action: `cp ~/.pi/agent/prompts/speak-most-important-info.md` into
-`definitions/prompts/`, regenerate, commit. Until then, merge-only deploys
-protect it on hosts where it already exists.
+Status: DONE — committed in `a0cc8fd` (with regenerated copies).
 
 ---
 
-### VERDICT: ALL CLEAR — design approved for implementation (2026-08-24)
+## Appendix: final state (2026-08-24, as shipped)
 
-All open risks verified read-only. No remaining design objections.
+**Commits** (local, unpushed — push requires explicit user opt-in):
+- `a0cc8fd` — content slice: `speak-most-important-info.md` promoted (Q4)
+- `f5171df` — tooling slice v1: original remote script + 5 host TOMLs (profile-referencing)
+- `15b72cf` — `ntfy-phone` recovered from sparky into `definitions/skills/`
+- `8fbf35c` — intermediate: `homelab` profile + host TOMLs pointing at it (now superseded)
+- PENDING — final slice: self-contained host TOMLs, homelab profile removed,
+  rewritten lean script (bash 3.2-safe), `.stage/` gitignore, this handoff update
 
-**Verified:**
-- All 5 hosts reachable, have `~/.pi/agent`, `md5sum`, rsync ≥ 3.2.7
-- Merge semantics: `start-self-organising.md` preserved (not in transfer)
-- `.target` excluded from transfer
-- Transfer scope: 77 files, no host-local state
-- Local openrsync supports `-n/--dry-run`
+**Verified this session:**
+- `bash -n` passes under system bash 3.2.57 (the earlier "unmatched quote" was a
+  file-mutation race — the working copy on disk had diverged from what was being
+  read; rewriting the file from a clean verified copy resolved it. No bash-3.2
+  syntax quirk; the heredoc-in-if and `&>` constructs are fine.)
+- Dry-run (`rsync -n`) against all 5 real hosts: `[DRY-RUN]` on every host,
+  summary `5 ok, 0 skipped, 0 failed`. ntfy-phone staged only for
+  sparky/sparkz/twins (verified in `.stage/`).
+- `pytest test_propagate_definitions.py`: 25/25 green.
 
-**Implementation notes (not blockers, resolve during coding):**
-1. `ssh_opts` must thread into rsync via `-e "ssh ${ssh_opts[*]}"`, not just
-   the preflight probe. Otherwise dry-run and apply use default ssh settings.
-2. **Exit-code contract** (state in script header): 0 = all attempted hosts
-   verified (skips reported and counted); non-zero only on verify/transfer
-   failure for at least one attempted host.
-3. **Remote dir creation:** rsync creates the final dir but not missing
-   parents. Add an idempotent `ssh host 'mkdir -p ~/.pi/agent/skills ~/.pi/agent/prompts'`
-   preflight before rsync. Keep `~` unquoted so the remote shell expands it.
-4. **md5 tool:** use `md5sum` on all hosts (confirmed present). Generate
-   manifest as `path:hash` (relative to target dir), sort by path, compare
-   against local `find` + `md5 -r` (macOS) — normalize path format on both
-   sides to avoid false mismatches.
-5. **Staleness check (Q2):** compare newest mtime in `definitions/` vs
-   `generated/`; warn if `definitions/` is newer. One-liner, optional.
-6. **Q4 promotion** (`speak-most-important-info.md` → `definitions/prompts/`)
-   is a separate content-change slice; do it before the first remote deploy so
-   the bundle is complete. Requires `definitions/` + `generated/` committed
-   together per repo AGENTS.md.
+**Exit-code contract:** 0 = all attempted hosts OK (skips non-fatal);
+1 = transfer/verify failure on ≥1 host.
+
+**Known limitations / watch-outs:**
+- Local openrsync 2.6.9 vs remote rsync 3.2.7/3.4.1: dry-run plan output is
+  from the local client; verify with `--apply` + md5 for ground truth.
+- `ntfy-phone/SKILL.md` still contains sparky-specific hardcodes (server/topic
+  are env-parameterized via `PI_NTFY_SERVER`/`PI_NTFY_TOPIC`); before wider
+  rollout consider making it host-agnostic.
+- Sparky remote-only skills (`agent-browser`, `criticalthink-retro`,
+  `doc-rocker-web-search`, `pi-session-to-md`, `url2md`, `ntfy-phone`) are
+  protected by merge-only mode, but `--delete` would remove them — hence
+  `delete = false` everywhere and `--delete` behind a dangerous flag.
+- First real deploy: run `./agents_files_cp_remote.sh --apply` and watch the
+  `[OK]` md5-verified lines; nothing else changes on hosts (merge semantics).

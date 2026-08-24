@@ -1,84 +1,63 @@
 #!/usr/bin/env bash
 #
-# agents_files_cp_remote.sh — Deploy pi-agent profile bundles to remote homelab hosts.
+# agents_files_cp_remote.sh — ship per-host pi-agent bundles to homelab hosts.
 #
-# Sibling to agents_files_cp.sh (local, apply-by-default).
-# This script ships the generated bundle to remote hosts via rsync-over-ssh
-# with post-sync md5 verification.
+# Host specs: definitions/hosts/<name>.toml — self-contained, no profile refs:
 #
-# Usage:
-#   agents_files_cp_remote.sh [--apply] [--delete] [--host HOST] [-h]
+#   host        = "sparky"         # ssh hostname
+#   target_dir  = "~/.pi/agent"    # remote deploy dir ('~' expanded on the host)
+#   agents_file = "AGENTS_GPT52.md"# template in definitions/agents/
+#   skills      = [...]            # whitelist from definitions/skills/
+#   prompts     = [...]            # whitelist from definitions/prompts/
+#   delete      = false            # per-host rsync --delete (DANGEROUS)
+#   ssh_opts    = [...]            # extra ssh options
 #
-#   (no flags)      dry-run all hosts in definitions/hosts/
-#   --apply         actually transfer files (default is dry-run)
-#   --delete        enable rsync --delete for ALL hosts (removes host files
-#                   not in bundle — DANGEROUS)
-#   --host HOST     restrict to a single host
+# Usage: agents_files_cp_remote.sh [--apply] [--delete] [--host HOST] [-h]
+#   default = dry-run. --apply transfers for real. --delete enables rsync --delete.
 #
-# Per-host config: definitions/hosts/<name>.toml
-#   host     = "sparky"
-#   profile  = "default"
-#   delete   = false
-#   ssh_opts = ["-o", "ConnectTimeout=5", "-o", "BatchMode=yes"]
-#   # target_dir is NOT set here: it is derived from
-#   # generated/pi-agent-profiles/<profile>/.target (single source of truth).
-#   # Optional explicit override: target_dir = "~/.pi/agent"
-#
-# Exit codes:
-#   0  all attempted hosts OK (ssh-unreachable hosts are [SKIP], non-fatal)
-#   1  at least one host had a transfer or verification failure
-#
+# Per host: ssh unreachable -> [SKIP] (non-fatal); target dir missing -> [SKIP]
+# (we never bootstrap an install); source missing -> [FAIL]; transfer or md5
+# mismatch -> [FAIL]. Exit 0 if all attempted hosts OK, 1 if any [FAIL].
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HOSTS_DIR="$SCRIPT_DIR/definitions/hosts"
-GENERATED_DIR="$SCRIPT_DIR/generated"
-PI_PROFILES_DIR="$GENERATED_DIR/pi-agent-profiles"
-
-APPLY=false
-CLI_DELETE=false
-HOST_FILTER=""
+DEF_SKILLS="$SCRIPT_DIR/definitions/skills"
+DEF_PROMPTS="$SCRIPT_DIR/definitions/prompts"
+DEF_AGENTS="$SCRIPT_DIR/definitions/agents"
+STAGE="$SCRIPT_DIR/.stage"
 
 usage() {
   cat <<'EOF'
 Usage: agents_files_cp_remote.sh [--apply] [--delete] [--host HOST] [-h]
-
-Deploy pi-agent profile bundles to remote homelab hosts.
-
-Options:
-  --apply       Actually transfer files (default is dry-run)
-  --delete      Enable rsync --delete for all hosts (removes host files
-                not in bundle — DANGEROUS)
-  --host HOST   Only target this host (default: all hosts in definitions/hosts/)
-  -h, --help    Show this help
-
-Per-host config: definitions/hosts/<name>.toml
-Exit: 0 if all attempted hosts OK, 1 if any host failed.
+Deploy pi-agent bundles to hosts in definitions/hosts/*.toml.
+  --apply   transfer for real (default is dry-run)
+  --delete  enable rsync --delete for all hosts (DANGEROUS)
+  --host H  only this host
 EOF
 }
 
-# ─── argument parsing ───────────────────────────────────────────────────────────
-while [[ $# -gt 0 ]]; do
+APPLY=false; DELETE=false; HOST_FILTER=""
+while [ $# -gt 0 ]; do
   case "$1" in
-    --apply)   APPLY=true; shift ;;
-    --delete)  CLI_DELETE=true; shift ;;
-    --host)    HOST_FILTER="${2:?--host requires a value}"; shift 2 ;;
+    --apply)  APPLY=true; shift ;;
+    --delete) DELETE=true; shift ;;
+    --host)   HOST_FILTER="${2:?--host needs a value}"; shift 2 ;;
     -h|--help) usage; exit 0 ;;
-    *) echo "Unknown argument: $1" >&2; usage >&2; exit 2 ;;
+    *) echo "unknown argument: $1" >&2; usage >&2; exit 2 ;;
   esac
 done
 
-# ─── helpers ────────────────────────────────────────────────────────────────────
-
 toml_get() {
-  # toml_get <file> <key> — print value; lists are space-joined, missing key = empty
+  # toml_get <file> <key> — print value; lists print one item per line
   python3 -c '
 import tomllib, sys
 with open(sys.argv[1], "rb") as f:
     d = tomllib.load(f)
 v = d.get(sys.argv[2], "")
 if isinstance(v, list):
-    print(" ".join(v))
+    for item in v: print(item)
 elif isinstance(v, bool):
     print(str(v).lower())
 else:
@@ -86,184 +65,122 @@ else:
 ' "$1" "$2"
 }
 
-resolve_target_dir() {
-  # resolve_target_dir <toml> <profile>
-  # Optional per-host target_dir override; otherwise the bundle .target (source of truth).
-  local toml="$1" profile="$2"
-  local override bundle
-  override=$(toml_get "$toml" "target_dir")
-  bundle="$PI_PROFILES_DIR/$profile"
-  if [[ -n "$override" ]]; then
-    printf '%s\n' "$override"
-  else
-    cat "$bundle/.target"
-  fi
-}
+# ── pre-flight ─────────────────────────────────────────────────────────────────
+if ! ls "$HOSTS_DIR"/*.toml >/dev/null 2>&1; then
+  echo "ERROR: no host TOMLs in $HOSTS_DIR" >&2
+  exit 1
+fi
 
-ssh_probe() {
-  # ssh_probe <host> <ssh_opts...>
-  local host="$1"; shift
-  ssh "${@}" -o BatchMode=yes -o ConnectTimeout=5 "$host" true 2>/dev/null
-}
+echo "agents_files_cp_remote.sh — $({ $APPLY && echo APPLY; } || echo DRY-RUN)"
 
-deploy_host() {
-  # deploy_host <host> <target_dir> <profile> <do_delete> <ssh_opts...>
-  # Returns 0 on success (dry-run or applied+verified), 1 on failure.
-  local host="$1" target_dir="$2" profile="$3" do_delete="$4"
-  shift 4
-  local -a ssh_opts=("$@")
+exit_code=0; ok=0; skip=0; fail=0
 
-  local bundle="$PI_PROFILES_DIR/$profile"
-  [[ -d "$bundle" ]] || { echo "  [FAIL] bundle not found: $bundle"; return 1; }
+for toml in "$HOSTS_DIR"/*.toml; do
+  host=$(toml_get "$toml" host)
+  target=$(toml_get "$toml" target_dir)
+  agents_file=$(toml_get "$toml" agents_file)
+  host_delete=$(toml_get "$toml" delete)
+  ssh_opts=$(toml_get "$toml" ssh_opts | tr '\n' ' ')
 
-  local ssh_exe="ssh"
-  if [[ ${#ssh_opts[@]} -gt 0 ]]; then
-    ssh_exe="ssh ${ssh_opts[*]}"
+  if [ -n "$HOST_FILTER" ] && [ "$host" != "$HOST_FILTER" ]; then
+    continue
   fi
 
-  local -a rsync_flags=(-avh --exclude='.target')
-  $APPLY || rsync_flags+=(-n)
-  $do_delete && rsync_flags+=(--delete)
+  # target_dir must be plain (no whitespace) — it is interpolated unquoted on the remote
+  case "$target" in
+    *" "*) echo "  [FAIL] $host: target_dir contains whitespace"; fail=$((fail+1)); exit_code=1; continue ;;
+  esac
 
-  if $APPLY; then
-    rsync "${rsync_flags[@]}" -e "$ssh_exe" "$bundle/" "$host:$target_dir/"
-    echo "  rsync: transfer complete"
+  echo "== $host -> $target =="
 
-    # Post-sync md5 verification: verify exactly the bundle's file set.
-    # Host-local extras (e.g. start-self-organising.md) are expected to remain,
-    # so we hash the bundle's files on both sides, not the whole remote dir.
-    local local_manifest remote_manifest bundle_files
-    bundle_files=$(cd "$bundle" && find AGENTS.md skills prompts -type f | LC_ALL=C sort)
-    local_manifest=$(
-      cd "$bundle" && while IFS= read -r f; do
-        printf '%s  %s\n' "$(md5 -q "$f")" "$f"
-      done <<< "$bundle_files"
-    )
-    remote_manifest=$(
-      printf '%s\n' "$bundle_files" | \
-      ssh "${ssh_opts[@]}" "$host" \
-        "cd $target_dir && while IFS= read -r f; do md5sum -- \"\$f\"; done" 2>/dev/null
-    )
-    if [[ "$local_manifest" != "$remote_manifest" ]]; then
-      echo "  [FAIL] md5 mismatch on $host ($profile):"
-      diff <(printf '%s\n' "$local_manifest") <(printf '%s\n' "$remote_manifest") | head -20 || true
-      return 1
+  # 1. reachability (skip, non-fatal)
+  if ! ssh $ssh_opts -o BatchMode=yes -o ConnectTimeout=5 "$host" true 2>/dev/null; then
+    echo "  [SKIP] $host: ssh unreachable"; skip=$((skip+1)); echo; continue
+  fi
+
+  # 2. target dir must already exist (we never bootstrap an install)
+  if ! ssh $ssh_opts "$host" "[ -d $target ]" 2>/dev/null; then
+    echo "  [SKIP] $host: $target does not exist"; skip=$((skip+1)); echo; continue
+  fi
+
+  # 3. stage the bundle: AGENTS.md + skills/ + prompts/
+  stage="$STAGE/$host"
+  find "$stage" -depth -delete 2>/dev/null || true
+  mkdir -p "$stage/skills" "$stage/prompts"
+
+  if ! python3 - "$SCRIPT_DIR" "$agents_file" "$stage/AGENTS.md" <<'PY'
+import sys, pathlib
+sys.path.insert(0, sys.argv[1])
+from propagate_definitions import resolve_placeholders
+agents_dir = pathlib.Path(sys.argv[1]) / "definitions" / "agents"
+template = agents_dir / sys.argv[2]
+if not template.exists():
+    sys.exit("agents template not found: %s" % template)
+pathlib.Path(sys.argv[3]).write_text(
+    resolve_placeholders(template.read_text(encoding="utf-8"),
+                         agents_dir / "blocks"),
+    encoding="utf-8")
+PY
+  then
+    echo "  [FAIL] $host: cannot render AGENTS.md from $agents_file"
+    fail=$((fail+1)); exit_code=1; echo; continue
+  fi
+
+  missing=""
+  while IFS= read -r s; do
+    [ -n "$s" ] || continue
+    if [ -d "$DEF_SKILLS/$s" ]; then
+      cp -R "$DEF_SKILLS/$s" "$stage/skills/"
+    else
+      missing="$missing $s"
     fi
-    local count
-    count=$(printf '%s\n' "$local_manifest" | wc -l | tr -d ' ')
-    echo "  md5 OK: $count files match"
+  done < <(toml_get "$toml" skills)
+
+  while IFS= read -r p; do
+    [ -n "$p" ] || continue
+    if [ -f "$DEF_PROMPTS/$p" ]; then
+      cp "$DEF_PROMPTS/$p" "$stage/prompts/"
+    else
+      missing="$missing $p"
+    fi
+  done < <(toml_get "$toml" prompts)
+
+  if [ -n "$missing" ]; then
+    echo "  [FAIL] $host: missing in definitions:$missing"
+    fail=$((fail+1)); exit_code=1; echo; continue
+  fi
+
+  # 4. transfer
+  rsync_flags="-avh"
+  if [ "$APPLY" = false ]; then rsync_flags="$rsync_flags -n"; fi
+  if [ "$DELETE" = true ] || [ "$host_delete" = true ]; then rsync_flags="$rsync_flags --delete"; fi
+
+  if ! rsync $rsync_flags -e "ssh $ssh_opts" "$stage/" "$host:$target/"; then
+    echo "  [FAIL] $host: rsync failed"; fail=$((fail+1)); exit_code=1; echo; continue
+  fi
+
+  # 5. verify (apply only)
+  if [ "$APPLY" = true ]; then
+    manifest=$(cd "$stage" && find . -type f | sed 's|^\./||' | LC_ALL=C sort)
+    local_m=$(cd "$stage" && while IFS= read -r f; do
+      printf '%s  %s\n' "$(md5 -q "$f")" "$f"
+    done <<< "$manifest")
+    if ! remote_m=$(printf '%s\n' "$manifest" | \
+      ssh $ssh_opts "$host" "cd $target && while IFS= read -r f; do md5sum -- \"\$f\"; done" 2>/dev/null); then
+      echo "  [FAIL] $host: md5 check could not run"; fail=$((fail+1)); exit_code=1; echo; continue
+    fi
+    if [ "$local_m" != "$remote_m" ]; then
+      echo "  [FAIL] $host: md5 mismatch:"
+      diff <(printf '%s\n' "$local_m") <(printf '%s\n' "$remote_m") | head -20 || true
+      fail=$((fail+1)); exit_code=1; echo; continue
+    fi
+    echo "  [OK] $host: $(printf '%s\n' "$manifest" | wc -l | tr -d ' ') files transferred + verified"
   else
-    rsync "${rsync_flags[@]}" -e "$ssh_exe" "$bundle/" "$host:$target_dir/"
-    echo "  [DRY-RUN] would deploy $profile -> $host:$target_dir"
+    echo "  [DRY-RUN] $host: plan above; run with --apply to transfer"
   fi
-  return 0
-}
-
-# ─── pre-flight checks ──────────────────────────────────────────────────────────
-
-if [[ ! -d "$PI_PROFILES_DIR" ]]; then
-  echo "ERROR: $PI_PROFILES_DIR not found. Run propagate_definitions.py --apply first." >&2
-  exit 1
-fi
-
-shopt -s nullglob
-toml_files=("$HOSTS_DIR"/*.toml)
-shopt -u nullglob
-
-if [[ ${#toml_files[@]} -eq 0 ]]; then
-  echo "ERROR: No host TOML files found in $HOSTS_DIR" >&2
-  exit 1
-fi
-
-# Staleness hint (advisory only): generation-source dirs newer than generated/README.md.
-# Only the generator's actual input dirs are checked (agents, skills, prompts, profiles).
-# definitions/hosts/ (this script's own deploy config) and other non-source files are
-# intentionally excluded so they don't trigger a false staleness warning.
-if [[ -f "$GENERATED_DIR/README.md" ]]; then
-  newest_def=$(find "$SCRIPT_DIR/definitions/agents" "$SCRIPT_DIR/definitions/skills" \
-    "$SCRIPT_DIR/definitions/prompts" "$SCRIPT_DIR/definitions/profiles" \
-    -type f -newer "$GENERATED_DIR/README.md" 2>/dev/null | head -1)
-  if [[ -n "$newest_def" ]]; then
-    echo "WARNING: definitions/ has files newer than generated/ output."
-    echo "         Newest: ${newest_def#"$SCRIPT_DIR"/}"
-    echo "         Consider: $SCRIPT_DIR/propagate_definitions.py --apply"
-    echo
-  fi
-fi
-
-echo "agents_files_cp_remote.sh — mode: $({ $APPLY && echo APPLY; } || echo DRY-RUN)"
-echo "Hosts: $HOSTS_DIR"
-echo
-
-exit_code=0
-hosts_ok=0
-hosts_skip=0
-hosts_fail=0
-
-# ─── main loop ──────────────────────────────────────────────────────────────────
-
-for toml in "${toml_files[@]}"; do
-  host_name=$(toml_get "$toml" "host")
-  profile=$(toml_get "$toml" "profile")
-  host_delete=$(toml_get "$toml" "delete")
-  ssh_opts_str=$(toml_get "$toml" "ssh_opts")
-  read -ra SSH_OPTS <<< "$ssh_opts_str"
-  target_dir=$(resolve_target_dir "$toml" "$profile")
-
-  if [[ -z "$target_dir" ]]; then
-    echo "  [FAIL] $host_name: no target_dir (missing .target in bundle '$profile' and no TOML override)"
-    hosts_fail=$((hosts_fail + 1))
-    exit_code=1
-    continue
-  fi
-  if [[ "$target_dir" == *" "* ]]; then
-    echo "  [FAIL] $host_name: target_dir contains whitespace; refusing to build remote shell command"
-    hosts_fail=$((hosts_fail + 1))
-    exit_code=1
-    continue
-  fi
-
-  if [[ -n "$HOST_FILTER" && "$host_name" != "$HOST_FILTER" ]]; then
-    continue
-  fi
-
-  # Per-host delete: CLI flag OR this host's TOML setting.
-  do_delete=false
-  $CLI_DELETE && do_delete=true
-  [[ "$host_delete" == "true" ]] && do_delete=true
-
-  echo "── $host_name (profile: $profile, target: $target_dir$($do_delete && echo ", delete: yes")) ──"
-
-  # 1. Reachability probe (non-fatal: skip on failure)
-  if ! ssh_probe "$host_name" "${SSH_OPTS[@]}"; then
-    echo "  [SKIP] $host_name: ssh unreachable"
-    hosts_skip=$((hosts_skip + 1))
-    echo
-    continue
-  fi
-
-  # 2. Verify target dir exists — if not, this host is not a pi-agent host.
-  #    We never bootstrap an install; we only deploy to existing installs.
-  if ! ssh "${SSH_OPTS[@]}" "$host_name" "[ -d $target_dir ]" 2>/dev/null; then
-    echo "  [SKIP] $host_name: $target_dir does not exist on host (not a pi-agent host?)"
-    hosts_skip=$((hosts_skip + 1))
-    echo
-    continue
-  fi
-
-  # 3. Deploy (+ verify when applying)
-  if deploy_host "$host_name" "$target_dir" "$profile" "$do_delete" "${SSH_OPTS[@]}"; then
-    echo "  [OK] $host_name"
-    hosts_ok=$((hosts_ok + 1))
-  else
-    hosts_fail=$((hosts_fail + 1))
-    exit_code=1
-  fi
+  ok=$((ok+1))
   echo
 done
 
-# ─── summary ────────────────────────────────────────────────────────────────────
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Summary: $hosts_ok OK, $hosts_skip skipped, $hosts_fail failed"
-
+echo "summary: $ok ok, $skip skipped, $fail failed"
 exit "$exit_code"

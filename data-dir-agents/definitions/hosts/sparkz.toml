@@ -1,5 +1,53 @@
-# Remote host configuration for agents_files_cp_remote.sh
-host     = "sparkz"
-profile  = "homelab"
+# Self-contained remote deploy spec for sparkz.
+# Independent from definitions/profiles/*: nothing here references a profile.
+#
+# skills/prompts are explicit whitelists resolved against definitions/skills/
+# and definitions/prompts/. A missing entry is a hard error (loud, not silent).
+#
+# Skill/prompt ceiling = partner profile's curated list. tldr and
+# google-workspace-cli are omitted (not present in definitions/skills/).
+# ntfy-phone added for the homelab fleet (recovered from sparky/twins).
+
+host        = "sparkz"
+target_dir  = "~/.pi/agent"
+agents_file = "AGENTS_GPT52.md"
+
+skills = [
+  "codebase-search",
+  "read-code-structure",
+  "web-search",
+  "web-browser-use",
+  "diagrams",
+  "gemini-model-rules",
+  "gemini-model-rules-extreme",
+  "sub-agent-handoff",
+  "my-tools-toolbox",
+  "cmux-usage",
+  "openspec-apply-change",
+  "openspec-propose",
+  "openspec-explore",
+  "openspec-archive-change",
+  "grill-with-docs",
+  "grounded-pairing-discipline",
+  "orwell-6-rule-prose",
+  "bootstrap-pairing-memory",
+  "criticalthink",
+  "short-instruction-semantics",
+  "socratic-first-principles",
+  "explain-diff-html",
+  "sub-agent-cmux-supervisor",
+  "sub-agent-herdr-supervisor",
+  "ntfy-phone",
+]
+
+prompts = [
+  "done-archived-commit-exact.md",
+  "check-sanity-before-continue.md",
+  "critical-rethink-sanity.md",
+  "speak-matter-outcome.md",
+  "speak-process-status.md",
+  "short-concise-persist-details.md",
+]
+
 delete   = false
 ssh_opts = ["-o", "ConnectTimeout=5", "-o", "BatchMode=yes"]
