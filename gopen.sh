@@ -57,7 +57,9 @@ for base in $HOME/dev*; do
     # Projects with .git at depth <= 3
     find "$base" -maxdepth 3 -type d -name '.git' -prune -o -type d \( ${FIND_IGNORE[*]} \) -prune -o -type d -print 2>/dev/null | \
     while IFS= read -r d; do
-        [ -e "$d/.git" ] && echo "$d"
+        # -e accepts both a .git dir (real repo) and a .git file (worktree pointer);
+        # the -f check drops git worktrees, whose .git is a pointer file not a repo root.
+        [ -e "$d/.git" ] && [ ! -f "$d/.git" ] && echo "$d"
     done >> "$CANDIDATES_F"
 
     # VCS-less leaves at depth 1 only
