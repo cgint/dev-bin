@@ -3,12 +3,13 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: $0 [--delete] [--openspec-config]"
-  echo
-  echo "Options:"
-  echo "  --delete           remove files in the target rsync dirs that are no longer in source"
-  echo "  --openspec-config  also roll out openspec/config.yaml to existing OpenSpec directories"
-  echo "  -h, --help         show this help"
+  cat <<'EOF'
+Usage: agents_files_cp.sh [--delete] [--openspec-config]
+Deploy generated agent definitions to local agent config dirs.
+  --delete           remove files in the target rsync dirs that are no longer in source
+  --openspec-config  also roll out openspec/config.yaml to existing OpenSpec directories
+  -h, --help         show this help
+EOF
 }
 
 DELETE_RSYNC=false

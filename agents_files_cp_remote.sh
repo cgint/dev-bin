@@ -1,6 +1,8 @@
-#!/usr/bin/env bash
+#!/bin/bash
 #
 # agents_files_cp_remote.sh — ship per-host pi-agent bundles to homelab hosts.
+# Copies rendered agent bundles to remote hosts via ssh/rsync.
+# Note: does NOT run the generator — renders AGENTS.md on the fly from definitions/.
 #
 # Host specs: definitions/hosts/<name>.toml — self-contained, no profile refs:
 #
@@ -46,7 +48,7 @@ while [ $# -gt 0 ]; do
     --delete) DELETE=true; shift ;;
     --host)   HOST_FILTER="${2:?--host needs a value}"; shift 2 ;;
     -h|--help) usage; exit 0 ;;
-    *) echo "unknown argument: $1" >&2; usage >&2; exit 2 ;;
+    *) echo "Unknown argument: $1" >&2; usage >&2; exit 2 ;;
   esac
 done
 
@@ -152,11 +154,11 @@ PY
   fi
 
   # 4. transfer
-  rsync_flags="-avh"
-  if [ "$APPLY" = false ]; then rsync_flags="$rsync_flags -n"; fi
-  if [ "$DELETE" = true ] || [ "$host_delete" = true ]; then rsync_flags="$rsync_flags --delete"; fi
+  rsync_flags=(-avh)
+  if [ "$APPLY" = false ]; then rsync_flags+=(-n); fi
+  if [ "$DELETE" = true ] || [ "$host_delete" = true ]; then rsync_flags+=(--delete); fi
 
-  if ! rsync $rsync_flags -e "ssh $ssh_opts" "$stage/" "$host:$target/"; then
+  if ! rsync "${rsync_flags[@]}" -e "ssh $ssh_opts" "$stage/" "$host:$target/"; then
     echo "  [FAIL] $host: rsync failed"; fail=$((fail+1)); exit_code=1; echo; continue
   fi
 
