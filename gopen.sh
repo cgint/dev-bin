@@ -1,7 +1,12 @@
 #!/bin/bash
 
 # gopen.sh — quick-launcher for dev projects
-# Searches $HOME/dev* up to depth 3, matches on root-qualified labels.
+# Discovers repos at these locations:
+#   dev/*/.git              (depth 1)
+#   dev-external/*/.git     (depth 1)
+#   dev/concepts/*/.git     (depth 1 from dev/concepts)
+#   dev-private/**/.git     (depth <= 3)
+# Matches on root-qualified labels.
 #
 # Usage: gopen.sh <query> [--path] [<editor>]
 #        gopen.sh install
@@ -28,16 +33,6 @@ if [ $# -ge 2 ]; then
     fi
 fi
 
-# --- Noise filter ---
-is_noise() {
-    case "$1" in
-        node_modules|deps|.uv-cache|.uv_cache|_build|__pycache__|.git|.next|dist|build|.venv|venv|logs|tmp|cache) return 0 ;;
-        *) return 1 ;;
-    esac
-}
-
-FIND_IGNORE=(-name node_modules -o -name deps -o -name .uv-cache -o -name .uv_cache -o -name _build -o -name __pycache__ -o -name '.next' -o -name dist -o -name build -o -name '.venv' -o -name venv -o -name logs -o -name tmp -o -name cache)
-
 # --- Temp files (in allowed directory) ---
 _G_OPEN_TMP="${HOME}/.local/bin/.gopen_tmp"
 mkdir -p "$_G_OPEN_TMP"
@@ -48,34 +43,27 @@ CANDIDATES_F="$_G_OPEN_TMP/c_$$.txt"
 trap 'rm -f "$ENTRIES_F" "$SORTED_F" "$MATCH_F" "$CANDIDATES_F"' EXIT
 
 # --- Phase 1: collect all candidate paths (no stat yet) ---
+# Discovery model (explicit, per-root depths):
+#   dev/*/.git              (depth 1)
+#   dev-external/*/.git     (depth 1)
+#   dev/concepts/*/.git     (depth 1 from dev/concepts)
+#   dev-private/**/.git     (depth <= 3)
+# No walk into repo interiors; .git must be a directory (git worktree
+# pointers are files and are excluded). VCS-less dirs are not indexed.
 : > "$CANDIDATES_F"
 
-for base in $HOME/dev*; do
+for base in "$HOME/dev" "$HOME/dev-external" "$HOME/dev/concepts"; do
     [ -d "$base" ] || continue
-    root=$(basename "$base")
-
-    # Projects with .git at depth <= 3
-    find "$base" -maxdepth 3 -type d -name '.git' -prune -o -type d \( ${FIND_IGNORE[*]} \) -prune -o -type d -print 2>/dev/null | \
-    while IFS= read -r d; do
-        # -e accepts both a .git dir (real repo) and a .git file (worktree pointer);
-        # the -f check drops git worktrees, whose .git is a pointer file not a repo root.
-        [ -e "$d/.git" ] && [ ! -f "$d/.git" ] && echo "$d"
-    done >> "$CANDIDATES_F"
-
-    # VCS-less leaves at depth 1 only
     for child in "$base"/*/; do
         [ -d "$child" ] || continue
         child="${child%/}"
-        bname=$(basename "$child")
-        [[ "$bname" == .* ]] && continue
-        is_noise "$bname" && continue
-        [ -e "$child/.git" ] && continue
-        if find "$child" -maxdepth 3 -name '.git' -type d -quit 2>/dev/null | grep -q .; then
-            continue
-        fi
-        echo "$child" >> "$CANDIDATES_F"
+        [ -d "$child/.git" ] && echo "$child" >> "$CANDIDATES_F"
     done
 done
+
+[ -d "$HOME/dev-private" ] && \
+    find "$HOME/dev-private" -maxdepth 3 -type d -name '.git' 2>/dev/null | \
+    while IFS= read -r g; do echo "$(dirname "$g")"; done >> "$CANDIDATES_F"
 
 # --- Phase 2: batch stat all candidates at once ---
 # stat -f '%m %N' outputs: mtime space path (one per line)
