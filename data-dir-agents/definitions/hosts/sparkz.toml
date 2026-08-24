@@ -1,0 +1,5 @@
+# Remote host configuration for agents_files_cp_remote.sh
+host     = "sparkz"
+profile  = "default"
+delete   = false
+ssh_opts = ["-o", "ConnectTimeout=5", "-o", "BatchMode=yes"]

@@ -1,0 +1,11 @@
+# Remote host configuration for agents_files_cp_remote.sh
+#
+# host     — ssh hostname (as configured in ~/.ssh/config or DNS)
+# profile  — which pi-agent profile bundle to deploy (see definitions/profiles/pi-agent/)
+# delete   — if true, rsync will remove host files not present in the bundle (DANGEROUS)
+# ssh_opts — extra ssh flags passed to both the probe and rsync -e
+
+host     = "sparky"
+profile  = "default"
+delete   = false
+ssh_opts = ["-o", "ConnectTimeout=5", "-o", "BatchMode=yes"]
