@@ -6,6 +6,6 @@
 # ssh_opts — extra ssh flags passed to both the probe and rsync -e
 
 host     = "sparky"
-profile  = "default"
+profile  = "homelab"
 delete   = false
 ssh_opts = ["-o", "ConnectTimeout=5", "-o", "BatchMode=yes"]

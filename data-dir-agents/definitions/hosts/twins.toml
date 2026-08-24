@@ -1,5 +1,5 @@
 # Remote host configuration for agents_files_cp_remote.sh
 host     = "twins"
-profile  = "default"
+profile  = "homelab"
 delete   = false
 ssh_opts = ["-o", "ConnectTimeout=5", "-o", "BatchMode=yes"]

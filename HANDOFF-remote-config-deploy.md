@@ -191,12 +191,16 @@ builds locally first (`propagate_definitions.py --apply`), then deploys.
 The deploy script should **fail loudly** if `generated/` is missing, and
 **warn** if `definitions/` has a newer mtime than `generated/` (stale build).
 
-### Q3: Which profile per host?
-**Decision: `default` for all 5 hosts** (sparky, sparkz, twins, pluto, shuttle).
-Rationale: no remote has `~/.pi/profiles/`; they all run the global
-`~/.pi/agent/` layout, which is exactly `default`'s `.target`. Content
-parity confirmed 1:1 for skills. If a host later gets its own personality
-variant, the TOML `profile` field is the extension point.
+### Q3: Which profile per host? — SUPERSEDED by Q5
+~~`default` for all 5 hosts~~
+
+### Q5: Profile bounded to partner's maximum (2026-08-24)
+**Decision: New `homelab` profile** for all 5 remote hosts.
+- `definitions/profiles/pi-agent/homelab.toml`: partner's skill list + `ntfy-phone`,
+  partner's 6-prompt list, `target_dir = "~/.pi/agent"`, `agents_file = AGENTS_GPT52.md`.
+- Rationale: `default` ships all 28 skills + 7 prompts (78 files); the homelab
+  profile bounds the deploy to partner's curated maximum (25 skills + 6 prompts = 73 files).
+- All 5 host TOMLs updated: `profile = "homelab"`.
 
 ### Q4: `speak-most-important-info.md` — promote or preserve?
 **Decision: Promote into `definitions/prompts/`.**

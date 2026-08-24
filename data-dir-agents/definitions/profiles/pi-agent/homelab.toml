@@ -1,0 +1,51 @@
+# Homelab profile — bounded skill/prompt set for remote pi-agent hosts.
+#
+# Skills and prompts mirror the partner profile's curated list (the "maximum"),
+# plus ntfy-phone (recovered from sparky/twins, requested for the homelab fleet).
+# target_dir is the global pi-agent location on remote hosts.
+#
+# tldr and google-workspace-cli are listed for parity with partner but do not
+# currently exist in definitions/skills/ — the generator skips them silently.
+
+name = "homelab"
+target_dir = "~/.pi/agent"
+agents_file = "AGENTS_GPT52.md"
+
+skills = [
+  "codebase-search",
+  "tldr",
+  "read-code-structure",
+  "web-search",
+  "web-browser-use",
+  "diagrams",
+  "gemini-model-rules",
+  "gemini-model-rules-extreme",
+  "sub-agent-handoff",
+  "my-tools-toolbox",
+  "cmux-usage",
+  "google-workspace-cli",
+  "openspec-apply-change",
+  "openspec-propose",
+  "openspec-explore",
+  "openspec-archive-change",
+  "grill-with-docs",
+  "grounded-pairing-discipline",
+  "orwell-6-rule-prose",
+  "bootstrap-pairing-memory",
+  "criticalthink",
+  "short-instruction-semantics",
+  "socratic-first-principles",
+  "explain-diff-html",
+  "sub-agent-cmux-supervisor",
+  "sub-agent-herdr-supervisor",
+  "ntfy-phone",
+]
+
+prompts = [
+  "done-archived-commit-exact.md",
+  "check-sanity-before-continue.md",
+  "critical-rethink-sanity.md",
+  "speak-matter-outcome.md",
+  "speak-process-status.md",
+  "short-concise-persist-details.md",
+]
