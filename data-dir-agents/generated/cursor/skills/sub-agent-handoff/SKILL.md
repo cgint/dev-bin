@@ -13,6 +13,15 @@ Use this skill when delegating bounded work to a sub-agent that **cannot see** t
 
 If the sub-agent needs information, it must request it in the **Work report** (don’t guess).
 
+## Working directory = launch directory (canonical rule)
+
+**The worker must be started in the target directory named by the handoff.** A write-enabled worker’s write scope is the directory tree rooted at its launch cwd (the wrapper enforces this — see `subagent.sh`). To let an editable worker write to the handoff’s target paths, its launch cwd **must** be the narrowest directory tree containing **all** authorized writes — the permitted work **and** the required report/artifact path — expressed as an absolute path (the common ancestor when work spans sibling directories), not a wider repo root.
+
+Keep two facts separate:
+
+- **Handoff says the cwd:** the brief states the exact absolute target directory.
+- **Launcher actually starts there:** the supervisor must launch the worker with that directory as its cwd — e.g. `--cwd /abs/target` in the Herdr launcher, or `cd` into it / create the pane there for a CMUX wrapper. Stating the directory in the brief is necessary but not sufficient; the launch must match.
+
 ## Delegation threshold
 
 Use a subagent only when independent evidence, isolation, parallelism, or bounded execution provides more value than the launch, inspection, and cleanup overhead. Do trivial reads, obvious one-line edits, and immediate local checks directly. Do not delegate merely because a task can be split.
@@ -40,7 +49,8 @@ Use a subagent only when independent evidence, isolation, parallelism, or bounde
 Because the sub-agent can’t see your history, include:
 
 - **Goal** and **success criteria** (how to know it’s done)
-- **Repo/workdir** (absolute path) + **branch/commit** (if relevant)
+- **Repo root** (absolute path; where commands/context live) + **branch/commit** (if relevant)
+- **Launch directory (write scope):** the narrowest absolute directory tree containing all authorized writes (work + report); the worker must be *started in* it (see the canonical rule above)
 - **Current state snapshot**
   - `git status` summary (or paste output)
   - any relevant logs / stack traces / failing test output
@@ -66,7 +76,8 @@ Provide this block verbatim (fill in placeholders). Keep it short but complete.
 - **Success criteria:**
   - <bullet>
   - <bullet>
-- **Repo / working dir:** <absolute path>
+- **Repo root:** <absolute path>
+- **Launch directory (write scope):** <absolute path — narrowest directory tree containing all authorized writes (work + report); the worker must be started here>
 - **Branch / commit (if known):** <branch> / <sha>
 - **Scope (allowed):**
   - **Allowed paths:** <e.g. src/foo/, openspec/changes/...>

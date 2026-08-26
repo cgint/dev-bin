@@ -77,4 +77,17 @@ if [ "$mode" = "readonly" ]; then
   PI_ARGS+=(--tools read,bash,grep,find,ls --dm-read)
 fi
 
+# Scope the write guard to the launching working directory.
+# This is the single source of truth for HOW sub-agent write boundaries are enforced;
+# the delegation skills (sub-agent-handoff, -herdr-supervisor, -cmux-supervisor) state the
+# durable rule without repeating this mechanism.
+# subagent.sh has no --cwd option: the agent inherits this process's cwd, and
+# PI_WRITE_GUARD_DIRS="." makes the pi-focus-guard allowlist resolve to that cwd, so an
+# editable worker can write only within the directory tree rooted at its launch cwd.
+# Set unconditionally (deliberate encapsulation, not a fallback). A per-session
+# flag/session write-guard override still outranks this env value, and it overrides any
+# .pi/settings.json allowlist.
+PI_WRITE_GUARD_DIRS="."
+export PI_WRITE_GUARD_DIRS
+
 exec pi-profile "${PI_ARGS[@]}" "$@"

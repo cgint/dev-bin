@@ -29,8 +29,11 @@ Use the reusable launcher by default:
   --report /absolute/path/report.md \
   --instruction 'Read the handoff exactly. <bounded instruction>. Stop.' \
   --direction <right|down> \
+  --cwd /absolute/path/to/target-dir \
   --timeout-seconds 5
 ```
+
+Set `--cwd` to the **target directory named by the handoff** — the narrowest absolute directory tree containing **all** of the worker’s authorized writes, including its report path (the common ancestor when work spans sibling directories). An editable worker’s write scope is the directory tree rooted at its launch cwd (enforced by `subagent.sh`), so launching elsewhere prevents it from writing to the handoff’s target paths. Omitting `--cwd` is acceptable only when the supervisor is already running inside that target directory; otherwise the worker inherits the supervisor’s `$PWD`.
 
 The launcher:
 

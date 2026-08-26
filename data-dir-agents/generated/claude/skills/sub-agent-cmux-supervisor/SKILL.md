@@ -17,6 +17,8 @@ Use a subagent only when independent evidence, isolation, parallelism, or bounde
 
 ### Worker launch — REQUIRED
 
+**Precondition — start in the target directory.** `subagent.sh` inherits the invoking shell’s working directory and has no `--cwd` option; its write scope is the directory tree rooted at that cwd (enforced by `subagent.sh`). So `cd` into the target directory named by the handoff — the narrowest directory tree containing all authorized writes, including the report path (the common ancestor when work spans sibling directories) — before invoking the wrapper, or create the pane/workspace there with `--cwd /absolute/path/to/target-dir`. Starting elsewhere leaves an editable worker unable to write to the handoff’s target paths.
+
 Use the wrappers; do not invoke `pi-profile` directly.
 
 Editable worker:
