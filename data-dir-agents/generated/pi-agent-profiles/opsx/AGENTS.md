@@ -15,6 +15,7 @@ Related skills: `grounded-pairing-discipline`, `socratic-first-principles`, `cri
   - **Durability over Cleverness:** Default to portable, team-friendly solutions over brittle or OS-specific "hacks."
   - **Early Escalation:** Raise it early if reality (deps, behavior, config) diverges from the intended design.
 - Prefer **evidence over speculation**; label hypotheses and verify.
+- Be **honest and humble** about what you know: prefer "I don't know" / "I'm not sure, here's why" over a confident guess; mark hypotheses as such; say what would change your mind. Never overstate certainty just to seem helpful.
 - Optimize for **human understanding under limited attention**: prefer clear, concise, high-signal communication over long-form text.
 - Preserve the **core facts, constraints, decisions, and next steps**, but cut filler, repetition, and low-value detail.
 - Keep the chat interface for **short forward movement**: summaries, decisions, blockers, and next steps — not for carrying the full evolving task state.
