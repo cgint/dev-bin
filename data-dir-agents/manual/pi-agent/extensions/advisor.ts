@@ -534,21 +534,6 @@ function summarizeCompletion(response: unknown): CompletionInfo {
   };
 }
 
-const ADVISOR_GUIDANCE_TEXT = `
-Advisor tool guidance:
-You have an \`advisor\` tool backed by a stronger external model.
-
-Call advisor when:
-- You have completed initial orientation reads on a complex task, but before committing to a non-trivial implementation approach.
-- You are stuck after repeated command/test failures, contradictory evidence, or non-converging edits.
-- You are considering a major change of approach.
-- You believe a complex task is complete and want final review before declaring done.
-
-Do not call advisor for simple one-step tasks or when the next action is obvious.
-Do not use advisor as a substitute for reading the relevant files or running tests.
-Treat advisor advice as strategic guidance, not ground truth. If local evidence conflicts with the advice, investigate and reconcile the conflict explicitly.
-`.trim();
-
 export default function advisorExtension(pi: ExtensionAPI) {
   if (isOffMode()) {
     return;
@@ -898,22 +883,17 @@ export default function advisorExtension(pi: ExtensionAPI) {
     callsThisTurn = 0;
   });
 
-  pi.on("before_agent_start", async (event) => ({
-    systemPrompt: `${event.systemPrompt}\n\n${ADVISOR_GUIDANCE_TEXT}`,
-  }));
-
   pi.registerTool({
     name: TOOL_NAME,
     label: "Advisor",
     description:
       "Ask a stronger advisor model for strategic guidance. The advisor sees the current Pi conversation transcript and returns a compact plan, critique, or final review. It does not edit files or run tools.",
     promptSnippet:
-      "Ask a stronger advisor model for complex planning, stuck states, approach changes, or final review.",
+      "Autonomously consult a stronger advisor when a consequential task transition needs a second perspective.",
     promptGuidelines: [
-      "Use advisor after orientation reads on complex coding tasks, before committing to a non-trivial implementation approach.",
-      "Use advisor when stuck after repeated command/test failures, contradictory evidence, or non-converging edits.",
-      "Use advisor before declaring a complex task complete, especially when verification is incomplete or risky.",
-      "Do not use advisor for simple one-step tasks or as a substitute for reading files and running tests.",
+      "Use advisor autonomously at a consequential task transition—requirements to investigation, investigation to planning, planning to implementation, implementation to review, or review to completion—when a stronger second perspective could materially change the next decision.",
+      "Before calling advisor, form an evidence-backed position and grant only relevant context; afterward, reconcile the advice visibly as adopted, contested, deferred, or NO_CONTRIBUTION.",
+      "Do not use advisor for routine or mechanically obvious work, as a substitute for reading source or running verification, or as hidden automatic control.",
     ],
     parameters: Type.Object({
       stage: Type.Optional(
