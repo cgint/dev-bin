@@ -1,0 +1,39 @@
+{
+  "name": "user-correction-over-implementation",
+  "provenance": "synthetic; no recorded session content",
+  "purpose": "Ensure shared attention repair centers a user's corrective demand rather than the assistant's implementation report.",
+  "attentionTarget": [
+    "The user's active concern is that the extension must produce a useful shared-attention outcome rather than more machinery.",
+    "The assistant's implementation report is context, not the current shared objective.",
+    "The unresolved tension is whether the extension repairs attention in practice."
+  ],
+  "entries": [
+    {
+      "id": "u1",
+      "timestamp": "2026-08-27T12:00:00.000Z",
+      "type": "message",
+      "message": {
+        "role": "user",
+        "content": [{ "type": "text", "text": "We need a proper shared-attention outcome, not another implementation report." }]
+      }
+    },
+    {
+      "id": "a1",
+      "timestamp": "2026-08-27T12:00:05.000Z",
+      "type": "message",
+      "message": {
+        "role": "assistant",
+        "content": [{ "type": "text", "text": "I changed the extension prompt, tests, and deployment flow." }]
+      }
+    },
+    {
+      "id": "u2",
+      "timestamp": "2026-08-27T12:00:10.000Z",
+      "type": "message",
+      "message": {
+        "role": "user",
+        "content": [{ "type": "text", "text": "Stop making the implementation itself the subject. I need us to see the actual shared concern." }]
+      }
+    }
+  ]
+}
