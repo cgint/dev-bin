@@ -125,11 +125,19 @@ Retain a failed or blocked worker pane only until diagnostic evidence has been c
 
 Use recovery only after a wait times out/is cancelled, delivery is unclear, or a worker does not produce the expected output.
 
-Do **not** resend the prompt first. Recover state and output:
+### Prompt/wait invariant
+
+For normal `herdr agent prompt` calls, use `--wait` without `--until` filters.
+Wait for Herdr's normal state set rather than selected lifecycle states.
+
+After an abort, timeout, `agent_prompt_stalled`, or any other unexpected
+prompt/wait result, do **not** resend first. The result does not establish that
+the request was not delivered. Inspect the worker's state and terminal output
+before any new request:
 
 ```sh
 herdr agent get <worker-name>
-herdr agent read <worker-name> --source recent-unwrapped --lines 160
+herdr agent read <worker-name> --source recent-unwrapped --lines 160 --format text
 ```
 
 Compare the current `state_change_seq` with the launch snapshot:
