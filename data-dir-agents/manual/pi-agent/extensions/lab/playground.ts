@@ -25,7 +25,7 @@ function usage(): never {
 }
 
 const args = Bun.argv.slice(2);
-const budgetValue = option(args, "--budget") ?? "30";
+const budgetValue = option(args, "--budget") ?? "100";
 const budget = Number.parseInt(budgetValue, 10);
 if (!Number.isInteger(budget) || budget < 1 || budget > 100) usage();
 if (args.some((arg) => !["--budget", "--candidate", budgetValue, option(args, "--candidate")].includes(arg))) usage();
@@ -49,7 +49,7 @@ console.log(transcript);
 console.log("\n## Actor-separated context sent to the model");
 console.log(repairContext);
 console.log("\n## Prompt sent to the model");
-console.log(buildProjectionPrompt(repairContext, 300));
+console.log(buildProjectionPrompt(repairContext, 300, selected.omittedEarlierUserTurns));
 if (candidate !== undefined) {
   console.log("\n## Candidate output under inspection");
   console.log(candidate.trim());

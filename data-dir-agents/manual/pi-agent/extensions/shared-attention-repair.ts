@@ -1,6 +1,6 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
-const DEFAULT_BUDGET = 30;
+const DEFAULT_BUDGET = 100;
 const MIN_BUDGET = 1;
 const MAX_BUDGET = 100;
 const DEFAULT_REPAIR_PROVIDER = "google";
@@ -24,16 +24,18 @@ export interface Selection {
   entries: RepairEntry[];
   selectionRule: string;
   compactionRelation: string;
+  availableUserTurns: number;
+  omittedEarlierUserTurns: boolean;
   omittedPriorRepairs: number;
   omittedNonConversation: number;
 }
 
 export const HEADINGS = [
-  "## Current subject",
-  "## Concluded",
-  "## Raised, not concluded",
-  "## Corrected or superseded",
-  "## Distinct positions",
+  "## Current direction",
+  "## Agent's reading",
+  "## Mismatch or correction",
+  "## Established together",
+  "## Still open",
 ] as const;
 
 function isRepair(entry: RepairEntry): boolean {
@@ -41,7 +43,7 @@ function isRepair(entry: RepairEntry): boolean {
 }
 
 function isConversation(entry: RepairEntry): boolean {
-  return entry.type === "message" || entry.type === "custom_message";
+  return entry.type === "message";
 }
 
 function visibleText(content: unknown): string[] {
@@ -93,25 +95,38 @@ export function selectEpisode(branch: RepairEntry[], requestedBudget: number): S
     .map((entry, index) => ({ entry, index }))
     .filter(({ entry }) => entry.type === "compaction")
     .at(-1);
-  const postCompaction = branch.slice((latestCompaction?.index ?? -1) + 1);
-  const omittedPriorRepairs = postCompaction.filter(isRepair).length;
-  const omittedNonConversation = postCompaction.filter(
-    (entry) => !isConversation(entry),
-  ).length;
-  const candidates = postCompaction.filter(
-    (entry) => isConversation(entry) && !isRepair(entry),
-  );
+  const messages = branch.filter(isConversation);
+  const preamble: RepairEntry[] = [];
+  const turns: RepairEntry[][] = [];
+  for (const entry of messages) {
+    if (entry.message?.role === "user") {
+      turns.push([...(turns.length === 0 ? preamble : []), entry]);
+    } else if (turns.length > 0) {
+      turns.at(-1)!.push(entry);
+    } else {
+      preamble.push(entry);
+    }
+  }
   const budget = Math.max(1, Math.trunc(requestedBudget));
-  let start = Math.max(0, candidates.length - budget);
-  while (start > 0 && candidates[start].message?.role !== "user") start -= 1;
-  return {
-    entries: candidates.slice(start),
-    selectionRule: "recent conversational suffix expanded backward to a complete user-turn boundary; whole entries retained",
-    compactionRelation: latestCompaction
+  const selectedTurns = turns.slice(-budget);
+  const entries = selectedTurns.flat();
+  const firstIndex = entries.length === 0 ? -1 : branch.indexOf(entries[0]);
+  const lastIndex = entries.length === 0 ? -1 : branch.indexOf(entries.at(-1)!);
+  const compactionRelation = !latestCompaction
+    ? "no compaction in branch"
+    : latestCompaction.index < firstIndex
       ? `latest compaction ${latestCompaction.entry.id} is before selected range`
-      : "no compaction in branch",
-    omittedPriorRepairs,
-    omittedNonConversation,
+      : latestCompaction.index > lastIndex
+        ? `latest compaction ${latestCompaction.entry.id} is after selected range`
+        : `selected range crosses latest compaction ${latestCompaction.entry.id}`;
+  return {
+    entries,
+    selectionRule: "latest complete user-to-user turns; whole message entries retained across compaction boundaries",
+    compactionRelation,
+    availableUserTurns: turns.length,
+    omittedEarlierUserTurns: turns.length > selectedTurns.length,
+    omittedPriorRepairs: branch.filter(isRepair).length,
+    omittedNonConversation: branch.filter((entry) => !isConversation(entry) && !isRepair(entry)).length,
   };
 }
 
@@ -146,7 +161,14 @@ export function serializeRepairContext(entries: RepairEntry[]): string {
   ].join("\n\n");
 }
 
-export function buildProjectionPrompt(transcript: string, maxWords: number): string {
+export function buildProjectionPrompt(
+  transcript: string,
+  maxWords: number,
+  omittedEarlierUserTurns = false,
+): string {
+  const rangeEdge = omittedEarlierUserTurns
+    ? "Under ## Still open, add exactly: - Earlier conversation was not inspected."
+    : "Do not add scope counts, timestamps, provider details, or other inspection metadata.";
   return `You repair shared attention between the human and agent. Produce a concise candidate view that lets them continue from the same conversational reality.
 
 The inspected material is mechanically separated into USER'S CURRENT DIRECTION, AGENT'S READING, and OBSERVED WORK.
@@ -157,11 +179,13 @@ AGENT'S READING may show what the assistant says it understood, assumed, or repo
 
 Use exactly these five headings, in this order. Under each heading use concise bullets. Write substantive bullets with User:, Assistant:, or Both: and exact [#entry-id] references. Use Both: only for explicit alignment in cited user and assistant entries.
 
-- Current subject names the human's active need or corrective demand.
-- Concluded contains only explicit shared decisions or results the user explicitly accepted; an assistant report is not a conclusion.
-- Raised, not concluded contains live concerns, questions, or tensions without an explicit resolution.
-- Corrected or superseded contains a participant's changed claim, goal, or framing—not an agent's failed command, write boundary, test, deployment, or other execution mechanics.
-- Distinct positions preserves material user/assistant disagreement without resolving it.
+- Current direction names the human's active need or corrective demand.
+- Agent's reading states the relevant visible assistant understanding or assumption, not a world fact or accepted result.
+- Mismatch or correction preserves material disagreement or changed framing without resolving it.
+- Established together contains only explicit shared decisions or results the user explicitly accepted; an assistant report is not an established conclusion.
+- Still open contains live concerns, questions, or tensions without an explicit resolution.
+
+${rangeEdge}
 
 Do not include failed commands, write boundaries, deployment, tests, or other execution mechanics unless the user explicitly made them the subject. Do not advise, review work, propose a plan, infer consensus, claim completeness, or claim anything beyond the inspected range. If a heading has no relevant material in the inspected span, use: - None in inspected span.
 
@@ -224,7 +248,7 @@ function completionText(response: { content: unknown }): string {
 
 export default function sharedAttentionRepair(pi: ExtensionAPI) {
   pi.registerCommand("attention-repair", {
-    description: "Publish a bounded, cited candidate projection (budget 1–100; default 30)",
+    description: "Publish a bounded candidate projection (1–100 complete user turns; default 100)",
     handler: async (args, ctx) => {
       if (ctx.mode !== "tui") {
         ctx.ui.notify("attention-repair requires the TUI.", "error");
@@ -248,7 +272,7 @@ export default function sharedAttentionRepair(pi: ExtensionAPI) {
         budget,
       );
       if (!selected.entries.length) {
-        ctx.ui.notify("No eligible post-compaction conversation entries to inspect.", "warning");
+        ctx.ui.notify("No complete user turns to inspect.", "warning");
         return;
       }
       const first = selected.entries[0];
@@ -280,7 +304,11 @@ export default function sharedAttentionRepair(pi: ExtensionAPI) {
           {
             messages: [{
               role: "user",
-              content: [{ type: "text", text: buildProjectionPrompt(repairContext, cfg.maxWords) }],
+              content: [{ type: "text", text: buildProjectionPrompt(
+                repairContext,
+                cfg.maxWords,
+                selected.omittedEarlierUserTurns,
+              ) }],
               timestamp: Date.now(),
             }],
           },

@@ -17,22 +17,22 @@ const message = (id: string, role: string, content: unknown): RepairEntry => ({
   message: { role, content },
 });
 
-const projection = `## Current subject
+const projection = `## Current direction
 - User: The user asked to inspect the bounded conversation. [#u1]
 
-## Concluded
-- Assistant: The assistant stated that the card is candidate-only. [#a1]
+## Agent's reading
+- Assistant: The card is candidate-only. [#a1]
 
-## Raised, not concluded
+## Mismatch or correction
 - None in inspected span.
 
-## Corrected or superseded
+## Established together
 - None in inspected span.
 
-## Distinct positions
+## Still open
 - None in inspected span.`;
 
-test("selection keeps conversation entries, excludes entry-level repair cards, and declares omissions", () => {
+test("selection crosses compaction boundaries, excludes repair cards, and reports non-conversation omissions", () => {
   const entries: RepairEntry[] = [
     message("u0", "user", "old"),
     { id: "c1", timestamp: "2026-08-27T00:00:c1.000Z", type: "compaction" },
@@ -42,21 +42,34 @@ test("selection keeps conversation entries, excludes entry-level repair cards, a
     message("a1", "assistant", "answer"),
   ];
   const selected = selectEpisode(entries, 30);
-  expect(selected.entries.map((item) => item.id)).toEqual(["u1", "a1"]);
-  expect(selected.compactionRelation).toBe("latest compaction c1 is before selected range");
+  expect(selected.entries.map((item) => item.id)).toEqual(["u0", "u1", "a1"]);
+  expect(selected.availableUserTurns).toBe(2);
+  expect(selected.omittedEarlierUserTurns).toBe(false);
+  expect(selected.compactionRelation).toBe("selected range crosses latest compaction c1");
   expect(selected.omittedPriorRepairs).toBe(1);
-  expect(selected.omittedNonConversation).toBe(1);
+  expect(selected.omittedNonConversation).toBe(2);
 });
 
-test("selection expands a suffix to a user boundary and preserves a tool episode", () => {
+test("selection retains every message in the requested complete user-turn span", () => {
   const selected = selectEpisode([
     message("u1", "user", "old"),
     message("u2", "user", "inspect"),
     message("a1", "assistant", "calling tool"),
     message("t1", "toolResult", "tool output"),
     message("a2", "assistant", "answer"),
-  ], 2);
+  ], 1);
   expect(selected.entries.map((item) => item.id)).toEqual(["u2", "a1", "t1", "a2"]);
+  expect(selected.availableUserTurns).toBe(2);
+  expect(selected.omittedEarlierUserTurns).toBe(true);
+});
+
+test("selection caps the default-sized window by user turns rather than message events", () => {
+  const entries = Array.from({ length: 101 }, (_, index) => message(`u${index + 1}`, "user", `topic ${index + 1}`));
+  const selected = selectEpisode(entries, 100);
+  expect(selected.entries).toHaveLength(100);
+  expect(selected.entries[0].id).toBe("u2");
+  expect(selected.availableUserTurns).toBe(101);
+  expect(selected.omittedEarlierUserTurns).toBe(true);
 });
 
 test("serialization includes visible text and tool data but excludes thinking and images", () => {
@@ -103,9 +116,13 @@ test("prompt centers the user's active correction over assistant implementation 
   expect(prompt).toContain("The user's active request, correction, objection, or constraint is the primary anchor.");
   expect(prompt).toContain("Never infer a human goal, requirement, decision, or correction from AGENT'S READING or OBSERVED WORK.");
   expect(prompt).toContain("AGENT'S READING may show what the assistant says it understood, assumed, or reported.");
-  expect(prompt).toContain("Concluded contains only explicit shared decisions or results the user explicitly accepted");
+  expect(prompt).toContain("Agent's reading states the relevant visible assistant understanding or assumption");
+  expect(prompt).toContain("Established together contains only explicit shared decisions or results the user explicitly accepted");
   expect(prompt).toContain("Do not include failed commands, write boundaries, deployment, tests, or other execution mechanics");
   expect(prompt).toContain("Stop making the implementation itself the subject.");
+  expect(prompt).toContain("Do not add scope counts, timestamps, provider details, or other inspection metadata.");
+  const truncatedPrompt = buildProjectionPrompt(serializeRepairContext(selected.entries), 300, true);
+  expect(truncatedPrompt).toContain("Under ## Still open, add exactly: - Earlier conversation was not inspected.");
 });
 
 test("auth resolver accepts model literals and provider fallback", () => {
