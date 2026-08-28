@@ -231,6 +231,16 @@ function config() {
   };
 }
 
+export function selectionStatus(selection: Selection): string {
+  const turns = selection.omittedEarlierUserTurns
+    ? selection.entries.filter((entry) => entry.message?.role === "user").length
+    : selection.availableUserTurns;
+  const label = `${turns} user turn${turns === 1 ? "" : "s"}`;
+  return selection.omittedEarlierUserTurns
+    ? `Repairing the last ${label}...`
+    : `Repairing the current session (${label})...`;
+}
+
 function completionText(response: { content: unknown }): string {
   if (!Array.isArray(response.content)) return "";
   return response.content
@@ -244,6 +254,14 @@ function completionText(response: { content: unknown }): string {
     .map((part) => part.text)
     .join("\n")
     .trim();
+}
+
+function completionStatus(response: { usage?: unknown }): string {
+  const usage = response.usage as { input?: unknown; output?: unknown } | undefined;
+  if (typeof usage?.input !== "number" || typeof usage.output !== "number") {
+    return "Shared attention repaired · token usage unavailable.";
+  }
+  return `Shared attention repaired · ${usage.input.toLocaleString()} input · ${usage.output.toLocaleString()} output tokens`;
 }
 
 export default function sharedAttentionRepair(pi: ExtensionAPI) {
@@ -265,7 +283,7 @@ export default function sharedAttentionRepair(pi: ExtensionAPI) {
         return;
       }
       const cfg = config();
-      ctx.ui.notify("Repairing shared attention...", "info");
+      ctx.ui.notify("Preparing shared attention repair...", "info");
       await ctx.waitForIdle();
       const selected = selectEpisode(
         ctx.sessionManager.getBranch() as unknown as RepairEntry[],
@@ -275,6 +293,7 @@ export default function sharedAttentionRepair(pi: ExtensionAPI) {
         ctx.ui.notify("No complete user turns to inspect.", "warning");
         return;
       }
+      ctx.ui.notify(selectionStatus(selected), "info");
       const first = selected.entries[0];
       const last = selected.entries.at(-1)!;
       const sessionId = ctx.sessionManager.getSessionId?.() ?? "unknown";
@@ -341,13 +360,16 @@ export default function sharedAttentionRepair(pi: ExtensionAPI) {
               compactionRelation: selected.compactionRelation,
               egress: cfg.egress,
               omissions: {
+                earlierUserTurns: selected.omittedEarlierUserTurns,
                 priorRepairCards: selected.omittedPriorRepairs,
                 nonConversationEntries: selected.omittedNonConversation,
               },
+              usage: response.usage,
             },
           },
           { triggerTurn: false },
         );
+        ctx.ui.notify(completionStatus(response), "info");
       } catch (error) {
         const detail = error instanceof Error ? error.message : String(error);
         ctx.ui.notify(`Attention repair completion failed: ${detail}. Nothing was published.`, "error");

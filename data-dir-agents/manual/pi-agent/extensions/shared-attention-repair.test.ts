@@ -5,6 +5,7 @@ import {
   buildProjectionPrompt,
   serializeRepairContext,
   resolveApiKey,
+  selectionStatus,
   selectEpisode,
   serializeEpisode,
   type RepairEntry,
@@ -45,6 +46,7 @@ test("selection crosses compaction boundaries, excludes repair cards, and report
   expect(selected.entries.map((item) => item.id)).toEqual(["u0", "u1", "a1"]);
   expect(selected.availableUserTurns).toBe(2);
   expect(selected.omittedEarlierUserTurns).toBe(false);
+  expect(selectionStatus(selected)).toBe("Repairing the current session (2 user turns)...");
   expect(selected.compactionRelation).toBe("selected range crosses latest compaction c1");
   expect(selected.omittedPriorRepairs).toBe(1);
   expect(selected.omittedNonConversation).toBe(2);
@@ -70,6 +72,7 @@ test("selection caps the default-sized window by user turns rather than message 
   expect(selected.entries[0].id).toBe("u2");
   expect(selected.availableUserTurns).toBe(101);
   expect(selected.omittedEarlierUserTurns).toBe(true);
+  expect(selectionStatus(selected)).toBe("Repairing the last 100 user turns...");
 });
 
 test("serialization includes visible text and tool data but excludes thinking and images", () => {
@@ -131,7 +134,16 @@ test("auth resolver accepts model literals and provider fallback", () => {
   expect(resolveApiKey(undefined, "provider-key", undefined)).toBe("provider-key");
 });
 
-function commandHarness(confirm: boolean, output = projection) {
+function commandHarness(
+  confirm: boolean,
+  output = projection,
+  usage: { input: number; output: number; cacheRead: number; cacheWrite: number } | null = {
+    input: 1200,
+    output: 42,
+    cacheRead: 0,
+    cacheWrite: 0,
+  },
+) {
   let command: ((args: string, ctx: any) => Promise<void>) | undefined;
   const calls = {
     auth: 0,
@@ -174,7 +186,7 @@ function commandHarness(confirm: boolean, output = projection) {
       getApiKeyForProvider: async () => "provider-key",
       complete: async () => {
         calls.complete++;
-        return { content: [{ type: "text", text: output }] };
+        return { content: [{ type: "text", text: output }], usage };
       },
     },
   };
@@ -210,6 +222,7 @@ test("command falls back to owned defaults when repair env vars are unset", asyn
         details: expect.objectContaining({
           provider: "google",
           model: "gemini-3.7-flash",
+          usage: { input: 1200, output: 42, cacheRead: 0, cacheWrite: 0 },
         }),
         content: projection,
       }),
@@ -235,7 +248,11 @@ test("command publishes the candidate without triggering or an evidence appendix
   const harness = commandHarness(true);
   await harness.command();
   expect(harness.calls.complete).toBe(1);
-  expect(harness.calls.notes[0]).toEqual(["Repairing shared attention...", "info"]);
+  expect(harness.calls.notes).toEqual([
+    ["Preparing shared attention repair...", "info"],
+    ["Repairing the current session (1 user turn)...", "info"],
+    ["Shared attention repaired · 1,200 input · 42 output tokens", "info"],
+  ]);
   expect(harness.calls.sent).toEqual([expect.objectContaining({
     options: { triggerTurn: false },
     value: expect.objectContaining({ content: projection }),
@@ -255,6 +272,10 @@ test("command publishes an imperfect candidate instead of discarding the outcome
     options: { triggerTurn: false },
   })]);
   expect(candidate.calls.notes.some((note) => String(note).includes("rejected"))).toBe(false);
+
+  const withoutUsage = commandHarness(true, imperfect, null);
+  await withoutUsage.command();
+  expect(withoutUsage.calls.notes.at(-1)).toEqual(["Shared attention repaired · token usage unavailable.", "info"]);
 
   const nonInteger = commandHarness(true);
   await nonInteger.command("20junk");
