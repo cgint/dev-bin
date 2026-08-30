@@ -1,0 +1,4 @@
+owner=data-dir-agents
+deployment=pi-agent-profiles/opsx
+skill=web-browser-use
+schema=1

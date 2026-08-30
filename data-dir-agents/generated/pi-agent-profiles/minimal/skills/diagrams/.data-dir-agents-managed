@@ -1,0 +1,4 @@
+owner=data-dir-agents
+deployment=pi-agent-profiles/minimal
+skill=diagrams
+schema=1

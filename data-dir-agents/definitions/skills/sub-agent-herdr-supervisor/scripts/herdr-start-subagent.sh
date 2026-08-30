@@ -6,12 +6,13 @@ set -euo pipefail
 
 readonly DEFAULT_TIMEOUT_SECONDS=5
 readonly POLL_INTERVAL_SECONDS=0.5
-readonly SUBAGENT_WRAPPER="$HOME/.local/bin/subagent.sh"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly SUBAGENT_WRAPPER="$SCRIPT_DIR/herdr-worker.sh"
 
 usage() {
   cat <<'EOF'
 Usage:
-  herdr_start_subagent.sh \
+  herdr-start-subagent.sh \
     --name <agent-name> \
     --mode <readonly|editable> \
     --handoff <absolute-handoff-path> \

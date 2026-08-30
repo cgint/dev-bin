@@ -232,6 +232,37 @@ class TestPlanPiAgentProfile:
             plan_pi_agent_profile(profile, spec_root, out_root)
 
 
+class TestSupervisorWorkerRuntimeBundling:
+    def test_profile_bundles_runtime_into_each_selected_supervisor_skill(self, tmp_path):
+        spec_root = tmp_path / "definitions"
+        _write(spec_root / "agents" / "AGENTS_GPT52.md", "# GPT52\n")
+        runtime = _write(spec_root / "runtime" / "pi-worker-runtime.sh", "# shared runtime\n")
+        skills_root = spec_root / "skills"
+        _make_skill(skills_root, "sub-agent-herdr-supervisor")
+        _make_skill(skills_root, "sub-agent-cmux-supervisor")
+
+        planned = plan_pi_agent_profile(
+            {
+                "name": "partner",
+                "target_dir": "~/.pi/profiles/partner/agent",
+                "agents_file": "AGENTS_GPT52.md",
+                "skills": ["sub-agent-herdr-supervisor", "sub-agent-cmux-supervisor"],
+            },
+            spec_root,
+            tmp_path / "generated",
+        )
+
+        runtime_destinations = {
+            item[2]: item[1]
+            for item in planned
+            if item[0] == "copyfile" and item[2].name == "pi-worker-runtime.sh"
+        }
+        assert runtime_destinations == {
+            tmp_path / "generated/pi-agent-profiles/partner/skills/sub-agent-herdr-supervisor/scripts/pi-worker-runtime.sh": runtime,
+            tmp_path / "generated/pi-agent-profiles/partner/skills/sub-agent-cmux-supervisor/scripts/pi-worker-runtime.sh": runtime,
+        }
+
+
 class TestPlanCopilotProfile:
     def _make_spec_root(self, tmp_path: Path) -> Path:
         spec_root = tmp_path / "definitions"

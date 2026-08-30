@@ -1,0 +1,4 @@
+owner=data-dir-agents
+deployment=claude
+skill=read-code-structure
+schema=1

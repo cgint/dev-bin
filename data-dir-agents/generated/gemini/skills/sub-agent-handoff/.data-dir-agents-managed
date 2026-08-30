@@ -1,0 +1,4 @@
+owner=data-dir-agents
+deployment=gemini
+skill=sub-agent-handoff
+schema=1

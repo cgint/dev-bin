@@ -1,0 +1,4 @@
+owner=data-dir-agents
+deployment=gemini
+skill=openspec-propose
+schema=1

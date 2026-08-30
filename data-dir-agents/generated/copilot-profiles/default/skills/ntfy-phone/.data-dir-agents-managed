@@ -1,0 +1,4 @@
+owner=data-dir-agents
+deployment=copilot-profiles/default
+skill=ntfy-phone
+schema=1

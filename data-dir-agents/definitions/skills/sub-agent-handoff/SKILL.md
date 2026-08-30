@@ -11,11 +11,13 @@ Use this skill when delegating bounded work to a sub-agent that **cannot see** t
 
 **No hidden context.** A sub-agent only knows what you explicitly provide in the handoff brief.
 
+A handoff is a **context boundary**, not a transcript dump: the worker receives the facts needed to execute safely and retains raw command output, lockfile churn, and routine verification detail. The lead retains the intent, constraints, architecture, and acceptance decision.
+
 If the sub-agent needs information, it must request it in the **Work report** (don’t guess).
 
 ## Working directory = launch directory (canonical rule)
 
-**The worker must be started in the target directory named by the handoff.** A write-enabled worker’s write scope is the directory tree rooted at its launch cwd (the wrapper enforces this — see `subagent.sh`). To let an editable worker write to the handoff’s target paths, its launch cwd **must** be the narrowest directory tree containing **all** authorized writes — the permitted work **and** the required report/artifact path — expressed as an absolute path (the common ancestor when work spans sibling directories), not a wider repo root.
+**The worker must be started in the target directory named by the handoff.** A write-enabled worker’s write scope is the directory tree rooted at its launch cwd (the selected supervisor skill's worker launcher enforces this). To let an editable worker write to the handoff’s target paths, its launch cwd **must** be the narrowest directory tree containing **all** authorized writes — the permitted work **and** the required report/artifact path — expressed as an absolute path (the common ancestor when work spans sibling directories), not a wider repo root.
 
 Keep two facts separate:
 
@@ -25,6 +27,14 @@ Keep two facts separate:
 ## Delegation threshold
 
 Use a subagent only when independent evidence, isolation, parallelism, or bounded execution provides more value than the launch, inspection, and cleanup overhead. Do trivial reads, obvious one-line edits, and immediate local checks directly. Do not delegate merely because a task can be split.
+
+## Handoff forms
+
+**Current capability — full artifact handoff:** the Herdr supervisor skill's `scripts/herdr-start-subagent.sh` currently requires a handoff file and report path. Use the full template below.
+
+**Planned capability — compact inline brief (not available yet):** when the launcher supports it, use an inline brief only when the assignment is small, bounded, low-ambiguity, and expressible in one physical line. It still must state: exact target cwd; allowed and forbidden paths; goal; required checks; stop rule; and compact terminal `WORK REPORT` contract. Use the full artifact template for multiline or quoted instructions, code snippets, reusable evidence, ambiguity, risk, cross-cutting effects, or asynchronous work.
+
+Do not invent an inline transport or skip the current handoff file before launcher support exists.
 
 ## When to delegate (good use-cases)
 
@@ -101,7 +111,7 @@ Provide this block verbatim (fill in placeholders). Keep it short but complete.
 
 ## Work report (required output)
 
-The sub-agent must return the following sections.
+The sub-agent must return the following sections. Keep raw logs in the worker context: report check names and pass/fail results, relevant paths/line ranges, and only error excerpts needed to support a decision. The supervisor independently checks diff/status and runs proportionate verification; a worker claim that tests passed is not sufficient evidence.
 
 ### WORK REPORT
 
@@ -138,9 +148,9 @@ This skill owns handoff brief and work-report content, not worker launch. For CM
 
 ## Practical learnings (from real runs)
 
-- **Use handoffs when they protect the main context window:** multi-file scouting, inventories, collecting evidence, or repetitive/mechanical edits.
+- **Use handoffs when they protect the main context window:** multi-file scouting, source adaptation, lockfile churn, test/precommit runs, inventories, collecting evidence, or repetitive/mechanical edits.
 - **Avoid handoffs for tiny edits:** a one-liner or obvious local change is usually faster to do directly.
-- **After a handoff:** review the diff/output first; if follow-up edits are needed, prefer a second handoff or explicitly label any driver-made fixups.
+- **After a handoff:** review the compact report, then inspect the diff/status and run proportionate checks. Expand raw worker output only for a failure, contradiction, scope concern, or diff anomaly. If follow-up edits are needed, prefer a second handoff or explicitly label any driver-made fixups.
 - **Concurrency:** running many handoffs in parallel can hit rate limits; batch/stagger if needed.
 
 ## Guardrails

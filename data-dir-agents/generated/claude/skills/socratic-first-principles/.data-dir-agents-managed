@@ -1,0 +1,4 @@
+owner=data-dir-agents
+deployment=claude
+skill=socratic-first-principles
+schema=1

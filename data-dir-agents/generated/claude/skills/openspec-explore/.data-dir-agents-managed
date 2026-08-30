@@ -1,0 +1,4 @@
+owner=data-dir-agents
+deployment=claude
+skill=openspec-explore
+schema=1

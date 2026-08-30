@@ -1,0 +1,4 @@
+owner=data-dir-agents
+deployment=copilot-profiles/default
+skill=cmux-usage
+schema=1

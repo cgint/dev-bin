@@ -1,0 +1,4 @@
+owner=data-dir-agents
+deployment=pi-agent-profiles/default
+skill=gemini-model-rules
+schema=1

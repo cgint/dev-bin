@@ -1,0 +1,4 @@
+owner=data-dir-agents
+deployment=pi-agent-profiles/opsx
+skill=openspec-apply-change
+schema=1

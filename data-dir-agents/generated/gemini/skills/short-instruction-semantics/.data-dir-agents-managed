@@ -1,0 +1,4 @@
+owner=data-dir-agents
+deployment=gemini
+skill=short-instruction-semantics
+schema=1

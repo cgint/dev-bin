@@ -1,0 +1,4 @@
+owner=data-dir-agents
+deployment=cursor
+skill=sub-agent-herdr-supervisor
+schema=1

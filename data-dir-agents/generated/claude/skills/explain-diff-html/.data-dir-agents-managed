@@ -1,0 +1,4 @@
+owner=data-dir-agents
+deployment=claude
+skill=explain-diff-html
+schema=1

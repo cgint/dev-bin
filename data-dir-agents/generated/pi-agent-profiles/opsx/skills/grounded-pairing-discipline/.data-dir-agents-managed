@@ -1,0 +1,4 @@
+owner=data-dir-agents
+deployment=pi-agent-profiles/opsx
+skill=grounded-pairing-discipline
+schema=1

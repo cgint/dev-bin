@@ -1,0 +1,4 @@
+owner=data-dir-agents
+deployment=pi-agent-profiles/partner
+skill=cmux-usage
+schema=1

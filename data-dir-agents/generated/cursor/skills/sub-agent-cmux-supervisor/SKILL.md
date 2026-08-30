@@ -17,14 +17,14 @@ Use a subagent only when independent evidence, isolation, parallelism, or bounde
 
 ### Worker launch — REQUIRED
 
-**Precondition — start in the target directory.** `subagent.sh` inherits the invoking shell’s working directory and has no `--cwd` option; its write scope is the directory tree rooted at that cwd (enforced by `subagent.sh`). So `cd` into the target directory named by the handoff — the narrowest directory tree containing all authorized writes, including the report path (the common ancestor when work spans sibling directories) — before invoking the wrapper, or create the pane/workspace there with `--cwd /absolute/path/to/target-dir`. Starting elsewhere leaves an editable worker unable to write to the handoff’s target paths.
+**Precondition — start in the target directory.** `scripts/cmux-worker.sh` inherits the invoking shell’s working directory and has no `--cwd` option; its write scope is the directory tree rooted at that cwd. So `cd` into the target directory named by the handoff — the narrowest directory tree containing all authorized writes, including the report path (the common ancestor when work spans sibling directories) — before invoking the launcher, or create the pane/workspace there with `--cwd /absolute/path/to/target-dir`. Starting elsewhere leaves an editable worker unable to write to the handoff’s target paths.
 
-Use the wrappers; do not invoke `pi-profile` directly.
+Use this skill's launcher; do not invoke `pi-profile` directly.
 
 Editable worker:
 
 ```sh
-subagent.sh --mode editable -- \
+scripts/cmux-worker.sh --mode editable -- \
   @/tmp/admin-visual-parity/visual-audit-handoff.md \
   'Execute the handoff exactly; use CMUX-only completion.'
 ```
@@ -32,12 +32,12 @@ subagent.sh --mode editable -- \
 Read-only worker with classified read-only Bash:
 
 ```sh
-subagent.sh --mode readonly -- \
+scripts/cmux-worker.sh --mode readonly -- \
   @/tmp/admin-visual-parity/visual-audit-handoff.md \
   'Execute the handoff exactly; use CMUX-only completion.'
 ```
 
-`subagent.sh` requires exactly one `--mode readonly|editable` before `--` and uses `pi-profile partner -ne` with `thinking:minimal`. Editable mode retains default Pi tools. Read-only mode loads `pi-focus-guard`, starts `--dm-read`, and permits `read,bash,grep,find,ls`; the guard blocks writes and non-read-only Bash. In either mode, a Herdr pane additionally loads the installed `herdr-agent-state.ts` reporter explicitly; it remains inactive outside Herdr. The wrapper rejects caller overrides of print mode, extensions, model/provider/thinking, tools, and `--dm-*`. Neither mode uses `-p`.
+`scripts/cmux-worker.sh` requires exactly one `--mode readonly|editable` before `--` and uses `pi-profile partner -ne` with `thinking:minimal`. Editable mode retains default Pi tools. Read-only mode loads `pi-focus-guard`, starts `--dm-read`, and permits `read,bash,grep,find,ls`; the guard blocks writes and non-read-only Bash. It rejects caller overrides of print mode, extensions, model/provider/thinking, tools, and `--dm-*`. Neither mode uses `-p`. Its shared runtime is bundled into this skill at generation time; CMUX does not load Herdr reporting behavior.
 
 ## Select Work Deliberately
 

@@ -1,0 +1,4 @@
+owner=data-dir-agents
+deployment=claude
+skill=sub-agent-herdr-supervisor
+schema=1

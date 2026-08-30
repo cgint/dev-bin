@@ -1,0 +1,4 @@
+owner=data-dir-agents
+deployment=cursor
+skill=explain-diff-html
+schema=1

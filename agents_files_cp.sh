@@ -6,7 +6,7 @@ usage() {
   cat <<'EOF'
 Usage: agents_files_cp.sh [--delete] [--openspec-config]
 Deploy generated agent definitions to local agent config dirs.
-  --delete           remove files in the target rsync dirs that are no longer in source
+  --delete           remove retired, marker-owned skill directories after syncing active skills
   --openspec-config  also roll out openspec/config.yaml to existing OpenSpec directories
   -h, --help         show this help
 EOF
@@ -36,15 +36,56 @@ for arg in "$@"; do
 done
 
 RSYNC_OPTS=(-avh)
-if [ "$DELETE_RSYNC" = true ]; then
-  RSYNC_OPTS+=(--delete)
-fi
+readonly MANAGED_SKILL_MARKER=".data-dir-agents-managed"
 
 rsync_copy_dir() {
   local src_dir="$1"
   local dest_dir="$2"
   mkdir -p "$dest_dir"
   rsync "${RSYNC_OPTS[@]}" "$src_dir/" "$dest_dir/"
+}
+
+managed_skill_matches() {
+  local skill_dir="$1"
+  local deployment="$2"
+  local skill_name
+  local marker="$skill_dir/$MANAGED_SKILL_MARKER"
+  skill_name="$(basename "$skill_dir")"
+  [ -f "$marker" ] \
+    && grep -qx 'owner=data-dir-agents' "$marker" \
+    && grep -Fqx "deployment=$deployment" "$marker" \
+    && grep -Fqx "skill=$skill_name" "$marker" \
+    && grep -qx 'schema=1' "$marker"
+}
+
+sync_managed_skills() {
+  local source_skills="$1"
+  local target_skills="$2"
+  local deployment="$3"
+  local source_skill target_skill skill_name
+
+  [ -d "$source_skills" ] || return 0
+  mkdir -p "$target_skills"
+
+  for source_skill in "$source_skills"/*/; do
+    [ -d "$source_skill" ] || continue
+    skill_name="$(basename "$source_skill")"
+    managed_skill_matches "$source_skill" "$deployment" \
+      || { echo "ERROR: invalid generated skill marker: $source_skill" >&2; return 2; }
+    target_skill="$target_skills/$skill_name"
+    echo "    Syncing managed skill $skill_name ..."
+    rsync -avh --delete --delete-delay "$source_skill" "$target_skill/"
+  done
+
+  [ "$DELETE_RSYNC" = true ] || return 0
+  for target_skill in "$target_skills"/*/; do
+    [ -d "$target_skill" ] || continue
+    managed_skill_matches "$target_skill" "$deployment" || continue
+    skill_name="$(basename "$target_skill")"
+    [ -d "$source_skills/$skill_name" ] && continue
+    echo "    Removing stale managed skill $skill_name ..."
+    rm -r -- "$target_skill"
+  done
 }
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -89,7 +130,7 @@ if [ -d "$GENERATED_DIR" ]; then
     rsync_copy_dir "$GENERATED_DIR/gemini/commands" "$GEMINI_AGENTS_DIR/commands"
   fi
   if [ -d "$GEMINI_AGENTS_DIR" ] && [ -d "$GENERATED_DIR/gemini/skills" ]; then
-    rsync_copy_dir "$GENERATED_DIR/gemini/skills" "$GEMINI_AGENTS_DIR/skills"
+    sync_managed_skills "$GENERATED_DIR/gemini/skills" "$GEMINI_AGENTS_DIR/skills" "gemini"
   fi
 
   # Claude Code: copy CLAUDE.md + commands + skills into ~/.claude/
@@ -101,7 +142,7 @@ if [ -d "$GENERATED_DIR" ]; then
     rsync_copy_dir "$GENERATED_DIR/claude/commands" "$CLAUDE_AGENTS_DIR/commands"
   fi
   if [ -d "$CLAUDE_AGENTS_DIR" ] && [ -d "$GENERATED_DIR/claude/skills" ]; then
-    rsync_copy_dir "$GENERATED_DIR/claude/skills" "$CLAUDE_AGENTS_DIR/skills"
+    sync_managed_skills "$GENERATED_DIR/claude/skills" "$CLAUDE_AGENTS_DIR/skills" "claude"
   fi
 
   # Codex: copy AGENTS.md into ~/.codex/AGENTS.md
@@ -117,7 +158,7 @@ if [ -d "$GENERATED_DIR" ]; then
       cp -v "$GENERATED_DIR/copilot/copilot-instructions.md" "$COPILOT_AGENTS_FILE"
     fi
     if [ -d "$GENERATED_DIR/copilot/skills" ]; then
-      rsync_copy_dir "$GENERATED_DIR/copilot/skills" "$COPILOT_AGENTS_DIR/skills"
+      sync_managed_skills "$GENERATED_DIR/copilot/skills" "$COPILOT_AGENTS_DIR/skills" "copilot"
     fi
   fi
 
@@ -138,7 +179,7 @@ if [ -d "$GENERATED_DIR" ]; then
       fi
       echo " -- Deploying Copilot profile '$profile_name' -> $target_dir ... (if no output then everything is up to date)"
       [ -f "$profile_dir/copilot-instructions.md" ] && cp -v "$profile_dir/copilot-instructions.md" "$target_dir/copilot-instructions.md"
-      [ -d "$profile_dir/skills" ] && rsync_copy_dir "$profile_dir/skills" "$target_dir/skills"
+      [ -d "$profile_dir/skills" ] && sync_managed_skills "$profile_dir/skills" "$target_dir/skills" "copilot-profiles/$profile_name"
       [ -f "$profile_dir/config.json" ] && cp -v "$profile_dir/config.json" "$target_dir/config.json"
       [ -f "$profile_dir/mcp-config.json" ] && cp -v "$profile_dir/mcp-config.json" "$target_dir/mcp-config.json"
     done
@@ -147,7 +188,7 @@ if [ -d "$GENERATED_DIR" ]; then
   # Cursor: copy Agent Skills into ~/.cursor/skills/
   CURSOR_SKILLS_DIR="$USER_HOME_DIR/.cursor/skills"
   if [ -d "$GENERATED_DIR/cursor/skills" ]; then
-    rsync_copy_dir "$GENERATED_DIR/cursor/skills" "$CURSOR_SKILLS_DIR"
+    sync_managed_skills "$GENERATED_DIR/cursor/skills" "$CURSOR_SKILLS_DIR" "cursor"
   fi
 
   # pi-agent profiles: deploy each generated profile to its configured target dir
@@ -167,7 +208,7 @@ if [ -d "$GENERATED_DIR" ]; then
       fi
       echo " -- Deploying pi-agent profile '$profile_name' -> $target_dir ... (if no output then everything is up to date)"
       [ -f "$profile_dir/AGENTS.md" ] && cp -v "$profile_dir/AGENTS.md" "$target_dir/AGENTS.md"
-      [ -d "$profile_dir/skills" ] && rsync_copy_dir "$profile_dir/skills" "$target_dir/skills"
+      [ -d "$profile_dir/skills" ] && sync_managed_skills "$profile_dir/skills" "$target_dir/skills" "pi-agent-profiles/$profile_name"
       [ -d "$profile_dir/prompts" ] && rsync_copy_dir "$profile_dir/prompts" "$target_dir/prompts"
     done
   fi

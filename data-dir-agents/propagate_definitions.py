@@ -112,6 +112,44 @@ def plan_dir_copy(src: Path, dest: Path):
     return ("copydir", src, dest)
 
 
+SUPERVISOR_RUNTIME_SKILLS = frozenset({
+    "sub-agent-cmux-supervisor",
+    "sub-agent-herdr-supervisor",
+})
+MANAGED_SKILL_MARKER = ".data-dir-agents-managed"
+
+
+def managed_skill_marker(deployment: str, skill_name: str) -> str:
+    return "\n".join((
+        "owner=data-dir-agents",
+        f"deployment={deployment}",
+        f"skill={skill_name}",
+        "schema=1",
+        "",
+    ))
+
+
+def plan_skill_bundle(
+    skill_dir: Path,
+    dest: Path,
+    spec_root: Path,
+    deployment: str,
+) -> list[tuple]:
+    """Copy a self-contained skill package with ownership provenance."""
+    planned = [plan_dir_copy(skill_dir, dest)]
+    if skill_dir.name in SUPERVISOR_RUNTIME_SKILLS:
+        runtime = spec_root / "runtime" / "pi-worker-runtime.sh"
+        if not runtime.is_file():
+            raise FileNotFoundError(f"Supervisor runtime not found: {runtime}")
+        planned.append(plan_file_copy(runtime, dest / "scripts" / runtime.name))
+    planned.append(plan_write_file(
+        skill_dir,
+        dest / MANAGED_SKILL_MARKER,
+        managed_skill_marker(deployment, skill_dir.name),
+    ))
+    return planned
+
+
 def plan_write_file(src: Path, dest: Path, content: str):
     return ("writefile", src, dest, content)
 
@@ -171,7 +209,7 @@ def plan_skill_copies(spec_root: Path, out_root: Path):
     planned = []
     for skill_dir in sorted([p for p in skills_root.iterdir() if p.is_dir()]):
         dest = out_root / "pi-agent" / "skills" / skill_dir.name
-        planned.append(plan_dir_copy(skill_dir, dest))
+        planned += plan_skill_bundle(skill_dir, dest, spec_root, "pi-agent")
     return planned
 
 
@@ -250,7 +288,12 @@ def plan_profile(
     if skills_root.exists() and skills_allowlist != []:
         for skill_dir in sorted([p for p in skills_root.iterdir() if p.is_dir()]):
             if skills_allowlist is None or skill_dir.name in skills_allowlist:
-                planned.append(plan_dir_copy(skill_dir, profile_out / "skills" / skill_dir.name))
+                planned += plan_skill_bundle(
+                    skill_dir,
+                    profile_out / "skills" / skill_dir.name,
+                    spec_root,
+                    f"{profile_kind}-profiles/{profile_name}",
+                )
 
     if include_prompts:
         # Prompts: all if key absent, filtered list if present, none if empty list
@@ -319,7 +362,7 @@ def plan_gemini_skill_copies(spec_root: Path, out_root: Path):
     planned = []
     for skill_dir in sorted([p for p in skills_root.iterdir() if p.is_dir()]):
         dest = out_root / "gemini" / "skills" / skill_dir.name
-        planned.append(plan_dir_copy(skill_dir, dest))
+        planned += plan_skill_bundle(skill_dir, dest, spec_root, "gemini")
 
     return planned
 
@@ -356,7 +399,7 @@ def plan_claude_skill_copies(spec_root: Path, out_root: Path):
     planned = []
     for skill_dir in sorted([p for p in skills_root.iterdir() if p.is_dir()]):
         dest = out_root / "claude" / "skills" / skill_dir.name
-        planned.append(plan_dir_copy(skill_dir, dest))
+        planned += plan_skill_bundle(skill_dir, dest, spec_root, "claude")
 
     return planned
 
@@ -378,7 +421,7 @@ def plan_copilot_skill_copies(spec_root: Path, out_root: Path):
     planned = []
     for skill_dir in sorted([p for p in skills_root.iterdir() if p.is_dir()]):
         dest = out_root / "copilot" / "skills" / skill_dir.name
-        planned.append(plan_dir_copy(skill_dir, dest))
+        planned += plan_skill_bundle(skill_dir, dest, spec_root, "copilot")
 
     return planned
 
@@ -397,7 +440,7 @@ def plan_cursor_skill_copies(spec_root: Path, out_root: Path):
     planned = []
     for skill_dir in sorted([p for p in skills_root.iterdir() if p.is_dir()]):
         dest = out_root / "cursor" / "skills" / skill_dir.name
-        planned.append(plan_dir_copy(skill_dir, dest))
+        planned += plan_skill_bundle(skill_dir, dest, spec_root, "cursor")
 
     return planned
 
