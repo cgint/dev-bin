@@ -21,6 +21,7 @@ skills = [
   "short-instruction-semantics",
   "socratic-first-principles",
   "sub-agent-herdr-supervisor",
+  "ntfy-phone"
 ]
 
 prompts = [
