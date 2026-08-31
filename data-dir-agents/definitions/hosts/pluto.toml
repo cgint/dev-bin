@@ -10,7 +10,7 @@
 
 host        = "pluto"
 target_dir  = "~/.pi/agent"
-agents_file = "AGENTS_GPT52.md"
+agents_file = "AGENTS_MINIMAL.md"
 
 skills = [
   "sub-agent-handoff",
