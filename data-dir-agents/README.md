@@ -43,7 +43,7 @@ pi-agent profiles: `default`, `minimal`, `partner`, `opsx`, `zero`. Copilot prof
 ## Adding / renaming skills
 
 - **Add:** create `definitions/skills/<name>/SKILL.md`, optionally add supporting files, list in profile TOMLs if filtered.
-- **Rename/remove:** rename the directory, update TOML references, run `agents_files_cp.sh --delete` to clean stale generated dirs.
+- **Rename/remove:** rename the directory, update TOML references, run `agents_files_cp.sh --delete` to remove the retired marker-owned target directory. Active managed skill contents always mirror their source with `rsync --delete`; the flag controls only stale-directory cleanup.
 - Details: `definitions/skills/README.md` → "Adding a new skill" / "Renaming or removing a skill".
 
 ## Tools

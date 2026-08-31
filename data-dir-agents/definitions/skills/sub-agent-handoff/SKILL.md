@@ -15,6 +15,14 @@ A handoff is a **context boundary**, not a transcript dump: the worker receives 
 
 If the sub-agent needs information, it must request it in the **Work report** (don’t guess).
 
+## Identity chain (default)
+
+Before the first delegated handoff for a task, choose distinct random given names and record one immutable chain, for example `Horst (lead) → Judith (controller) → Benjamin (worker)`. The names are task-local labels, not claims about a participant’s identity. Do this pen-and-paper; do not add a naming extension or a second control plane.
+
+Every handoff in that task — including nested handoffs — copies the complete chain and identifies its own edge, return path, and lead escalation path. Peer messages and reports begin `<Sender> → <Recipient>`, never a generic agent prefix. Keep ordinary completion in the bounded report. Escalate directly to the lead only for a decision, blocker, contradiction, or scope change; name that condition explicitly.
+
+The lead is the root task owner and must know every task pane by person name, role, pane ID, lifecycle state, and operating owner. A controller maintains this live child-pane registry: record each worker immediately after launch and each closure immediately after it occurs. The controller normally closes its workers only after their terminal report, artifact/diff, and required checks have been inspected and it has concluded no follow-up is needed. The lead closes the controller only after inspecting and accepting its report. These are explicit evidence-based closure decisions, not blind consent or agent self-certification; if the controller fails, the lead may capture evidence and close any registered child pane directly.
+
 ## Working directory = launch directory (canonical rule)
 
 **The worker must be started in the target directory named by the handoff.** A write-enabled worker’s write scope is the directory tree rooted at its launch cwd (the selected supervisor skill's worker launcher enforces this). To let an editable worker write to the handoff’s target paths, its launch cwd **must** be the narrowest directory tree containing **all** authorized writes — the permitted work **and** the required report/artifact path — expressed as an absolute path (the common ancestor when work spans sibling directories), not a wider repo root.
@@ -58,6 +66,7 @@ Do not invent an inline transport or skip the current handoff file before launch
 
 Because the sub-agent can’t see your history, include:
 
+- **Identity chain:** one immutable task-local random-name chain; this handoff’s sender, recipient, return path, and escalation path
 - **Goal** and **success criteria** (how to know it’s done)
 - **Repo root** (absolute path; where commands/context live) + **branch/commit** (if relevant)
 - **Launch directory (write scope):** the narrowest absolute directory tree containing all authorized writes (work + report); the worker must be *started in* it (see the canonical rule above)
@@ -81,6 +90,11 @@ Provide this block verbatim (fill in placeholders). Keep it short but complete.
 ### HANDOFF BRIEF
 
 - **Handoff ID:** <unique-id or timestamp>
+- **Identity chain:** <Lead> (lead) → <Controller, if any> (controller) → <Worker> (worker)
+- **This handoff:** <Sender> → <Recipient>
+- **Return path:** <Recipient> → <Sender>
+- **Lead escalation:** <Sender or controller> → <Lead>, only for a decision, blocker, contradiction, or scope change
+- **Pane registry:** <person name> | <role> | <pane ID or pending> | <lifecycle state> | <operating owner>; controller records every child launch and closure
 - **Role:** Scout | Mechanic | Reviewer
 - **Goal (1 sentence):** <what to achieve>
 - **Success criteria:**
@@ -105,7 +119,7 @@ Provide this block verbatim (fill in placeholders). Keep it short but complete.
   - <files>
   - <commands>
   - <search terms>
-- **Completion/control channel:** CMUX-only (exact supervisor `surface:` ref + approved absolute report path) | Intercom (target name) | None
+- **Completion/control channel:** CMUX-only (exact supervisor `surface:` ref + approved absolute report path) | Named peer (`<Sender> → <Recipient>`) | None
 - **Timebox:** <e.g. 15–30 min>
 - **Expected output format:** Use the "WORK REPORT" template below.
 
@@ -116,6 +130,7 @@ The sub-agent must return the following sections. Keep raw logs in the worker co
 ### WORK REPORT
 
 - **Handoff ID:** <same as brief>
+- **Route:** <Sender> → <Recipient>
 - **What I did (high level):**
   - <bullets>
 - **Findings / results:**
@@ -129,6 +144,7 @@ The sub-agent must return the following sections. Keep raw logs in the worker co
   - <bullets>
 - **Risks / uncertainties / assumptions:**
   - <bullets>
+- **Closure state:** Worker complete | Controller accepted and worker closed | Lead acceptance pending | Lead accepted
 - **Next step suggestions:**
   - <bullets>
 - **If I changed files (only if allowed):**

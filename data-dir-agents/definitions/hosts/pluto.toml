@@ -13,38 +13,19 @@ target_dir  = "~/.pi/agent"
 agents_file = "AGENTS_GPT52.md"
 
 skills = [
-  "codebase-search",
-  "read-code-structure",
-  "web-search",
-  "web-browser-use",
-  "diagrams",
-  "gemini-model-rules",
-  "gemini-model-rules-extreme",
   "sub-agent-handoff",
-  "my-tools-toolbox",
-  "cmux-usage",
-  "openspec-apply-change",
-  "openspec-propose",
-  "openspec-explore",
-  "openspec-archive-change",
-  "grill-with-docs",
   "grounded-pairing-discipline",
   "orwell-6-rule-prose",
   "bootstrap-pairing-memory",
   "criticalthink",
   "short-instruction-semantics",
   "socratic-first-principles",
-  "explain-diff-html",
-  "sub-agent-cmux-supervisor",
   "sub-agent-herdr-supervisor",
 ]
 
 prompts = [
-  "done-archived-commit-exact.md",
   "check-sanity-before-continue.md",
   "critical-rethink-sanity.md",
-  "speak-matter-outcome.md",
-  "speak-process-status.md",
   "short-concise-persist-details.md",
 ]
 

@@ -16,7 +16,7 @@ Skills are the modular building blocks attached to agent profiles. Each skill li
 | `<name>-retro` | Post-hoc variant of a standing skill | `criticalthink` replaces `criticalthink` |
 | `<name>-<mode>` | Variant tuned for a specific mode/context | — |
 
-**Rule:** When a skill replaces another (rename, refactor, specialization), update the TOML skill lists in every profile that references it. Generation fully recreates `generated/`. Normal rollout synchronizes every active managed skill directory with `rsync --delete`, so stale files inside that skill disappear automatically. Run `agents_files_cp.sh --delete` to remove an obsolete top-level skill directory only after its generated ownership marker proves it belongs to that deployment; unmarked sibling skills are protected.
+**Rule:** When a skill replaces another (rename, refactor, specialization), update the TOML skill lists in every profile that references it. Generation fully recreates `generated/`. Normal rollout always synchronizes every active managed skill directory with `rsync --delete`, so stale files inside that active skill disappear automatically. `agents_files_cp.sh --delete` controls the separate outer cleanup: removal of an obsolete top-level directory only after its generated ownership marker proves it belongs to that deployment. Unmarked siblings with different names are skipped by that outer cleanup. An unmarked directory sharing an active generated skill name is not collision-guarded by the inner sync; do not share that name until the rollout script adds a guard.
 
 ## Skill categories
 
@@ -103,4 +103,4 @@ Skills for multi-agent coordination.
 
 1. Rename the directory: `mv definitions/skills/<old> definitions/skills/<new>`.
 2. Update all TOML profile references (`skills = [...]`).
-3. Run `agents_files_cp.sh` to install the new directory. Run `agents_files_cp.sh --delete` only when ready to remove the retired top-level directory; it removes only directories carrying a matching generated ownership marker.
+3. Run `agents_files_cp.sh` to install the new directory. Its normal inner sync makes each active managed skill directory match its source. Run `agents_files_cp.sh --delete` only when ready to remove the retired top-level directory; that outer cleanup removes only directories carrying a matching generated ownership marker.

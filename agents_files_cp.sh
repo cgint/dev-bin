@@ -6,7 +6,7 @@ usage() {
   cat <<'EOF'
 Usage: agents_files_cp.sh [--delete] [--openspec-config]
 Deploy generated agent definitions to local agent config dirs.
-  --delete           remove retired, marker-owned skill directories after syncing active skills
+  --delete           remove retired marker-owned skill directories; active skill contents always mirror source
   --openspec-config  also roll out openspec/config.yaml to existing OpenSpec directories
   -h, --help         show this help
 EOF
@@ -74,6 +74,9 @@ sync_managed_skills() {
       || { echo "ERROR: invalid generated skill marker: $source_skill" >&2; return 2; }
     target_skill="$target_skills/$skill_name"
     echo "    Syncing managed skill $skill_name ..."
+    # Inner sync always mirrors an active skill exactly; DELETE_RSYNC controls only
+    # the outer stale-directory cleanup below. An unmarked same-name target is not
+    # collision-guarded here, so do not share an active generated skill name.
     rsync -avh --delete --delete-delay "$source_skill" "$target_skill/"
   done
 

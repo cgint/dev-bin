@@ -18,4 +18,7 @@ data-dir-agents/definitions/
 - **Read** `definitions/STRUCTURE.md` for the propagation pipeline (generator → `generated/` → user config dirs).
 - **Edit** only files under `definitions/`; never edit `generated/` (it's regenerated).
 - **Deploy** with `agents_files_cp.sh [--delete]` (run from any directory).
+  - Normal rollout always content-mirrors each active managed skill with `rsync --delete`; stale files inside that active skill disappear regardless of the flag.
+  - `--delete` controls the separate outer cleanup of retired, marker-owned top-level skill directories.
+  - An unmarked directory sharing an active generated skill name is not collision-guarded by the inner sync; do not share that name until the rollout script adds a guard.
 - **Commit** both `data-dir-agents/definitions/...` (sources) **and** `data-dir-agents/generated/...` (build outputs) together — never commit one without the other.

@@ -2,7 +2,7 @@
 
 ## After editing a skill/agent/profile
 
-1. Run `agents_files_cp.sh` to propagate to `generated/` and deploy to runtime locations.
+1. Run `agents_files_cp.sh` to propagate to `generated/` and deploy to runtime locations. Each active managed skill directory is content-mirrored with `rsync --delete`; `--delete` additionally removes only stale marker-owned skill directories.
 2. Commit **both** the source change (`definitions/...`) **and** the generated files (`generated/...`).
 3. Push.
 

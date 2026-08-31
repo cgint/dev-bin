@@ -27,6 +27,14 @@ Delegation is also a **context boundary**: use it when source adaptation, lockfi
 
 In either form, keep raw command output with the worker. The initial worker report should contain only `HEADLINE`, `CONTRADICTS` (or `NONE`), load-bearing `NOT FOUND` (or `NONE`), `UNDETERMINED` (or `NONE`), changed paths, and pass/fail checks. The lead expands terminal output only for a failure, contradiction, scope concern, or diff anomaly.
 
+## Task identity chain (default)
+
+Before the first delegation for a task, choose distinct random given names and record one immutable chain in the `sub-agent-handoff` brief, for example `Horst (lead) → Judith (controller) → Benjamin (worker)`. The names are task-local labels; select them pen-and-paper, not through a new extension or control plane.
+
+Copy the full chain into every nested handoff and state the current sender, recipient, return path, and lead escalation path. Peer prompts and reports begin `<Sender> → <Recipient>`; never use a generic agent prefix. A controller sends routine completion through its bounded report and escalates directly to the lead only for a decision, blocker, contradiction, or scope change.
+
+The lead is the root task owner: it knows every task pane by person name, role, pane ID, lifecycle state, and operating owner, and may close any registered task pane during recovery. A controller maintains this live child-pane registry and records every worker launch and closure. The controller normally closes only worker panes it created, and only after terminal evidence, artifacts/diff, and required checks show no follow-up remains. The lead closes the controller only after inspecting and accepting its report. These are evidence-based closure decisions at each level, never automatic acceptance or a self-reported vote.
+
 ## Required launch model
 
 Use the reusable launcher by default:
@@ -55,17 +63,19 @@ The launcher:
 
 Use direct `herdr pane split` / `herdr agent start` only when the launcher is unavailable or has a verified defect; record why and preserve all equivalent safeguards.
 
-### Worker interaction commands
+### Agent interaction commands
 
-After launch, use task-level commands instead of reconstructing Herdr's low-level sequence:
+After launch — or when the user identifies an existing customer/peer agent — use task-level commands instead of reconstructing Herdr's low-level sequence. An `<agent-target>` is either a named worker or a Herdr pane ID such as `w1Z:pA`; Herdr resolves both through `agent get`, `agent read`, and `agent prompt`.
 
 | Need | Command | Meaning |
 | --- | --- | --- |
-| Inspect now | `herdr agent get <worker>` | Current lifecycle state only; no waiting and no input. |
-| Await in-flight work | `scripts/herdr_await_subagent.sh <worker>` | Wait, then return lifecycle evidence and a bounded terminal snapshot in one JSON document. |
-| Send a bounded follow-up | `scripts/herdr_followup_subagent.sh <worker> 'Pi here: <message>'` | Preflight; if idle, send through lifecycle-aware `agent prompt --wait`; then return lifecycle evidence and a bounded terminal snapshot. |
+| Inspect now | `herdr agent get <agent-target>` | Current lifecycle state only; no waiting and no input. |
+| Await in-flight work | `scripts/herdr_await_agent.sh <agent-target>` | Wait, then return lifecycle evidence and a bounded terminal snapshot in one JSON document. |
+| Send a bounded prompt | `scripts/herdr_prompt_agent.sh <agent-target> '<Sender> → <Recipient>: <message>'` | Preflight; if idle, send through lifecycle-aware `agent prompt --wait`; then return lifecycle evidence and a bounded terminal snapshot. |
 
-`scripts/herdr_followup_subagent.sh` refuses a `working` or `blocked` worker and returns `prompt.sent: false` with `agent_working` or `agent_blocked`. Await a working worker before deciding whether a new follow-up is still needed; inspect a blocked worker before clarifying or escalating. Its message must begin `Pi here:` so the receiving Pi worker can distinguish a peer request from user input. Do not use `herdr pane send-text` or `pane wait-output` for agent turns: those commands are terminal-level, not lifecycle-aware.
+`scripts/herdr_prompt_agent.sh` refuses a `working` or `blocked` target and returns `prompt.sent: false` with `agent_working` or `agent_blocked`. Await a working target before deciding whether a new prompt is still needed; inspect a blocked target before clarifying or escalating. Its message must begin with the exact `<Sender> → <Recipient>` edge declared in the task handoff, so the receiving agent can distinguish a named peer request from user input.
+
+A user-supplied customer/peer pane is **not owned by the supervisor**: do not rename, release, or close it. Use its pane ID with the lifecycle helper; do not use `herdr pane send-text`, `pane send-keys`, or `pane wait-output` for agent turns, because they are terminal-level rather than lifecycle-aware.
 
 All launcher and lifecycle-helper scripts live in this skill's `scripts/` directory. The generator bundles the shared worker runtime beside them, so an installed skill has no `~/.local/bin` script dependency.
 
@@ -76,7 +86,12 @@ All launcher and lifecycle-helper scripts live in this skill's `scripts/` direct
 | Source scouting, contract tracing, independent review | `readonly` | Herdr terminal `WORK REPORT` | `scripts/herdr-worker.sh --mode readonly --` blocks local writes. Do **not** expect or require a report artifact. |
 | Browser walkthrough, screenshot/report creation, bounded implementation | `editable` | Herdr terminal plus authorized artifact/diff | `scripts/herdr-worker.sh --mode editable --` permits writes; handoff must name the exact allowed paths and checks. |
 
-`--report` is currently required by the launcher for both modes. For a read-only worker it is metadata only: its parent must exist and be writable, but no file may be created there. The handoff must explicitly say **terminal-only report; do not write artifacts**. For an editable worker, the handoff must explicitly authorize the report path and no broader write surface.
+`--report` is currently required by the launcher for both modes. Its parent directory must already exist and be writable for **every** launch; the launcher validates this before it creates a worker pane.
+
+- For a read-only worker it is metadata only: no file may be created there. The handoff must explicitly say **terminal-only report; do not write artifacts**.
+- For an editable worker, the handoff must explicitly authorize the report path and no broader write surface.
+
+When the supervisor may write only in its own repository and the target report directory is absent, keep the handoff in the supervisor repository and use a temporary report directly under an existing target directory. Inspect that report before acceptance, then have the editable worker remove it. Do not have the supervisor create target directories merely to satisfy launch validation.
 
 ### Focus boundary
 
@@ -88,6 +103,7 @@ The launcher requests `--no-focus` when creating a sibling pane. Treat that as a
 
 Use `sub-agent-handoff`. State:
 
+- one immutable task identity chain, including this handoff edge, return path, and lead escalation path;
 - one coherent goal and measurable success criteria;
 - allowed paths/actions, non-goals, and stop rules;
 - authoritative starting evidence and current working-tree constraints;
@@ -100,11 +116,12 @@ Do not delegate ambiguous requirements, architecture, cross-cutting decisions, o
 
 Launch through `scripts/herdr-start-subagent.sh`. Record its JSON output in the supervisor’s task context:
 
-- worker name;
+- worker person name and role from the task identity chain;
 - owned `pane_id`;
 - mode;
 - handoff and report path;
-- initial `agent_status` and `state_change_seq`.
+- initial `agent_status` and `state_change_seq`;
+- operating owner and the lead-visible child-pane registry entry.
 
 A returned `idle` immediately after launch is a lifecycle snapshot, **not completion evidence**. Do not send extra prompts merely because the initial snapshot is `idle`.
 
@@ -113,7 +130,7 @@ A returned `idle` immediately after launch is a lifecycle snapshot, **not comple
 Give the worker one complete instruction at launch. Do not steer a working worker clause-by-clause.
 
 ```sh
-scripts/herdr_await_subagent.sh <worker-name> --timeout-ms 1800000 --lines 100
+scripts/herdr_await_agent.sh <worker-name> --timeout-ms 1800000 --lines 100
 ```
 
 The returned JSON preserves the raw wait result, current `agent.status`, and bounded terminal evidence even when the wait times out. Normal waits use Herdr's default terminal set (`idle`, `done`, `blocked`). A terminal lifecycle state means **inspect now**, never **accept automatically**.
@@ -133,7 +150,11 @@ Do not accept a worker's "checks passed" self-report as evidence. Independently 
 
 ### 5. Mandatory cleanup
 
-The supervisor owns every pane it creates. Capture the required terminal report with `herdr agent read` **before** closing the pane; terminal retention after closure is not assumed. After terminal output, report/artifact, diff, and required checks have been inspected and no direct follow-up remains, close the owned pane immediately:
+The supervisor is the operating owner of every pane it creates, while the lead remains the root task owner of every registered pane. Capture the required terminal report with `herdr agent read` **before** closing a worker pane; terminal retention after closure is not assumed. Close a worker only after its terminal output, report/artifact, diff, and required checks have been inspected and the controller has concluded no direct follow-up remains. Record the closure in the live child-pane registry immediately.
+
+The lead then inspects and accepts the controller report before closing the controller pane. If a controller is unavailable, the lead may use the named registry to capture a worker’s evidence and close that worker directly. Do not close either level merely because it reports success.
+
+After the required evidence-based closure decision, close the operating owner’s pane immediately:
 
 ```sh
 herdr pane close <owned-pane-id>
@@ -151,7 +172,7 @@ Use recovery only after a wait times out/is cancelled, delivery is unclear, or a
 For a normal follow-up, use the lifecycle-aware helper rather than `pane send-text` or raw `agent prompt`:
 
 ```sh
-scripts/herdr_followup_subagent.sh <worker-name> 'Pi here: <one bounded request>' \
+scripts/herdr_prompt_agent.sh <agent-target> '<Sender> → <Recipient>: <one bounded request>' \
   --timeout-ms 1800000 --lines 100
 ```
 
@@ -159,7 +180,7 @@ The helper preflights state. If the worker is `working` or `blocked`, it sends n
 
 After an abort, timeout, `agent_prompt_stalled`, or any other unexpected
 prompt/wait result, do **not** resend first. The result does not establish that
-the request was not delivered. Use `scripts/herdr_await_subagent.sh <worker-name>` to
+the request was not delivered. Use `scripts/herdr_await_agent.sh <agent-target>` to
 capture its current state and bounded terminal evidence before deciding whether
 a new follow-up is justified. Use direct `herdr agent get` / `read` only when
 that bounded evidence is insufficient.
@@ -175,12 +196,13 @@ If the worker is still active after a clear, complete handoff, wait again. If it
 
 ## Before declaring completion
 
-- [ ] The handoff states scope, evidence, stop rules, timebox, and the correct report channel.
-- [ ] The launcher JSON records the worker name, owned pane ID, mode, and lifecycle snapshot.
+- [ ] The handoff states the immutable identity chain, this edge, return/escalation paths, scope, evidence, stop rules, timebox, and the correct report channel.
+- [ ] The launcher JSON and live registry record every worker’s person name, role, pane ID, operating owner, mode, and lifecycle snapshot.
 - [ ] Herdr terminal state was observed; terminal appearance was not substituted for lifecycle evidence.
-- [ ] Fresh output was captured through `scripts/herdr_await_subagent.sh` / `scripts/herdr_followup_subagent.sh`, or directly through Herdr when broader evidence was necessary.
+- [ ] Fresh output was captured through `scripts/herdr_await_agent.sh` / `scripts/herdr_prompt_agent.sh`, or directly through Herdr when broader evidence was necessary.
 - [ ] Read-only work has terminal evidence and no unauthorized files; editable work has an inspected report/diff and checks.
-- [ ] The worker's owned pane was closed and `herdr pane list` verified cleanup.
+- [ ] The controller accepted each worker’s evidence before closing its owned pane; each closure was recorded and `herdr pane list` verified cleanup.
+- [ ] The lead accepted the controller report before closing the controller pane.
 - [ ] The accepted result, limitation, next action, and any operational learning were recorded durably when relevant.
 
 ## Reference
