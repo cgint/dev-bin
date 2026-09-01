@@ -21,9 +21,9 @@ Delegation is also a **context boundary**: use it when source adaptation, lockfi
 
 ## Handoff forms and context budget
 
-**Current capability — artifact handoff only:** the launcher currently requires both `--handoff` and `--report`. Use the full `sub-agent-handoff` brief and the required artifact/report workflow below.
+**Artifact handoff:** pass `--handoff <absolute-handoff-path>` with `--report <absolute-report-path>` for the full `sub-agent-handoff` brief and artifact/report workflow below.
 
-**Planned capability — compact inline brief (not available yet):** after the launcher supports it, use a direct, single-line brief only for a small, bounded, low-ambiguity assignment. It must still name the exact cwd, allowed and forbidden paths, goal, required checks, stop rule, and compact terminal `WORK REPORT`. Use the artifact handoff instead for multiline or quoted instructions, code snippets, reusable context, ambiguous/risky/cross-cutting work, or anything asynchronous.
+**Compact inline brief:** `--brief "<inline-brief>"` is supported as an alternative to `--handoff`; it still requires `--report <absolute-report-path>`. Use it only for a small, bounded, low-ambiguity assignment. It must name the exact cwd, allowed and forbidden paths, goal, required checks, stop rule, and compact terminal `WORK REPORT`. The launcher supplies `Complete the brief exactly and write the required report to <report>.` when `--instruction` is omitted. Use the artifact handoff instead for multiline or quoted instructions, code snippets, reusable context, ambiguous/risky/cross-cutting work, or anything asynchronous.
 
 In either form, keep raw command output with the worker. The initial worker report should contain only `HEADLINE`, `CONTRADICTS` (or `NONE`), load-bearing `NOT FOUND` (or `NONE`), `UNDETERMINED` (or `NONE`), changed paths, and pass/fail checks. The lead expands terminal output only for a failure, contradiction, scope concern, or diff anomaly.
 
@@ -43,7 +43,7 @@ Use the reusable launcher by default:
 scripts/herdr-start-subagent.sh \
   --name <unique-worker-name> \
   --mode <readonly|editable> \
-  --handoff /absolute/path/handoff.md \
+  (--handoff /absolute/path/handoff.md | --brief "<inline-brief>") \
   --report /absolute/path/report.md \
   --instruction 'Read the handoff exactly. <bounded instruction>. Stop.' \
   --direction <right|down> \
@@ -55,7 +55,7 @@ Set `--cwd` to the **target directory named by the handoff** — the narrowest a
 
 The launcher:
 
-1. validates worker name, mode, absolute handoff/report paths, working directory, and timeout;
+1. validates worker name, mode, exactly one of an absolute handoff path or non-empty inline brief, report path, working directory, and timeout;
 2. creates a sibling pane through `herdr pane split --no-focus`;
 3. submits one atomically quoted wrapper command through `herdr pane run`;
 4. starts `scripts/herdr-worker.sh --mode <readonly|editable> --`;

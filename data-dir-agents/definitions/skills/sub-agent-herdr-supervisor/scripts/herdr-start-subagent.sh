@@ -15,7 +15,7 @@ Usage:
   herdr-start-subagent.sh \
     --name <agent-name> \
     --mode <readonly|editable> \
-    --handoff <absolute-handoff-path> \
+    (--handoff <absolute-handoff-path> | --brief <inline-brief>) \
     --report <absolute-report-path> \
     [--instruction <one-line-instruction>] \
     [--direction <right|down>] \
@@ -23,7 +23,7 @@ Usage:
     [--timeout-seconds <1-30>]
 
 Creates a non-focused sibling Herdr pane, starts the unified subagent wrapper in the
-selected mode with @<handoff> plus the initial instruction, and polls for Herdr agent detection.
+selected mode with either @<handoff> or <inline-brief> plus the initial instruction, and polls for Herdr agent detection.
 
 On successful pane launch, prints one JSON object to stdout containing the pane ID.
 If Pi is detected before the bounded timeout, the JSON also contains its Herdr name,
@@ -31,7 +31,9 @@ status, and state_change_seq. If registration is still pending, it reports
 "agent_detected": false and "agent_status": "initializing"; use Herdr to continue
 observing that pane. Errors are JSON on stderr and exit non-zero.
 
-The handoff itself must state the complete report path and all worker boundaries.
+A handoff must state the complete report path and all worker boundaries. An inline brief must
+state the complete worker boundaries; when its instruction is omitted, the launcher supplies one
+that requires the report path.
 EOF
 }
 
@@ -61,6 +63,9 @@ require_absolute_report_path() {
 name=""
 mode=""
 handoff=""
+handoff_supplied=false
+brief=""
+brief_supplied=false
 report=""
 instruction=""
 direction="right"
@@ -82,6 +87,13 @@ while [[ $# -gt 0 ]]; do
     --handoff)
       [[ $# -ge 2 ]] || fail 2 "--handoff requires a value"
       handoff="$2"
+      handoff_supplied=true
+      shift 2
+      ;;
+    --brief)
+      [[ $# -ge 2 ]] || fail 2 "--brief requires a value"
+      brief="$2"
+      brief_supplied=true
       shift 2
       ;;
     --report)
@@ -126,13 +138,27 @@ done
 [[ "$timeout_seconds" =~ ^[0-9]+$ ]] && (( timeout_seconds >= 1 && timeout_seconds <= 30 )) \
   || fail 2 "--timeout-seconds must be an integer from 1 to 30"
 [[ "$cwd" == /* && -d "$cwd" ]] || fail 2 "--cwd must be an existing absolute directory"
-require_absolute_file "--handoff" "$handoff"
+if [[ "$handoff_supplied" == true && "$brief_supplied" == true ]]; then
+  fail 2 "--handoff and --brief are mutually exclusive"
+fi
+if [[ "$handoff_supplied" == false && "$brief_supplied" == false ]]; then
+  fail 2 "one of --handoff or --brief is required"
+fi
+if [[ "$handoff_supplied" == true ]]; then
+  require_absolute_file "--handoff" "$handoff"
+else
+  [[ -n "$brief" ]] || fail 2 "--brief must be non-empty"
+fi
 require_absolute_report_path "$report"
 [[ -z "$instruction" || "$instruction" != *$'\n'* && "$instruction" != *$'\r'* ]] \
   || fail 2 "--instruction must be one physical line"
 
 if [[ -z "$instruction" ]]; then
-  instruction="Read @$handoff. Complete the handoff exactly and write the required report to $report."
+  if [[ "$brief_supplied" == true ]]; then
+    instruction="Complete the brief exactly and write the required report to $report."
+  else
+    instruction="Read @$handoff. Complete the handoff exactly and write the required report to $report."
+  fi
 fi
 
 wrapper="$SUBAGENT_WRAPPER"
@@ -152,7 +178,11 @@ pane_id="$(jq -er '.result.pane.pane_id' <<<"$split_json")" \
 
 # printf %q produces a single shell command whose arguments preserve paths and
 # instruction text. pane run then submits that command atomically with Enter.
-printf -v launch_command '%q ' "$wrapper" --mode "$mode" -- "@$handoff" "$instruction"
+if [[ "$brief_supplied" == true ]]; then
+  printf -v launch_command '%q ' "$wrapper" --mode "$mode" -- "$brief" "$instruction"
+else
+  printf -v launch_command '%q ' "$wrapper" --mode "$mode" -- "@$handoff" "$instruction"
+fi
 launch_command="${launch_command% }"
 herdr pane run "$pane_id" "$launch_command" >/dev/null \
   || fail 1 "Herdr created pane $pane_id but failed to submit the wrapper command; inspect that pane"
@@ -185,9 +215,10 @@ jq -cn \
   --arg mode "$mode" \
   --arg pane_id "$pane_id" \
   --arg handoff "$handoff" \
+  --arg brief "$brief" \
   --arg report "$report" \
   --arg agent_status "$agent_status" \
   --argjson agent_detected "$agent_detected" \
   --argjson state_change_seq "$state_change_seq" \
   --argjson timeout_seconds "$timeout_seconds" \
-  '{ok: true, name: $name, mode: $mode, pane_id: $pane_id, handoff: $handoff, report: $report, agent_detected: $agent_detected, agent_status: $agent_status, state_change_seq: $state_change_seq, detection_timeout_seconds: $timeout_seconds}'
+  '({ok: true, name: $name, mode: $mode, pane_id: $pane_id, report: $report, agent_detected: $agent_detected, agent_status: $agent_status, state_change_seq: $state_change_seq, detection_timeout_seconds: $timeout_seconds} + if $handoff != "" then {handoff: $handoff} else {brief: $brief} end)'
