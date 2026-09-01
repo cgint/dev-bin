@@ -1,5 +1,5 @@
 name = "minimal"
 target_dir = "~/.pi/profiles/minimal/agent"
 agents_file = "AGENTS_MINIMAL.md"
-skills = ["diagrams", "web-search", "web-browser-use", "openspec-apply-change", "openspec-propose", "openspec-explore", "openspec-archive-change"]
+skills = ["diagrams", "web-search", "web-browser-use", "sub-agent-herdr-supervisor", "sub-agent-handoff", "openspec-apply-change", "openspec-propose", "openspec-explore", "openspec-archive-change"]
 prompts = ["speak-matter-outcome.md", "speak-process-status.md", "critical-rethink-sanity.md", "check-sanity-before-continue.md", "short-concise-persist-details.md", "done-archived-commit-exact.md"]

@@ -14,13 +14,28 @@ fail() {
   exit 1
 }
 
-mkdir -p "$TMPDIR_TEST/bin" "$TMPDIR_TEST/home/.pi/profiles/partner/agent/extensions"
+assert_capture() {
+  local capture="$1"
+  shift
+  local expected actual
+  expected="$(printf '%s\n' "$@")"
+  actual="$(<"$capture")"
+  [ "$actual" = "$expected" ] || fail "unexpected Pi invocation: $actual"
+}
+
+mkdir -p "$TMPDIR_TEST/bin" \
+  "$TMPDIR_TEST/home/.pi/profiles/minimal/agent/extensions" \
+  "$TMPDIR_TEST/home/.pi/profiles/partner/agent/extensions"
+: >"$TMPDIR_TEST/home/.pi/profiles/minimal/agent/extensions/herdr-agent-state.ts"
 : >"$TMPDIR_TEST/home/.pi/profiles/partner/agent/extensions/herdr-agent-state.ts"
 cat >"$TMPDIR_TEST/bin/pi-profile" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
-if [[ "$1 $2 $3 $4" == "partner auth check --provider" ]]; then
-  printf 'ready\n'
+if [[ "$2 $3 $4" == "auth check --provider" ]]; then
+  case "$5" in
+    openai-codex) [ "${AUTH_OPENAI:-ready}" = ready ] && printf 'ready\n' ;;
+    github-copilot) [ "${AUTH_COPILOT:-unready}" = ready ] && printf 'ready\n' ;;
+  esac
   exit 0
 fi
 printf 'PI_WRITE_GUARD_DIRS=%s\n' "${PI_WRITE_GUARD_DIRS:-}" >"$PI_PROFILE_CAPTURE"
@@ -46,8 +61,37 @@ run_worker() {
   local worker="$1"
   local capture="$2"
   PATH="$TMPDIR_TEST/bin:$PATH" HOME="$TMPDIR_TEST/home" PI_PROFILE_CAPTURE="$capture" \
+    AUTH_OPENAI="${AUTH_OPENAI:-ready}" AUTH_COPILOT="${AUTH_COPILOT:-unready}" \
     "$worker" --mode readonly -- @/tmp/handoff.md 'Execute the bounded task.'
 }
+
+assert_invalid_arguments() {
+  local invalid_output
+  if invalid_output="$(PATH="$TMPDIR_TEST/bin:$PATH" HOME="$TMPDIR_TEST/home" "$cmux_worker" "$@" 2>&1)"; then
+    fail "CMUX worker accepted invalid arguments: $*"
+  fi
+  grep -q 'requires exactly one --mode readonly|editable before --' <<<"$invalid_output" \
+    || fail "CMUX worker did not explain invalid arguments: $*"
+}
+
+assert_invalid_arguments -- @/tmp/handoff.md
+assert_invalid_arguments --mode readonly --mode editable -- @/tmp/handoff.md
+assert_invalid_arguments --mode unsafe -- @/tmp/handoff.md
+assert_invalid_arguments --mode readonly @/tmp/handoff.md
+
+editable_capture="$TMPDIR_TEST/editable.txt"
+PATH="$TMPDIR_TEST/bin:$PATH" HOME="$TMPDIR_TEST/home" PI_PROFILE_CAPTURE="$editable_capture" \
+  "$cmux_worker" --mode editable -- @/tmp/handoff.md 'Execute the bounded task.'
+assert_capture "$editable_capture" \
+  'PI_WRITE_GUARD_DIRS=.' \
+  minimal -ne -e 'https://github.com/cgint/pi-focus-guard' \
+  --model openai-codex/gpt-5.6-terra --thinking minimal \
+  @/tmp/handoff.md 'Execute the bounded task.'
+
+fallback_capture="$TMPDIR_TEST/fallback.txt"
+AUTH_OPENAI=unready AUTH_COPILOT=ready run_worker "$cmux_worker" "$fallback_capture"
+grep -qx 'github-copilot/gpt-5.6-terra' "$fallback_capture" \
+  || fail 'CMUX worker did not fall back to the GitHub Copilot model'
 
 cmux_capture="$TMPDIR_TEST/cmux.txt"
 run_worker "$cmux_worker" "$cmux_capture"
@@ -62,8 +106,28 @@ fi
 herdr_capture="$TMPDIR_TEST/herdr.txt"
 run_worker "$herdr_worker" "$herdr_capture"
 grep -qx 'PI_WRITE_GUARD_DIRS=\.' "$herdr_capture" || fail 'Herdr worker did not set the cwd write guard'
-grep -qx "$TMPDIR_TEST/home/.pi/profiles/partner/agent/extensions/herdr-agent-state.ts" "$herdr_capture" \
-  || fail 'Herdr worker omitted its lifecycle reporter'
+grep -qx "$TMPDIR_TEST/home/.pi/profiles/minimal/agent/extensions/herdr-agent-state.ts" "$herdr_capture" \
+  || fail 'Herdr worker did not use the default minimal lifecycle reporter'
+grep -qx 'minimal' "$herdr_capture" \
+  || fail 'Herdr worker did not use the default minimal profile'
+
+partner_capture="$TMPDIR_TEST/partner.txt"
+PI_WORKER_PROFILE=partner run_worker "$cmux_worker" "$partner_capture"
+grep -qx 'partner' "$partner_capture" \
+  || fail 'CMUX worker did not honor PI_WORKER_PROFILE override'
+
+partner_herdr_capture="$TMPDIR_TEST/partner-herdr.txt"
+PI_WORKER_PROFILE=partner run_worker "$herdr_worker" "$partner_herdr_capture"
+grep -qx 'partner' "$partner_herdr_capture" \
+  || fail 'Herdr worker did not honor PI_WORKER_PROFILE override'
+grep -qx "$TMPDIR_TEST/home/.pi/profiles/partner/agent/extensions/herdr-agent-state.ts" "$partner_herdr_capture" \
+  || fail 'Herdr worker did not derive its reporter from PI_WORKER_PROFILE'
+
+if invalid_profile_output="$(PI_WORKER_PROFILE='../unsafe' run_worker "$cmux_worker" "$TMPDIR_TEST/invalid.txt" 2>&1)"; then
+  fail 'CMUX worker accepted an invalid PI_WORKER_PROFILE'
+fi
+grep -q 'invalid PI_WORKER_PROFILE: ../unsafe' <<<"$invalid_profile_output" \
+  || fail 'CMUX worker did not explain the rejected PI_WORKER_PROFILE'
 
 if override_output="$(PATH="$TMPDIR_TEST/bin:$PATH" HOME="$TMPDIR_TEST/home" PI_PROFILE_CAPTURE="$TMPDIR_TEST/override.txt" "$cmux_worker" --mode editable -- --model unsafe 2>&1)"; then
   fail 'CMUX worker accepted a caller model override'

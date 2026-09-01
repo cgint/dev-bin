@@ -11,7 +11,7 @@ Use Herdr as the default control plane for bounded Pi workers: launch, observe, 
 
 Use CMUX only for outer desktop layout and separately CMUX-managed workers. Never steer the same worker through both CMUX and Herdr.
 
-**Prerequisite:** install Herdr's Pi lifecycle integration with `herdr integration install pi` before relying on lifecycle reports. Herdr can report `working`, `idle`, `blocked`, and `done`; `screen_detection_skipped: true` is expected for direct Pi reporting. Never infer completion from a terminal spinner or visual terminal appearance.
+**Prerequisite:** install Herdr's Pi lifecycle integration in the worker profile before relying on lifecycle reports. Workers use `PI_WORKER_PROFILE` when set, otherwise `minimal`; the selected profile must contain `agent/extensions/herdr-agent-state.ts`. For the default, run `PI_CODING_AGENT_DIR="$HOME/.pi/profiles/minimal/agent" herdr integration install pi`; use the selected profile's agent directory when overriding `PI_WORKER_PROFILE`. Herdr manages and overwrites this extension—do not copy it into this skill. Herdr can report `working`, `idle`, `blocked`, and `done`; `screen_detection_skipped: true` is expected for direct Pi reporting. Never infer completion from a terminal spinner or visual terminal appearance.
 
 ## Delegation threshold
 

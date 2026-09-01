@@ -37,7 +37,7 @@ scripts/cmux-worker.sh --mode readonly -- \
   'Execute the handoff exactly; use CMUX-only completion.'
 ```
 
-`scripts/cmux-worker.sh` requires exactly one `--mode readonly|editable` before `--` and uses `pi-profile partner -ne` with `thinking:minimal`. Editable mode retains default Pi tools. Read-only mode loads `pi-focus-guard`, starts `--dm-read`, and permits `read,bash,grep,find,ls`; the guard blocks writes and non-read-only Bash. It rejects caller overrides of print mode, extensions, model/provider/thinking, tools, and `--dm-*`. Neither mode uses `-p`. Its shared runtime is bundled into this skill at generation time; CMUX does not load Herdr reporting behavior.
+`scripts/cmux-worker.sh` requires exactly one `--mode readonly|editable` before `--` and uses `pi-profile "${PI_WORKER_PROFILE:-minimal}" -ne` with `thinking:minimal`. Set `PI_WORKER_PROFILE` to select another deployed profile; profile names may contain only letters, digits, `_`, and `-`. Editable mode retains default Pi tools. Read-only mode loads `pi-focus-guard`, starts `--dm-read`, and permits `read,bash,grep,find,ls`; the guard blocks writes and non-read-only Bash. It rejects caller overrides of print mode, extensions, model/provider/thinking, tools, and `--dm-*`. Neither mode uses `-p`. Its shared runtime is bundled into this skill at generation time; CMUX does not load Herdr reporting behavior.
 
 ## Select Work Deliberately
 
