@@ -1,5 +1,36 @@
 name = "minimal"
 target_dir = "~/.pi/profiles/minimal/agent"
 agents_file = "AGENTS_MINIMAL.md"
-skills = ["diagrams", "web-search", "web-browser-use", "sub-agent-herdr-supervisor", "sub-agent-handoff", "openspec-apply-change", "openspec-propose", "openspec-explore", "openspec-archive-change"]
-prompts = ["speak-matter-outcome.md", "speak-process-status.md", "critical-rethink-sanity.md", "check-sanity-before-continue.md", "short-concise-persist-details.md", "done-archived-commit-exact.md"]
+skills = [
+  "codebase-search",
+  "tldr",
+  "read-code-structure",
+  "web-search",
+  "web-browser-use",
+  "diagrams",
+  "gemini-model-rules",
+  "gemini-model-rules-extreme",
+  "sub-agent-handoff",
+  "my-tools-toolbox",
+  "google-workspace-cli",
+  "openspec-apply-change",
+  "openspec-propose",
+  "openspec-explore",
+  "openspec-archive-change",
+  "grounded-pairing-discipline",
+  "orwell-6-rule-prose",
+  "bootstrap-pairing-memory",
+  "criticalthink",
+  "short-instruction-semantics",
+  "socratic-first-principles",
+  "explain-diff-html",
+  "sub-agent-herdr-supervisor"
+]
+prompts = [
+  "speak-matter-outcome.md",
+  "speak-process-status.md",
+  "critical-rethink-sanity.md",
+  "check-sanity-before-continue.md",
+  "short-concise-persist-details.md",
+  "done-archived-commit-exact.md"
+]
