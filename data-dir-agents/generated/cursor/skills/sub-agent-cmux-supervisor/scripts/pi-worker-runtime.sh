@@ -80,7 +80,7 @@ pi_worker_runtime_main() {
     extension_args+=(-e "$trusted_extension")
   fi
 
-  local config_root config_path config_line config_provider="" config_model=""
+  local config_root config_path config_line config_provider="" config_model="" config_thinking=""
   config_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
   if [[ -n "$config_root" && -f "$config_root/.sub_agent_conf" ]]; then
     config_path="$config_root/.sub_agent_conf"
@@ -100,6 +100,13 @@ pi_worker_runtime_main() {
             exit 2
           }
           config_model="${BASH_REMATCH[1]}"
+          ;;
+        THINKING=*)
+          [[ -z "$config_thinking" && "$config_line" =~ ^THINKING=(off|minimal|low|medium|high|xhigh|max)$ ]] || {
+            printf 'worker launcher: invalid .sub_agent_conf THINKING line: %s\n' "$config_line" >&2
+            exit 2
+          }
+          config_thinking="${BASH_REMATCH[1]}"
           ;;
         *)
           printf 'worker launcher: invalid .sub_agent_conf line: %s\n' "$config_line" >&2
@@ -137,10 +144,12 @@ pi_worker_runtime_main() {
   pi_args+=("${extension_args[@]}")
   if [[ -n "$config_provider" ]]; then
     pi_args+=(--provider "$config_provider" --model "$config_model")
+    if [[ -n "$config_thinking" ]]; then
+      pi_args+=(--thinking "$config_thinking")
+    fi
   else
-    pi_args+=(--model "$subagent_model")
+    pi_args+=(--model "$subagent_model" --thinking minimal)
   fi
-  pi_args+=(--thinking minimal)
   if [ "$mode" = "readonly" ]; then
     pi_args+=(--tools read,bash,grep,find,ls --dm-read)
   fi

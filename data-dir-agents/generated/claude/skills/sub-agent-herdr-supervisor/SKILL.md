@@ -20,11 +20,12 @@ A repository may commit `.sub_agent_conf` at its Git root to select the model fo
 ```ini
 PROVIDER=home-llm
 MODEL=qwen38-flashnext-twins-direct
+THINKING=medium
 ```
 
-The launcher checks exactly `<Git-root>/.sub_agent_conf`, so a worker launched from a nested directory uses its repository policy. It never traverses above that Git root or reads arbitrary parent-directory configuration. The file may contain blank lines and full-line `#` comments only in addition to one `PROVIDER` and one `MODEL` line. Values are restricted to letters, numbers, `.`, `_`, and `-`; never put shell syntax, credentials, or quoted values in this file.
+The launcher checks exactly `<Git-root>/.sub_agent_conf`, so a worker launched from a nested directory uses its repository policy. It never traverses above that Git root or reads arbitrary parent-directory configuration. The file may contain blank lines and full-line `#` comments only in addition to one `PROVIDER`, one `MODEL`, and optionally one `THINKING` line. Provider/model values are restricted to letters, numbers, `.`, `_`, and `-`; `THINKING` must be one of `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, or `max`. Never put shell syntax, credentials, or quoted values in this file.
 
-When the file is present, both keys are required and the selected worker profile must expose that exact provider/model pair. An invalid or unavailable pair fails the launch—there is no fallback to the default cloud models. When the file is absent (or the launch cwd is outside a Git repository), workers retain the authenticated OpenAI Codex, then GitHub Copilot default selection.
+`PROVIDER` and `MODEL` are required. When `THINKING` is set, the launcher passes it to Pi; when omitted, Pi uses the selected worker profile's default thinking level. A provider can still reject an otherwise valid Pi thinking level, so choose a level verified for that model. An invalid or unavailable provider/model pair fails the launch—there is no fallback to the default cloud models. When the file is absent (or the launch cwd is outside a Git repository), workers retain the authenticated OpenAI Codex, then GitHub Copilot default selection with `minimal` thinking.
 
 ## Delegation threshold
 

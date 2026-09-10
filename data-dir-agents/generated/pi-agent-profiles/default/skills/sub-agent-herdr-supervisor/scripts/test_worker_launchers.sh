@@ -135,6 +135,7 @@ cat >"$config_root/.sub_agent_conf" <<'EOF'
 # Repository policy: use the local model.
 PROVIDER=home-llm
 MODEL=qwen38-flashnext-twins-direct
+THINKING=medium
 EOF
 config_capture="$TMPDIR_TEST/config.txt"
 (
@@ -145,6 +146,32 @@ grep -qx -- '--provider' "$config_capture" || fail 'Herdr worker did not pass co
 grep -qx 'home-llm' "$config_capture" || fail 'Herdr worker did not pass configured provider value'
 grep -qx -- '--model' "$config_capture" || fail 'Herdr worker did not pass configured model'
 grep -qx 'qwen38-flashnext-twins-direct' "$config_capture" || fail 'Herdr worker did not pass configured model value'
+grep -qx -- '--thinking' "$config_capture" || fail 'Herdr worker did not pass configured thinking flag'
+grep -qx 'medium' "$config_capture" || fail 'Herdr worker did not pass configured thinking value'
+
+cat >"$config_root/.sub_agent_conf" <<'EOF'
+PROVIDER=home-llm
+MODEL=qwen38-flashnext-twins-direct
+EOF
+omitted_thinking_capture="$TMPDIR_TEST/omitted-thinking.txt"
+(
+  cd "$config_root"
+  FAKE_GIT_ROOT="$config_root" MODEL_AVAILABLE='home-llm/qwen38-flashnext-twins-direct' run_worker "$omitted_thinking_capture"
+)
+if grep -qx -- '--thinking' "$omitted_thinking_capture"; then
+  fail 'Herdr worker forced a thinking level when configured THINKING was omitted'
+fi
+
+cat >"$config_root/.sub_agent_conf" <<'EOF'
+PROVIDER=home-llm
+MODEL=qwen38-flashnext-twins-direct
+THINKING=unsupported
+EOF
+if invalid_thinking_output="$(cd "$config_root" && FAKE_GIT_ROOT="$config_root" run_worker "$TMPDIR_TEST/invalid-thinking.txt" 2>&1)"; then
+  fail 'Herdr worker accepted invalid .sub_agent_conf THINKING'
+fi
+grep -q 'invalid .sub_agent_conf THINKING line: THINKING=unsupported' <<<"$invalid_thinking_output" \
+  || fail 'Herdr worker did not explain invalid .sub_agent_conf THINKING'
 
 printf 'PROVIDER=home-llm\n' >"$config_root/.sub_agent_conf"
 if malformed_output="$(cd "$config_root" && FAKE_GIT_ROOT="$config_root" run_worker "$TMPDIR_TEST/malformed.txt" 2>&1)"; then
