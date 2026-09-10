@@ -3,6 +3,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RUNTIME="$SCRIPT_DIR/pi-worker-runtime.sh"
+SHARED_RUNTIME="$SCRIPT_DIR/../../../runtime/pi-worker-runtime.sh"
+[[ -f "$SHARED_RUNTIME" ]] && RUNTIME="$SHARED_RUNTIME"
 HERDR_ADAPTER="$SCRIPT_DIR/herdr-worker.sh"
 STARTER="$SCRIPT_DIR/herdr-start-subagent.sh"
 TMPDIR_TEST="$(mktemp -d)"
@@ -30,6 +32,12 @@ mkdir -p "$TMPDIR_TEST/bin" \
 cat >"$TMPDIR_TEST/bin/pi-profile" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
+if [[ "$2" == "--list-models" ]]; then
+  if [[ "${MODEL_AVAILABLE:-}" == "$3" ]]; then
+    printf 'provider  model\n%s\n' "${MODEL_AVAILABLE//\//  }"
+  fi
+  exit 0
+fi
 if [[ "$2 $3 $4" == "auth check --provider" ]]; then
   case "$5" in
     openai-codex) [ "${AUTH_OPENAI:-ready}" = ready ] && printf 'ready\n' ;;
@@ -57,6 +65,7 @@ run_worker() {
   local capture="$1"
   PATH="$TMPDIR_TEST/bin:$PATH" HOME="$TMPDIR_TEST/home" PI_PROFILE_CAPTURE="$capture" \
     AUTH_OPENAI="${AUTH_OPENAI:-ready}" AUTH_COPILOT="${AUTH_COPILOT:-unready}" \
+    MODEL_AVAILABLE="${MODEL_AVAILABLE:-}" FAKE_GIT_ROOT="${FAKE_GIT_ROOT:-}" \
     "$herdr_worker" --mode readonly -- @/tmp/handoff.md 'Execute the bounded task.'
 }
 
@@ -109,6 +118,73 @@ if invalid_profile_output="$(PI_WORKER_PROFILE='../unsafe' run_worker "$TMPDIR_T
 fi
 grep -q 'invalid PI_WORKER_PROFILE: ../unsafe' <<<"$invalid_profile_output" \
   || fail 'Herdr worker did not explain the rejected PI_WORKER_PROFILE'
+
+cat >"$TMPDIR_TEST/bin/git" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$1 $2" == 'rev-parse --show-toplevel' && -n "${FAKE_GIT_ROOT:-}" ]]; then
+  printf '%s\n' "$FAKE_GIT_ROOT"
+  exit 0
+fi
+exit 1
+EOF
+chmod +x "$TMPDIR_TEST/bin/git"
+
+config_root="$TMPDIR_TEST/repository"
+mkdir -p "$config_root/nested"
+cat >"$config_root/.sub_agent_conf" <<'EOF'
+# Repository policy: use the local model.
+PROVIDER=home-llm
+MODEL=qwen38-flashnext-twins-direct
+EOF
+config_capture="$TMPDIR_TEST/config.txt"
+(
+  cd "$config_root/nested"
+  FAKE_GIT_ROOT="$config_root" MODEL_AVAILABLE='home-llm/qwen38-flashnext-twins-direct' run_worker "$config_capture"
+)
+grep -qx -- '--provider' "$config_capture" || fail 'Herdr worker did not pass configured provider'
+grep -qx 'home-llm' "$config_capture" || fail 'Herdr worker did not pass configured provider value'
+grep -qx -- '--model' "$config_capture" || fail 'Herdr worker did not pass configured model'
+grep -qx 'qwen38-flashnext-twins-direct' "$config_capture" || fail 'Herdr worker did not pass configured model value'
+
+printf 'PROVIDER=home-llm\n' >"$config_root/.sub_agent_conf"
+if malformed_output="$(cd "$config_root" && FAKE_GIT_ROOT="$config_root" run_worker "$TMPDIR_TEST/malformed.txt" 2>&1)"; then
+  fail 'Herdr worker accepted incomplete .sub_agent_conf'
+fi
+grep -q '.sub_agent_conf requires both PROVIDER and MODEL' <<<"$malformed_output" \
+  || fail 'Herdr worker did not explain incomplete .sub_agent_conf'
+
+cat >"$config_root/.sub_agent_conf" <<'EOF'
+PROVIDER=home-llm
+MODEL=unknown-model
+EOF
+if unavailable_output="$(cd "$config_root" && FAKE_GIT_ROOT="$config_root" run_worker "$TMPDIR_TEST/unavailable.txt" 2>&1)"; then
+  fail 'Herdr worker accepted unavailable .sub_agent_conf model'
+fi
+grep -q '.sub_agent_conf model is unavailable: home-llm/unknown-model' <<<"$unavailable_output" \
+  || fail 'Herdr worker did not explain unavailable .sub_agent_conf model'
+
+printf '# no selection\n\n' >"$config_root/.sub_agent_conf"
+if comment_only_output="$(cd "$config_root" && FAKE_GIT_ROOT="$config_root" run_worker "$TMPDIR_TEST/comment-only.txt" 2>&1)"; then
+  fail 'Herdr worker accepted comment-only .sub_agent_conf'
+fi
+grep -q '.sub_agent_conf requires both PROVIDER and MODEL' <<<"$comment_only_output" \
+  || fail 'Herdr worker did not explain comment-only .sub_agent_conf'
+
+cat >"$config_root/.sub_agent_conf" <<'EOF'
+PROVIDER=home-llm
+PROVIDER=other-llm
+MODEL=qwen38-flashnext-twins-direct
+EOF
+if duplicate_output="$(cd "$config_root" && FAKE_GIT_ROOT="$config_root" run_worker "$TMPDIR_TEST/duplicate.txt" 2>&1)"; then
+  fail 'Herdr worker accepted duplicate .sub_agent_conf key'
+fi
+grep -q 'invalid .sub_agent_conf PROVIDER line: PROVIDER=other-llm' <<<"$duplicate_output" \
+  || fail 'Herdr worker did not explain duplicate .sub_agent_conf key'
+
+non_git_capture="$TMPDIR_TEST/non-git.txt"
+FAKE_GIT_ROOT='' run_worker "$non_git_capture"
+grep -qx 'openai-codex/gpt-5.6-terra' "$non_git_capture" \
+  || fail 'Herdr worker did not retain default selection outside Git'
 
 if override_output="$(PATH="$TMPDIR_TEST/bin:$PATH" HOME="$TMPDIR_TEST/home" PI_PROFILE_CAPTURE="$TMPDIR_TEST/override.txt" "$herdr_worker" --mode editable -- --model unsafe 2>&1)"; then
   fail 'Herdr worker accepted a caller model override'

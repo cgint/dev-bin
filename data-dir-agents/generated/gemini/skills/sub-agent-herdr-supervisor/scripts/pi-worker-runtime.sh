@@ -80,18 +80,67 @@ pi_worker_runtime_main() {
     extension_args+=(-e "$trusted_extension")
   fi
 
+  local config_root config_path config_line config_provider="" config_model=""
+  config_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+  if [[ -n "$config_root" && -f "$config_root/.sub_agent_conf" ]]; then
+    config_path="$config_root/.sub_agent_conf"
+    while IFS= read -r config_line || [[ -n "$config_line" ]]; do
+      case "$config_line" in
+        ""|\#*) ;;
+        PROVIDER=*)
+          [[ -z "$config_provider" && "$config_line" =~ ^PROVIDER=([A-Za-z0-9._-]+)$ ]] || {
+            printf 'worker launcher: invalid .sub_agent_conf PROVIDER line: %s\n' "$config_line" >&2
+            exit 2
+          }
+          config_provider="${BASH_REMATCH[1]}"
+          ;;
+        MODEL=*)
+          [[ -z "$config_model" && "$config_line" =~ ^MODEL=([A-Za-z0-9._-]+)$ ]] || {
+            printf 'worker launcher: invalid .sub_agent_conf MODEL line: %s\n' "$config_line" >&2
+            exit 2
+          }
+          config_model="${BASH_REMATCH[1]}"
+          ;;
+        *)
+          printf 'worker launcher: invalid .sub_agent_conf line: %s\n' "$config_line" >&2
+          exit 2
+          ;;
+      esac
+    done <"$config_path"
+
+    [[ -n "$config_provider" && -n "$config_model" ]] || {
+      printf 'worker launcher: .sub_agent_conf requires both PROVIDER and MODEL\n' >&2
+      exit 2
+    }
+
+    local available_models
+    if ! available_models="$(pi-profile "$PI_WORKER_PROFILE" --list-models "$config_provider/$config_model" 2>&1)" ||
+      ! awk -v provider="$config_provider" -v model="$config_model" '$1 == provider && $2 == model { found = 1 } END { exit !found }' <<<"$available_models"; then
+      printf 'worker launcher: .sub_agent_conf model is unavailable: %s/%s\n' "$config_provider" "$config_model" >&2
+      exit 1
+    fi
+  fi
+
   local subagent_model
-  if pi-profile "$PI_WORKER_PROFILE" auth check --provider openai-codex 2>/dev/null | grep -qx 'ready'; then
-    subagent_model='openai-codex/gpt-5.6-terra'
-  elif pi-profile "$PI_WORKER_PROFILE" auth check --provider github-copilot 2>/dev/null | grep -qx 'ready'; then
-    subagent_model='github-copilot/gpt-5.6-terra'
-  else
-    printf 'worker launcher: neither openai-codex nor github-copilot is authenticated\n' >&2
-    exit 1
+  if [[ -z "$config_provider" ]]; then
+    if pi-profile "$PI_WORKER_PROFILE" auth check --provider openai-codex 2>/dev/null | grep -qx 'ready'; then
+      subagent_model='openai-codex/gpt-5.6-terra'
+    elif pi-profile "$PI_WORKER_PROFILE" auth check --provider github-copilot 2>/dev/null | grep -qx 'ready'; then
+      subagent_model='github-copilot/gpt-5.6-terra'
+    else
+      printf 'worker launcher: neither openai-codex nor github-copilot is authenticated\n' >&2
+      exit 1
+    fi
   fi
 
   local -a pi_args=("$PI_WORKER_PROFILE" -ne)
-  pi_args+=("${extension_args[@]}" --model "$subagent_model" --thinking minimal)
+  pi_args+=("${extension_args[@]}")
+  if [[ -n "$config_provider" ]]; then
+    pi_args+=(--provider "$config_provider" --model "$config_model")
+  else
+    pi_args+=(--model "$subagent_model")
+  fi
+  pi_args+=(--thinking minimal)
   if [ "$mode" = "readonly" ]; then
     pi_args+=(--tools read,bash,grep,find,ls --dm-read)
   fi

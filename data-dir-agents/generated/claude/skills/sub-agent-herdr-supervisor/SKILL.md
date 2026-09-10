@@ -13,6 +13,19 @@ Use CMUX only for outer desktop layout and separately CMUX-managed workers. Neve
 
 **Prerequisite:** install Herdr's Pi lifecycle integration in the worker profile before relying on lifecycle reports. Workers use `PI_WORKER_PROFILE` when set, otherwise `minimal`; the selected profile must contain `agent/extensions/herdr-agent-state.ts`. For the default, run `PI_CODING_AGENT_DIR="$HOME/.pi/profiles/minimal/agent" herdr integration install pi`; use the selected profile's agent directory when overriding `PI_WORKER_PROFILE`. Herdr manages and overwrites this extension—do not copy it into this skill. Herdr can report `working`, `idle`, `blocked`, and `done`; `screen_detection_skipped: true` is expected for direct Pi reporting. Never infer completion from a terminal spinner or visual terminal appearance.
 
+## Per-repository worker model
+
+A repository may commit `.sub_agent_conf` at its Git root to select the model for every Herdr worker launched within that repository:
+
+```ini
+PROVIDER=home-llm
+MODEL=qwen38-flashnext-twins-direct
+```
+
+The launcher checks exactly `<Git-root>/.sub_agent_conf`, so a worker launched from a nested directory uses its repository policy. It never traverses above that Git root or reads arbitrary parent-directory configuration. The file may contain blank lines and full-line `#` comments only in addition to one `PROVIDER` and one `MODEL` line. Values are restricted to letters, numbers, `.`, `_`, and `-`; never put shell syntax, credentials, or quoted values in this file.
+
+When the file is present, both keys are required and the selected worker profile must expose that exact provider/model pair. An invalid or unavailable pair fails the launch—there is no fallback to the default cloud models. When the file is absent (or the launch cwd is outside a Git repository), workers retain the authenticated OpenAI Codex, then GitHub Copilot default selection.
+
 ## Delegation threshold
 
 Use a subagent only when independent evidence, isolation, parallelism, or bounded execution provides more value than the launch, inspection, and cleanup overhead. Do trivial reads, obvious one-line edits, and immediate local checks directly. Do not delegate merely because a task can be split.
