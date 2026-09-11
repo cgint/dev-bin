@@ -23,6 +23,16 @@ pi_worker_herdr_reporter_path() {
   printf '%s/extensions/herdr-agent-state.ts\n' "$(pi_worker_profile_agent_dir)"
 }
 
+# Some providers register their models from inside a Pi extension, so their
+# models are invisible under -ne unless that extension is loaded explicitly.
+# This map is the launcher's own trusted set: .sub_agent_conf selects a provider
+# but can never introduce extension sources.
+pi_worker_provider_extensions() {
+  case "$1" in
+    home-llm) printf '%s\n' 'https://github.com/cgint/pi-olla-autodetect' ;;
+  esac
+}
+
 pi_worker_runtime_main() {
   pi_worker_profile_agent_dir >/dev/null || exit $?
 
@@ -119,9 +129,21 @@ pi_worker_runtime_main() {
       printf 'worker launcher: .sub_agent_conf requires both PROVIDER and MODEL\n' >&2
       exit 2
     }
+  fi
 
+  if [[ -n "$config_provider" ]]; then
+    local provider_extension
+    while IFS= read -r provider_extension; do
+      if [ -n "$provider_extension" ]; then
+        extension_args+=(-e "$provider_extension")
+      fi
+    done < <(pi_worker_provider_extensions "$config_provider")
+
+    # Availability must be probed under the same discovery mode and explicit
+    # extensions as the eventual launch, otherwise the probe can succeed while
+    # the worker itself cannot resolve the provider.
     local available_models
-    if ! available_models="$(pi-profile "$PI_WORKER_PROFILE" --list-models "$config_provider/$config_model" 2>&1)" ||
+    if ! available_models="$(pi-profile "$PI_WORKER_PROFILE" -ne "${extension_args[@]}" --list-models "$config_provider/$config_model" 2>&1)" ||
       ! awk -v provider="$config_provider" -v model="$config_model" '$1 == provider && $2 == model { found = 1 } END { exit !found }' <<<"$available_models"; then
       printf 'worker launcher: .sub_agent_conf model is unavailable: %s/%s\n' "$config_provider" "$config_model" >&2
       exit 1

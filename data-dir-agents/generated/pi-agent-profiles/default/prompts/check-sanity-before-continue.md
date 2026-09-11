@@ -3,6 +3,7 @@
 ## General instruction now
 - All sound?
 - No hacks and workarounds?
+- Are you happy with the result ?
 - Any objections to the current state?
 - Anything left to do before we have this part finished and can go on to the next?
 

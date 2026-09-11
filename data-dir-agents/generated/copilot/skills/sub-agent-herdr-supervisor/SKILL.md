@@ -27,6 +27,8 @@ The launcher checks exactly `<Git-root>/.sub_agent_conf`, so a worker launched f
 
 `PROVIDER` and `MODEL` are required. When `THINKING` is set, the launcher passes it to Pi; when omitted, Pi uses the selected worker profile's default thinking level. A provider can still reject an otherwise valid Pi thinking level, so choose a level verified for that model. An invalid or unavailable provider/model pair fails the launch—there is no fallback to the default cloud models. When the file is absent (or the launch cwd is outside a Git repository), workers retain the authenticated OpenAI Codex, then GitHub Copilot default selection with `minimal` thinking.
 
+Workers start with extension discovery disabled, so a provider whose models are registered by a Pi extension is invisible unless that extension is loaded explicitly. The launcher keeps its own trusted provider-to-extension map and loads those extensions itself; `home-llm` requires `pi-olla-autodetect`. `.sub_agent_conf` selects a provider and can never add extensions—any additional key is rejected. Model availability is probed with the same discovery mode and explicit extensions as the launch, so a provider the worker could not actually resolve fails the launch up front instead of reporting a model as available.
+
 ## Delegation threshold
 
 Use a subagent only when independent evidence, isolation, parallelism, or bounded execution provides more value than the launch, inspection, and cleanup overhead. Do trivial reads, obvious one-line edits, and immediate local checks directly. Do not delegate merely because a task can be split.

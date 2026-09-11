@@ -32,8 +32,52 @@ mkdir -p "$TMPDIR_TEST/bin" \
 cat >"$TMPDIR_TEST/bin/pi-profile" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
-if [[ "$2" == "--list-models" ]]; then
-  if [[ "${MODEL_AVAILABLE:-}" == "$3" ]]; then
+# Emulate Pi model discovery so the launcher cannot pass availability by
+# accident: under -ne a provider whose models come from an extension is visible
+# only when that extension is loaded explicitly with -e.
+probe_args=("$@")
+list_query=''
+list_models=false
+discovery=true
+explicit_extensions=()
+probe_index=0
+while [ "$probe_index" -lt "${#probe_args[@]}" ]; do
+  probe_argument="${probe_args[$probe_index]}"
+  case "$probe_argument" in
+    --list-models)
+      list_models=true
+      probe_next="${probe_args[$((probe_index + 1))]:-}"
+      case "$probe_next" in ''|-*) ;; *) list_query="$probe_next" ;; esac
+      ;;
+    -ne|--no-extensions) discovery=false ;;
+    -e|--extension)
+      probe_index=$((probe_index + 1))
+      explicit_extensions+=("${probe_args[$probe_index]:-}")
+      ;;
+    --extension=*) explicit_extensions+=("${probe_argument#--extension=}") ;;
+    -e?*) explicit_extensions+=("${probe_argument#-e}") ;;
+  esac
+  probe_index=$((probe_index + 1))
+done
+
+if [ "$list_models" = true ]; then
+  if [ -n "${PI_PROFILE_LIST_CAPTURE:-}" ]; then
+    printf '%s\n' "$@" >"$PI_PROFILE_LIST_CAPTURE"
+  fi
+  if [ "$discovery" = false ]; then
+    case "${list_query%%/*}" in
+      home-llm)
+        extension_seen=false
+        for loaded_extension in ${explicit_extensions[@]+"${explicit_extensions[@]}"}; do
+          case "$loaded_extension" in
+            *pi-olla-autodetect*) extension_seen=true ;;
+          esac
+        done
+        [ "$extension_seen" = true ] || exit 0
+        ;;
+    esac
+  fi
+  if [[ "${MODEL_AVAILABLE:-}" == "$list_query" ]]; then
     printf 'provider  model\n%s\n' "${MODEL_AVAILABLE//\//  }"
   fi
   exit 0
@@ -138,10 +182,18 @@ MODEL=qwen38-flashnext-twins-direct
 THINKING=medium
 EOF
 config_capture="$TMPDIR_TEST/config.txt"
+config_list_capture="$TMPDIR_TEST/config-list.txt"
 (
   cd "$config_root/nested"
-  FAKE_GIT_ROOT="$config_root" MODEL_AVAILABLE='home-llm/qwen38-flashnext-twins-direct' run_worker "$config_capture"
+  PI_PROFILE_LIST_CAPTURE="$config_list_capture" FAKE_GIT_ROOT="$config_root" \
+    MODEL_AVAILABLE='home-llm/qwen38-flashnext-twins-direct' run_worker "$config_capture"
 )
+grep -Fqx 'https://github.com/cgint/pi-olla-autodetect' "$config_capture" \
+  || fail 'Herdr worker did not load the extension that registers the configured provider'
+grep -qx -- '-ne' "$config_list_capture" \
+  || fail 'availability probe did not use the worker discovery mode'
+grep -Fqx 'https://github.com/cgint/pi-olla-autodetect' "$config_list_capture" \
+  || fail 'availability probe did not load the provider extension used by the worker'
 grep -qx -- '--provider' "$config_capture" || fail 'Herdr worker did not pass configured provider'
 grep -qx 'home-llm' "$config_capture" || fail 'Herdr worker did not pass configured provider value'
 grep -qx -- '--model' "$config_capture" || fail 'Herdr worker did not pass configured model'
@@ -179,6 +231,32 @@ if malformed_output="$(cd "$config_root" && FAKE_GIT_ROOT="$config_root" run_wor
 fi
 grep -q '.sub_agent_conf requires both PROVIDER and MODEL' <<<"$malformed_output" \
   || fail 'Herdr worker did not explain incomplete .sub_agent_conf'
+
+# A provider whose models are statically known must launch without any mapped
+# extension, so the trusted map cannot become a hard dependency or a gate.
+cat >"$config_root/.sub_agent_conf" <<'EOF'
+PROVIDER=static-llm
+MODEL=known-model
+EOF
+static_capture="$TMPDIR_TEST/static.txt"
+FAKE_GIT_ROOT="$config_root" MODEL_AVAILABLE='static-llm/known-model' run_worker "$static_capture"
+grep -qx 'static-llm' "$static_capture" || fail 'Herdr worker rejected a provider without a mapped extension'
+grep -Fq 'pi-olla-autodetect' "$static_capture" \
+  && fail 'Herdr worker loaded an unrelated provider extension'
+
+# Repository configuration selects a provider; it must never add extensions.
+cat >"$config_root/.sub_agent_conf" <<'EOF'
+PROVIDER=home-llm
+MODEL=qwen38-flashnext-twins-direct
+EXTENSIONS=https://example.invalid/untrusted
+EOF
+if injected_output="$(cd "$config_root" && FAKE_GIT_ROOT="$config_root" run_worker "$TMPDIR_TEST/injected.txt" 2>&1)"; then
+  fail '.sub_agent_conf was allowed to introduce an extension'
+fi
+grep -q 'invalid .sub_agent_conf line: EXTENSIONS=https://example.invalid/untrusted' <<<"$injected_output" \
+  || fail '.sub_agent_conf did not reject an extension key'
+grep -Fq 'example.invalid/untrusted' "$TMPDIR_TEST/injected.txt" 2>/dev/null \
+  && fail 'untrusted extension reached the worker invocation'
 
 cat >"$config_root/.sub_agent_conf" <<'EOF'
 PROVIDER=home-llm
