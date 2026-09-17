@@ -338,7 +338,8 @@ jq -e --arg brief "$brief" --arg report "$report" \
   || fail '--brief launch did not preserve its structured JSON contract'
 shell_quote_for_test() {
   local value="$1"
-  value="${value//\'/\'\"\'\"\'}"
+  local quoted_apostrophe="'\"'\"'"
+  value=${value//\'/$quoted_apostrophe}
   printf "'%s'" "$value"
 }
 expected_command="$(shell_quote_for_test "$SCRIPT_DIR/herdr-worker.sh") $(shell_quote_for_test --mode) $(shell_quote_for_test editable) $(shell_quote_for_test --) $(shell_quote_for_test "$brief") $(shell_quote_for_test "Complete the brief exactly and write the required report to $report.")"
@@ -359,6 +360,26 @@ printf '%s' "$unicode_command" | iconv -f UTF-8 -t UTF-8 >/dev/null \
   || fail 'starter submitted an invalid UTF-8 command for a Unicode instruction'
 grep -Fq "'$unicode_instruction'" <<<"$unicode_command" \
   || fail 'starter did not preserve the Unicode instruction in the shell command'
+
+# A literal apostrophe must use the POSIX '"'"' idiom, without introducing
+# backslashes. Parse the complete command with shlex, then compare the final
+# argv element byte-for-byte with the original UTF-8 instruction.
+apostrophe_unicode_instruction="Mercury → Ash: it's a test"
+: >"$TMPDIR_TEST/herdr.log"
+(
+  export LC_ALL=C.UTF-8
+  run_starter --name apostrophe-unicode-worker --mode editable --brief "$brief" --report "$report" \
+    --instruction "$apostrophe_unicode_instruction" --cwd "$TMPDIR_TEST" --timeout-seconds 1
+) >/dev/null || fail 'starter did not submit a valid command for an apostrophe and Unicode instruction'
+apostrophe_unicode_command="$(cut -f3- "$TMPDIR_TEST/herdr.log")"
+printf '%s' "$apostrophe_unicode_command" | iconv -f UTF-8 -t UTF-8 >/dev/null \
+  || fail 'starter submitted invalid UTF-8 for an apostrophe and Unicode instruction'
+printf '%s' "$apostrophe_unicode_command" | grep -Fq '\' \
+  && fail 'starter used a backslash in the apostrophe and Unicode command'
+parsed_instruction="$(python3 -c 'import shlex, sys; print(shlex.split(sys.argv[1])[-1], end="")' "$apostrophe_unicode_command")" \
+  || fail 'shlex could not parse the apostrophe and Unicode command'
+[ "$parsed_instruction" = "$apostrophe_unicode_instruction" ] \
+  || fail 'shlex did not round-trip the apostrophe and Unicode instruction byte-exactly'
 
 if missing_source_output="$(run_starter --name missing-source --mode editable --report "$report" --cwd "$TMPDIR_TEST" 2>&1)"; then
   fail 'starter accepted a launch without --handoff or --brief'

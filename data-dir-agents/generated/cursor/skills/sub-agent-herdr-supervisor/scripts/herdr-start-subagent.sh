@@ -183,7 +183,8 @@ pane_id="$(jq -er '.result.pane.pane_id' <<<"$split_json")" \
 # the standard '"'"' sequence represents a literal single quote.
 shell_quote() {
   local value="$1"
-  value="${value//\'/\'\"\'\"\'}"
+  local quoted_apostrophe="'\"'\"'"
+  value=${value//\'/$quoted_apostrophe}
   printf "'%s'" "$value"
 }
 
