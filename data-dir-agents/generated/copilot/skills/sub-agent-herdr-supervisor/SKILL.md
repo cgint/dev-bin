@@ -168,6 +168,8 @@ Do not accept a worker's "checks passed" self-report as evidence. Independently 
 
 The supervisor is the operating owner of every pane it creates, while the lead remains the root task owner of every registered pane. Capture the required terminal report with `herdr agent read` **before** closing a worker pane; terminal retention after closure is not assumed. Close a worker only after its terminal output, report/artifact, diff, and required checks have been inspected and the controller has concluded no direct follow-up remains. Record the closure in the live child-pane registry immediately.
 
+Pane disposition is a deliberate close-or-keep decision made in the same turn the supervisor inspects a terminal lifecycle state. Keep the pane when the worker's retained context is beneficial for follow-ups in ongoing collaboration. Close the pane when the task is a clear one-off, when a fresh context is preferable, or when the collaboration thread concludes. Never leave panes unmanaged or deferred to session end.
+
 The lead then inspects and accepts the controller report before closing the controller pane. If a controller is unavailable, the lead may use the named registry to capture a worker’s evidence and close that worker directly. Do not close either level merely because it reports success.
 
 After the required evidence-based closure decision, close the operating owner’s pane immediately:
