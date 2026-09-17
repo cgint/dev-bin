@@ -24,14 +24,23 @@ assert_capture() {
   [ "$actual" = "$expected" ] || fail "unexpected Pi invocation: $actual"
 }
 
-mkdir -p "$TMPDIR_TEST/bin" \
+mkdir -p "$TMPDIR_TEST/bin" "$TMPDIR_TEST/direct-bin" \
   "$TMPDIR_TEST/home/.pi/profiles/minimal/agent/extensions" \
-  "$TMPDIR_TEST/home/.pi/profiles/partner/agent/extensions"
+  "$TMPDIR_TEST/home/.pi/profiles/partner/agent/extensions" \
+  "$TMPDIR_TEST/direct-home/.pi/agent/extensions"
 : >"$TMPDIR_TEST/home/.pi/profiles/minimal/agent/extensions/herdr-agent-state.ts"
 : >"$TMPDIR_TEST/home/.pi/profiles/partner/agent/extensions/herdr-agent-state.ts"
-cat >"$TMPDIR_TEST/bin/pi-profile" <<'EOF'
+: >"$TMPDIR_TEST/direct-home/.pi/agent/extensions/herdr-agent-state.ts"
+cat >"$TMPDIR_TEST/bin/pi" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
+if [ -n "${PI_INVOCATION_CAPTURE:-}" ]; then
+  {
+    printf '%s' "$(basename "$0")"
+    printf '\t%s' "$@"
+    printf '\n'
+  } >>"$PI_INVOCATION_CAPTURE"
+fi
 # Emulate Pi model discovery so the launcher cannot pass availability by
 # accident: under -ne a provider whose models come from an extension is visible
 # only when that extension is loaded explicitly with -e.
@@ -82,17 +91,26 @@ if [ "$list_models" = true ]; then
   fi
   exit 0
 fi
-if [[ "$2 $3 $4" == "auth check --provider" ]]; then
-  case "$5" in
-    openai-codex) [ "${AUTH_OPENAI:-ready}" = ready ] && printf 'ready\n' ;;
-    github-copilot) [ "${AUTH_COPILOT:-unready}" = ready ] && printf 'ready\n' ;;
-  esac
-  exit 0
-fi
+for ((auth_index = 1; auth_index <= $# - 3; auth_index++)); do
+  check_index=$((auth_index + 1))
+  provider_flag_index=$((auth_index + 2))
+  provider_index=$((auth_index + 3))
+  if [[ "${!auth_index}" == auth ]] &&
+    [[ "${!check_index}" == check ]] &&
+    [[ "${!provider_flag_index}" == --provider ]]; then
+    case "${!provider_index}" in
+      openai-codex) [ "${AUTH_OPENAI:-ready}" = ready ] && printf 'ready\n' ;;
+      github-copilot) [ "${AUTH_COPILOT:-unready}" = ready ] && printf 'ready\n' ;;
+    esac
+    exit 0
+  fi
+done
 printf 'PI_WRITE_GUARD_DIRS=%s\n' "${PI_WRITE_GUARD_DIRS:-}" >"$PI_PROFILE_CAPTURE"
 printf '%s\n' "$@" >>"$PI_PROFILE_CAPTURE"
 EOF
-chmod +x "$TMPDIR_TEST/bin/pi-profile"
+chmod +x "$TMPDIR_TEST/bin/pi"
+ln -s pi "$TMPDIR_TEST/bin/pi-profile"
+ln -s ../bin/pi "$TMPDIR_TEST/direct-bin/pi"
 
 compose_worker() {
   local package="$TMPDIR_TEST/herdr/scripts"
@@ -108,6 +126,15 @@ herdr_worker="$(compose_worker)"
 run_worker() {
   local capture="$1"
   PATH="$TMPDIR_TEST/bin:$PATH" HOME="$TMPDIR_TEST/home" PI_PROFILE_CAPTURE="$capture" \
+    AUTH_OPENAI="${AUTH_OPENAI:-ready}" AUTH_COPILOT="${AUTH_COPILOT:-unready}" \
+    MODEL_AVAILABLE="${MODEL_AVAILABLE:-}" FAKE_GIT_ROOT="${FAKE_GIT_ROOT:-}" \
+    "$herdr_worker" --mode readonly -- @/tmp/handoff.md 'Execute the bounded task.'
+}
+
+run_direct_worker() {
+  local capture="$1"
+  PATH="$TMPDIR_TEST/direct-bin:/usr/bin:/bin" HOME="$TMPDIR_TEST/direct-home" PI_PROFILE_CAPTURE="$capture" \
+    PI_INVOCATION_CAPTURE="${PI_INVOCATION_CAPTURE:-}" \
     AUTH_OPENAI="${AUTH_OPENAI:-ready}" AUTH_COPILOT="${AUTH_COPILOT:-unready}" \
     MODEL_AVAILABLE="${MODEL_AVAILABLE:-}" FAKE_GIT_ROOT="${FAKE_GIT_ROOT:-}" \
     "$herdr_worker" --mode readonly -- @/tmp/handoff.md 'Execute the bounded task.'
@@ -157,6 +184,28 @@ grep -qx 'partner' "$partner_capture" \
 grep -qx "$TMPDIR_TEST/home/.pi/profiles/partner/agent/extensions/herdr-agent-state.ts" "$partner_capture" \
   || fail 'Herdr worker did not derive its reporter from PI_WORKER_PROFILE'
 
+direct_capture="$TMPDIR_TEST/direct.txt"
+direct_invocations="$TMPDIR_TEST/direct-invocations.txt"
+PI_INVOCATION_CAPTURE="$direct_invocations" run_direct_worker "$direct_capture"
+assert_capture "$direct_capture" \
+  'PI_WRITE_GUARD_DIRS=.' \
+  -ne -e 'https://github.com/cgint/pi-focus-guard' \
+  -e "$TMPDIR_TEST/direct-home/.pi/agent/extensions/herdr-agent-state.ts" \
+  --model openai-codex/gpt-5.6-terra --thinking minimal \
+  --tools read,bash,grep,find,ls --dm-read \
+  @/tmp/handoff.md 'Execute the bounded task.'
+grep -Fqx $'pi\tauth\tcheck\t--provider\topenai-codex' "$direct_invocations" \
+  || fail 'direct-Pi worker did not use plain pi for authentication'
+if grep -Fq $'pi\tdefault\t' "$direct_invocations"; then
+  fail 'direct-Pi worker passed a profile name to plain pi'
+fi
+
+if direct_profile_output="$(PI_WORKER_PROFILE=partner run_direct_worker "$TMPDIR_TEST/direct-invalid.txt" 2>&1)"; then
+  fail 'direct-Pi worker accepted a non-default PI_WORKER_PROFILE'
+fi
+grep -q 'pi-profile is unavailable; cannot select non-default profile: partner' <<<"$direct_profile_output" \
+  || fail 'direct-Pi worker did not explain the rejected profile'
+
 if invalid_profile_output="$(PI_WORKER_PROFILE='../unsafe' run_worker "$TMPDIR_TEST/invalid.txt" 2>&1)"; then
   fail 'Herdr worker accepted an invalid PI_WORKER_PROFILE'
 fi
@@ -172,6 +221,7 @@ fi
 exit 1
 EOF
 chmod +x "$TMPDIR_TEST/bin/git"
+ln -s ../bin/git "$TMPDIR_TEST/direct-bin/git"
 
 config_root="$TMPDIR_TEST/repository"
 mkdir -p "$config_root/nested"
@@ -194,6 +244,26 @@ grep -qx -- '-ne' "$config_list_capture" \
   || fail 'availability probe did not use the worker discovery mode'
 grep -Fqx 'https://github.com/cgint/pi-olla-autodetect' "$config_list_capture" \
   || fail 'availability probe did not load the provider extension used by the worker'
+
+direct_config_capture="$TMPDIR_TEST/direct-config.txt"
+direct_config_list_capture="$TMPDIR_TEST/direct-config-list.txt"
+direct_config_invocations="$TMPDIR_TEST/direct-config-invocations.txt"
+(
+  cd "$config_root/nested"
+  PI_INVOCATION_CAPTURE="$direct_config_invocations" PI_PROFILE_LIST_CAPTURE="$direct_config_list_capture" \
+    FAKE_GIT_ROOT="$config_root" MODEL_AVAILABLE='home-llm/qwen38-flashnext-twins-direct' \
+    run_direct_worker "$direct_config_capture"
+)
+grep -qx -- '-ne' "$direct_config_list_capture" \
+  || fail 'direct-Pi availability probe did not use the worker discovery mode'
+grep -Fqx 'https://github.com/cgint/pi-olla-autodetect' "$direct_config_list_capture" \
+  || fail 'direct-Pi availability probe did not load the provider extension'
+grep -Fq $'pi\t-ne\t-e\thttps://github.com/cgint/pi-focus-guard' "$direct_config_invocations" \
+  || fail 'direct-Pi availability probe did not use plain pi'
+if grep -Fq $'pi\tdefault\t' "$direct_config_invocations"; then
+  fail 'direct-Pi availability probe passed a profile name to plain pi'
+fi
+
 grep -qx -- '--provider' "$config_capture" || fail 'Herdr worker did not pass configured provider'
 grep -qx 'home-llm' "$config_capture" || fail 'Herdr worker did not pass configured provider value'
 grep -qx -- '--model' "$config_capture" || fail 'Herdr worker did not pass configured model'

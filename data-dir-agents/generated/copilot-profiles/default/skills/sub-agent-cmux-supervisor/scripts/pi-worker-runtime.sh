@@ -1,8 +1,18 @@
 #!/usr/bin/env bash
-# Shared Pi worker safety/runtime behavior. PI_WORKER_PROFILE selects the
-# deployed Pi profile for every worker and defaults to the minimal profile.
+# Shared Pi worker safety/runtime behavior. Prefer named Pi profiles when the
+# pi-profile wrapper is installed; otherwise use the direct ~/.pi/agent layout.
 
-readonly PI_WORKER_PROFILE="${PI_WORKER_PROFILE:-minimal}"
+if command -v pi-profile >/dev/null 2>&1; then
+  readonly PI_WORKER_PROFILE="${PI_WORKER_PROFILE:-minimal}"
+  readonly -a PI_WORKER_COMMAND=(pi-profile "$PI_WORKER_PROFILE")
+else
+  if [[ -n "${PI_WORKER_PROFILE:-}" && "$PI_WORKER_PROFILE" != "default" ]]; then
+    printf 'worker launcher: pi-profile is unavailable; cannot select non-default profile: %s\n' "$PI_WORKER_PROFILE" >&2
+    exit 2
+  fi
+  readonly PI_WORKER_PROFILE="default"
+  readonly -a PI_WORKER_COMMAND=(pi)
+fi
 
 pi_worker_profile_agent_dir() {
   case "$PI_WORKER_PROFILE" in
@@ -143,7 +153,7 @@ pi_worker_runtime_main() {
     # extensions as the eventual launch, otherwise the probe can succeed while
     # the worker itself cannot resolve the provider.
     local available_models
-    if ! available_models="$(pi-profile "$PI_WORKER_PROFILE" -ne "${extension_args[@]}" --list-models "$config_provider/$config_model" 2>&1)" ||
+    if ! available_models="$("${PI_WORKER_COMMAND[@]}" -ne "${extension_args[@]}" --list-models "$config_provider/$config_model" 2>&1)" ||
       ! awk -v provider="$config_provider" -v model="$config_model" '$1 == provider && $2 == model { found = 1 } END { exit !found }' <<<"$available_models"; then
       printf 'worker launcher: .sub_agent_conf model is unavailable: %s/%s\n' "$config_provider" "$config_model" >&2
       exit 1
@@ -152,9 +162,9 @@ pi_worker_runtime_main() {
 
   local subagent_model
   if [[ -z "$config_provider" ]]; then
-    if pi-profile "$PI_WORKER_PROFILE" auth check --provider openai-codex 2>/dev/null | grep -qx 'ready'; then
+    if "${PI_WORKER_COMMAND[@]}" auth check --provider openai-codex 2>/dev/null | grep -qx 'ready'; then
       subagent_model='openai-codex/gpt-5.6-terra'
-    elif pi-profile "$PI_WORKER_PROFILE" auth check --provider github-copilot 2>/dev/null | grep -qx 'ready'; then
+    elif "${PI_WORKER_COMMAND[@]}" auth check --provider github-copilot 2>/dev/null | grep -qx 'ready'; then
       subagent_model='github-copilot/gpt-5.6-terra'
     else
       printf 'worker launcher: neither openai-codex nor github-copilot is authenticated\n' >&2
@@ -162,7 +172,7 @@ pi_worker_runtime_main() {
     fi
   fi
 
-  local -a pi_args=("$PI_WORKER_PROFILE" -ne)
+  local -a pi_args=(-ne)
   pi_args+=("${extension_args[@]}")
   if [[ -n "$config_provider" ]]; then
     pi_args+=(--provider "$config_provider" --model "$config_model")
@@ -178,5 +188,5 @@ pi_worker_runtime_main() {
 
   PI_WRITE_GUARD_DIRS="."
   export PI_WRITE_GUARD_DIRS
-  exec pi-profile "${pi_args[@]}" "$@"
+  exec "${PI_WORKER_COMMAND[@]}" "${pi_args[@]}" "$@"
 }

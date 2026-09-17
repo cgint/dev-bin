@@ -29,7 +29,10 @@ HOSTS_DIR="$DATA_DIR/definitions/hosts"
 DEF_SKILLS="$DATA_DIR/definitions/skills"
 DEF_PROMPTS="$DATA_DIR/definitions/prompts"
 DEF_AGENTS="$DATA_DIR/definitions/agents"
+SUPERVISOR_RUNTIME="$DATA_DIR/definitions/runtime/pi-worker-runtime.sh"
 STAGE="$DATA_DIR/.stage"
+
+# Herdr and CMUX supervisor skills source this shared runtime beside their launchers.
 
 usage() {
   cat <<'EOF'
@@ -134,6 +137,15 @@ PY
     [ -n "$s" ] || continue
     if [ -d "$DEF_SKILLS/$s" ]; then
       cp -R "$DEF_SKILLS/$s" "$stage/skills/"
+      case "$s" in
+        sub-agent-cmux-supervisor|sub-agent-herdr-supervisor)
+          if [ -f "$SUPERVISOR_RUNTIME" ]; then
+            cp "$SUPERVISOR_RUNTIME" "$stage/skills/$s/scripts/"
+          else
+            missing="$missing runtime/pi-worker-runtime.sh"
+          fi
+          ;;
+      esac
     else
       missing="$missing $s"
     fi
