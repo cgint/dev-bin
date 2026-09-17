@@ -176,13 +176,28 @@ split_json="$(herdr pane split --current --direction "$direction" --cwd "$cwd" -
 pane_id="$(jq -er '.result.pane.pane_id' <<<"$split_json")" \
   || fail 1 "Herdr pane creation returned no pane ID"
 
-# printf %q produces a single shell command whose arguments preserve paths and
-# instruction text. pane run then submits that command atomically with Enter.
+# Quote each argument for the shell that pane run starts. Do not use printf %q:
+# its output is locale-dependent and, even under C.UTF-8, can preserve only the
+# first byte of a multibyte character while escaping its continuation bytes.
+# Single quotes preserve the original UTF-8 bytes independently of the locale;
+# the standard '"'"' sequence represents a literal single quote.
+shell_quote() {
+  local value="$1"
+  value="${value//\'/\'\"\'\"\'}"
+  printf "'%s'" "$value"
+}
+
+launch_args=("$wrapper" --mode "$mode" --)
 if [[ "$brief_supplied" == true ]]; then
-  printf -v launch_command '%q ' "$wrapper" --mode "$mode" -- "$brief" "$instruction"
+  launch_args+=("$brief" "$instruction")
 else
-  printf -v launch_command '%q ' "$wrapper" --mode "$mode" -- "@$handoff" "$instruction"
+  launch_args+=("@$handoff" "$instruction")
 fi
+
+launch_command=""
+for launch_arg in "${launch_args[@]}"; do
+  launch_command+="$(shell_quote "$launch_arg") "
+done
 launch_command="${launch_command% }"
 herdr pane run "$pane_id" "$launch_command" >/dev/null \
   || fail 1 "Herdr created pane $pane_id but failed to submit the wrapper command; inspect that pane"

@@ -303,7 +303,13 @@ set -euo pipefail
 case "$1 $2" in
   'agent list') printf '{"result":{"agents":[]}}\n' ;;
   'pane split') printf '{"result":{"pane":{"pane_id":"pane-test"}}}\n' ;;
-  'pane run') printf 'pane run\t%s\t%s\n' "$3" "$4" >>"$HERDR_FAKE_LOG" ;;
+  'pane run')
+    # Herdr requires pane-run commands to be valid UTF-8. This deliberately
+    # rejects the mixed raw-byte/octal-escape output formerly made by %q.
+    printf '%s' "$4" | iconv -f UTF-8 -t UTF-8 >/dev/null \
+      || { printf 'argument 4 is not valid UTF-8\n' >&2; exit 65; }
+    printf 'pane run\t%s\t%s\n' "$3" "$4" >>"$HERDR_FAKE_LOG"
+    ;;
   'agent get') printf '{"result":{"agent":{"agent_status":"idle","state_change_seq":3}}}\n' ;;
   'agent rename') : ;;
   *) printf 'unexpected herdr call: %s\n' "$*" >&2; exit 64 ;;
@@ -324,16 +330,35 @@ jq -e --arg handoff "$handoff" --arg report "$report" \
   '.ok == true and .handoff == $handoff and .report == $report and has("brief") | not' <<<"$handoff_payload" >/dev/null \
   || fail '--handoff launch did not preserve its structured JSON contract'
 
-brief='Implement: retain spaces, quotes "and" shell metacharacters $HOME.'
+brief='Implement: retain spaces, quotes "and", an apostrophe (can'"'"'t), and shell metacharacters $HOME.'
 : >"$TMPDIR_TEST/herdr.log"
 brief_payload="$(run_starter --name brief-worker --mode editable --brief "$brief" --report "$report" --cwd "$TMPDIR_TEST" --timeout-seconds 1)"
 jq -e --arg brief "$brief" --arg report "$report" \
   '.ok == true and .brief == $brief and .report == $report and has("handoff") | not' <<<"$brief_payload" >/dev/null \
   || fail '--brief launch did not preserve its structured JSON contract'
-printf -v expected_command '%q ' "$SCRIPT_DIR/herdr-worker.sh" --mode editable -- "$brief" "Complete the brief exactly and write the required report to $report."
-expected_command="${expected_command% }"
+shell_quote_for_test() {
+  local value="$1"
+  value="${value//\'/\'\"\'\"\'}"
+  printf "'%s'" "$value"
+}
+expected_command="$(shell_quote_for_test "$SCRIPT_DIR/herdr-worker.sh") $(shell_quote_for_test --mode) $(shell_quote_for_test editable) $(shell_quote_for_test --) $(shell_quote_for_test "$brief") $(shell_quote_for_test "Complete the brief exactly and write the required report to $report.")"
 grep -Fqx $'pane run\tpane-test\t'"$expected_command" "$TMPDIR_TEST/herdr.log" \
   || fail '--brief launch did not safely preserve wrapper arguments'
+
+# Run under C.UTF-8 because Bash printf %q used to produce an invalid command:
+# the arrow's leading byte was raw but its continuation bytes were octal escapes.
+unicode_instruction='Ash → Mercury: preserve UTF-8 in this instruction.'
+: >"$TMPDIR_TEST/herdr.log"
+(
+  export LC_ALL=C.UTF-8
+  run_starter --name unicode-worker --mode editable --brief "$brief" --report "$report" \
+    --instruction "$unicode_instruction" --cwd "$TMPDIR_TEST" --timeout-seconds 1
+) >/dev/null || fail 'starter did not submit a valid UTF-8 command for a Unicode instruction'
+unicode_command="$(cut -f3- "$TMPDIR_TEST/herdr.log")"
+printf '%s' "$unicode_command" | iconv -f UTF-8 -t UTF-8 >/dev/null \
+  || fail 'starter submitted an invalid UTF-8 command for a Unicode instruction'
+grep -Fq "'$unicode_instruction'" <<<"$unicode_command" \
+  || fail 'starter did not preserve the Unicode instruction in the shell command'
 
 if missing_source_output="$(run_starter --name missing-source --mode editable --report "$report" --cwd "$TMPDIR_TEST" 2>&1)"; then
   fail 'starter accepted a launch without --handoff or --brief'
