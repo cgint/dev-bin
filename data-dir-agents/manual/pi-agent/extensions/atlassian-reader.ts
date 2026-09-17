@@ -699,13 +699,91 @@ async function fetchConfluenceBodyValue(pageId: string, source: ConfluenceBodySo
 	return v;
 }
 
-async function downloadUrlToFile(url: string, destPath: string, signal?: AbortSignal): Promise<{ bytes: number; contentType: string | null }> {
+async function downloadUrlToFile(url: string, destPath: string, signal?: AbortSignal, pageId?: string, attachmentCache?: Map<string, any[]>): Promise<{ bytes: number; contentType: string | null }> {
 	const { email, apiToken } = requireEnv();
+	const auth = basicAuthHeader(email, apiToken);
+
+	// Confluence Cloud UI download routes (/wiki/download/attachments/{pageId}/{filename})
+	// only accept browser session cookies — Basic auth is rejected with HTTP 401.
+	// Resolve those through the REST attachment-download endpoint instead:
+	//   1) GET /wiki/api/v2/pages/{pageId}/attachments -> match filename -> attachment id
+	//   2) GET /wiki/rest/api/content/{pageId}/child/attachment/{attId}/download
+	//      (Basic auth) -> 302 -> signed api.media.atlassian.com URL (public, no auth)
+	const m = url.match(/\/wiki\/download\/attachments\/(\d+)\/([^?#]+)/);
+	if (m && pageId) {
+		const targetPageId = m[1];
+		const rawFilename = m[2];
+		const decodedFilename = decodeURIComponent(rawFilename.replace(/\+/g, " "));
+
+		// 1. Resolve attachment id from the page's attachment listing (cached per page per call).
+		let attachments = attachmentCache?.get(targetPageId);
+		if (!attachments) {
+			attachments = [];
+			let start = 0;
+			const pageSize = 100;
+			for (;;) {
+				const listUrl = new URL(`${DEFAULT_CONFLUENCE_BASE_URL}/wiki/api/v2/pages/${encodeURIComponent(targetPageId)}/attachments`);
+				listUrl.searchParams.set("limit", String(pageSize));
+				listUrl.searchParams.set("start", String(start));
+				const listRes = await fetch(listUrl.toString(), {
+					method: "GET",
+					headers: { accept: "application/json", authorization: auth },
+					signal,
+				});
+				if (!listRes.ok) {
+					const txt = await listRes.text().catch(() => "");
+					throw new Error(`HTTP ${listRes.status} listing attachments for Confluence page ${targetPageId}: ${txt.slice(0, 500)}`);
+				}
+				const data: any = await listRes.json();
+				const results: any[] = Array.isArray(data?.results) ? data.results : [];
+				attachments.push(...results);
+				if (results.length < pageSize) break;
+				start += pageSize;
+			}
+			if (attachmentCache) attachmentCache.set(targetPageId, attachments);
+		}
+
+		const match = attachments.find((a: any) => {
+			const title = String(a?.title ?? a?.metadata?.title ?? "");
+			return title === decodedFilename || title === rawFilename;
+		});
+		const attId = match?.id ? String(match.id) : null;
+		if (!attId) {
+			throw new Error(`Attachment '${decodedFilename}' not found in the listing of Confluence page ${targetPageId}`);
+		}
+
+		// 2. Ask the REST download endpoint for the signed media URL (capture the 302 manually
+		//    so no Basic auth header is ever sent to api.media.atlassian.com).
+		const dlRes = await fetch(
+			`${DEFAULT_CONFLUENCE_BASE_URL}/wiki/rest/api/content/${encodeURIComponent(targetPageId)}/child/attachment/${encodeURIComponent(attId)}/download`,
+			{ method: "GET", headers: { accept: "*/*", authorization: auth }, signal, redirect: "manual" }
+		);
+		const location = dlRes.headers.get("location");
+		if ([301, 302, 303, 307, 308].includes(dlRes.status) && location) {
+			const mediaUrl = new URL(location, dlRes.url).toString();
+			const mediaRes = await fetch(mediaUrl, { method: "GET", signal });
+			if (!mediaRes.ok) {
+				const txt = await mediaRes.text().catch(() => "");
+				throw new Error(`HTTP ${mediaRes.status} ${mediaRes.statusText} fetching signed media URL: ${txt.slice(0, 300)}`);
+			}
+			const buf = Buffer.from(await mediaRes.arrayBuffer());
+			await fs.promises.writeFile(destPath, buf);
+			return { bytes: buf.byteLength, contentType: mediaRes.headers.get("content-type") };
+		}
+		if (!dlRes.ok) {
+			const txt = await dlRes.text().catch(() => "");
+			throw new Error(`HTTP ${dlRes.status} ${dlRes.statusText} for attachment download endpoint: ${txt.slice(0, 500)}`);
+		}
+		// No redirect: some instances serve the binary directly.
+		const buf = Buffer.from(await dlRes.arrayBuffer());
+		await fs.promises.writeFile(destPath, buf);
+		return { bytes: buf.byteLength, contentType: dlRes.headers.get("content-type") };
+	}
+
+	// Fallback: direct fetch with Basic auth (thumbnails, external links, non-attachment URLs).
 	const res = await fetch(url, {
 		method: "GET",
-		headers: {
-			authorization: basicAuthHeader(email, apiToken),
-		},
+		headers: { authorization: auth },
 		signal,
 	});
 	if (!res.ok) {
@@ -1554,12 +1632,13 @@ export default function atlassianReaderExtension(pi: ExtensionAPI) {
 				const usedNames = new Map<string, number>();
 
 				if (!dryRun) {
+					const attachmentCache = new Map<string, any[]>();
 					for (const a of selected) {
 						const n = usedNames.get(a.filename) ?? 0;
 						usedNames.set(a.filename, n + 1);
 						const baseName = n === 0 ? a.filename : `${path.parse(a.filename).name}__${n}${path.parse(a.filename).ext}`;
 						const dest = path.join(outDir, baseName);
-						const res = await downloadUrlToFile(a.url, dest, signal);
+						const res = await downloadUrlToFile(a.url, dest, signal, String(params.page_id), attachmentCache);
 						downloaded.push({ ...a, saved_as: dest, bytes: res.bytes, content_type: res.contentType });
 					}
 				}
