@@ -4,7 +4,7 @@
 Why this exists:
 - `pi --export` / HTML exports are JS app-shell pages, not static HTML.
 - `pi-md-export` is great for debugging, but can be tool-noisy.
-- This script focuses on the conversation: USER + ASSISTANT + THINKING (use `--no-thinking` to omit).
+- This script focuses on the conversation: USER + ASSISTANT (+ optional THINKING via `--thinking`).
 
 Input format:
 - A Pi session file (`*.jsonl`) as stored under `~/.pi/agent/sessions/.../*.jsonl`.
@@ -655,9 +655,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     p.add_argument("--mode", choices=["all", "branch"], default="all", help="Export full file or a single parentId chain")
     p.add_argument("--leaf", default=None, help="Leaf id for branch mode (defaults to last message id)")
     p.add_argument(
-        "--no-thinking",
+        "--thinking",
         action="store_true",
-        help="Do not include assistant thinking blocks",
+        help="Include assistant thinking blocks as collapsible <details> sections",
     )
     p.add_argument(
         "--include-tools",
@@ -715,7 +715,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         input_jsonl=args.input,
         mode=args.mode,
         leaf_id=args.leaf,
-        thinking_style=("omit" if args.no_thinking else "details"),
+        thinking_style=("details" if args.thinking else "omit"),
         include_tools=include_tools,
         tool_output_max=args.tool_output_max,
         include_custom=args.include_custom,
