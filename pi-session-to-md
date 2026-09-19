@@ -13,6 +13,7 @@ Output:
 - Markdown suitable for GitHub/GitLab.
 
 Notes:
+- --user-only renders only user-role messages (no assistant, no tools, no custom, no thinking).
 - "branch" mode reconstructs a single parentId chain from a leaf id.
   It is a best-effort approximation of the currently selected branch in the Pi UI.
 - Turn grouping merges consecutive messages by role (USER/ASSISTANT) to reduce heading spam.
@@ -445,6 +446,7 @@ def generate_markdown(
     include_custom: Optional[bool],
     include_timestamps: bool,
     group_turns: bool,
+    user_only: bool = False,
 ) -> str:
     records = list(_read_jsonl(input_jsonl))
     meta, order, by_id = _build_id_index(records)
@@ -491,6 +493,8 @@ def generate_markdown(
         out.append(f"- tool_output_max: `{max_label}`")
     if include_custom is not None:
         out.append(f"- include_custom: `{'on' if include_custom else 'off'}`")
+    if user_only:
+        out.append("- user_only: `on`")
     out.append("")
     out.append("---")
     out.append("")
@@ -556,6 +560,9 @@ def generate_markdown(
             continue
 
         role = msg.get("role")
+
+        if user_only and role == "assistant":
+            continue
 
         if role not in ("user", "assistant"):
             if role == "bashExecution":
@@ -691,6 +698,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         ),
     )
     p.add_argument("--timestamps", action="store_true", help="Include timestamps")
+    p.add_argument(
+        "--user-only",
+        action="store_true",
+        help="Render only user-role messages (no assistant, no tools, no custom, no thinking)",
+    )
 
     p.set_defaults(group_turns=True)
     p.add_argument(
@@ -701,6 +713,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
 
     args = p.parse_args(argv)
+
+    user_only = bool(args.user_only)
+    group_turns = bool(args.group_turns) and not user_only
 
     # None=off, ""=all tools, "bash,read"=filter to listed tool names
     include_tools: Optional[Set[str]] = None
@@ -720,7 +735,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         tool_output_max=args.tool_output_max,
         include_custom=args.include_custom,
         include_timestamps=bool(args.timestamps),
-        group_turns=bool(args.group_turns),
+        group_turns=group_turns,
+        user_only=user_only,
     )
 
     if args.output == "-":
