@@ -37,3 +37,6 @@ cg-task-result-*.md
 
 # personal session-mining corpus (never commit)
 agent-data-mining/
+
+# sub-agent / herdr runtime conf (never commit)
+.sub_agent_conf
