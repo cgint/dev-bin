@@ -34,3 +34,6 @@ testing_tmp/
 # cg-task
 cg-task-result-*.md
 ._*
+
+# personal session-mining corpus (never commit)
+agent-data-mining/
