@@ -6,7 +6,8 @@ usage() {
   cat <<'EOF'
 Usage: agents_files_cp.sh [--delete] [--openspec-config]
 Deploy generated agent definitions to local agent config dirs.
-  --delete           remove retired marker-owned skill directories; active skill contents always mirror source
+  --delete           also remove retired files/dirs from synced targets (skill dirs,
+                       profile prompts/commands, gemini/claude commands); active contents always mirror source
   --openspec-config  also roll out openspec/config.yaml to existing OpenSpec directories
   -h, --help         show this help
 EOF
@@ -42,7 +43,11 @@ rsync_copy_dir() {
   local src_dir="$1"
   local dest_dir="$2"
   mkdir -p "$dest_dir"
-  rsync "${RSYNC_OPTS[@]}" "$src_dir/" "$dest_dir/"
+  if [ "$DELETE_RSYNC" = true ]; then
+    rsync "${RSYNC_OPTS[@]}" --delete "$src_dir/" "$dest_dir/"
+  else
+    rsync "${RSYNC_OPTS[@]}" "$src_dir/" "$dest_dir/"
+  fi
 }
 
 managed_skill_matches() {
