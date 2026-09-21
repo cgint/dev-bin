@@ -161,7 +161,44 @@ pi_worker_runtime_main() {
   fi
 
   local subagent_model
-  if [[ -z "$config_provider" ]]; then
+  local env_provider="" env_model="" env_thinking=""
+  if [[ -z "$config_provider" && -n "${PI_WORKER_DEFAULT_MODEL:-}" ]]; then
+    if [[ "$PI_WORKER_DEFAULT_MODEL" =~ ^([A-Za-z0-9._-]+)/([A-Za-z0-9._-]+)(:([a-z]+))?$ ]]; then
+      env_provider="${BASH_REMATCH[1]}"
+      env_model="${BASH_REMATCH[2]}"
+      if [[ -n "${BASH_REMATCH[4]:-}" ]]; then
+        env_thinking="${BASH_REMATCH[4]}"
+      fi
+    else
+      printf 'worker launcher: invalid PI_WORKER_DEFAULT_MODEL: %s (expected provider/model or provider/model:thinking)\n' "$PI_WORKER_DEFAULT_MODEL" >&2
+      exit 2
+    fi
+    if [[ -n "$env_thinking" && ! "$env_thinking" =~ ^(off|minimal|low|medium|high|xhigh|max)$ ]]; then
+      printf 'worker launcher: invalid thinking level in PI_WORKER_DEFAULT_MODEL: %s\n' "$env_thinking" >&2
+      exit 2
+    fi
+  fi
+
+  if [[ -n "$env_provider" ]]; then
+    local env_provider_extension
+    while IFS= read -r env_provider_extension; do
+      if [ -n "$env_provider_extension" ]; then
+        extension_args+=(-e "$env_provider_extension")
+      fi
+    done < <(pi_worker_provider_extensions "$env_provider")
+
+    # Availability must be probed under the same discovery mode and explicit
+    # extensions as the eventual launch, otherwise the probe can succeed while
+    # the worker itself cannot resolve the provider.
+    local env_available_models
+    if ! env_available_models=$("${PI_WORKER_COMMAND[@]}" -ne "${extension_args[@]}" --list-models "$env_provider/$env_model" 2>&1) ||
+      ! awk -v provider="$env_provider" -v model="$env_model" '$1 == provider && $2 == model { found = 1 } END { exit !found }' <<<"$env_available_models"; then
+      printf 'worker launcher: PI_WORKER_DEFAULT_MODEL model is unavailable: %s/%s\n' "$env_provider" "$env_model" >&2
+      exit 1
+    fi
+  fi
+
+  if [[ -z "$config_provider" && -z "$env_provider" ]]; then
     if "${PI_WORKER_COMMAND[@]}" auth check --provider openai-codex 2>/dev/null | grep -qx 'ready'; then
       subagent_model='openai-codex/gpt-5.6-terra'
     elif "${PI_WORKER_COMMAND[@]}" auth check --provider github-copilot 2>/dev/null | grep -qx 'ready'; then
@@ -178,6 +215,11 @@ pi_worker_runtime_main() {
     pi_args+=(--provider "$config_provider" --model "$config_model")
     if [[ -n "$config_thinking" ]]; then
       pi_args+=(--thinking "$config_thinking")
+    fi
+  elif [[ -n "$env_provider" ]]; then
+    pi_args+=(--provider "$env_provider" --model "$env_model")
+    if [[ -n "$env_thinking" ]]; then
+      pi_args+=(--thinking "$env_thinking")
     fi
   else
     pi_args+=(--model "$subagent_model" --thinking minimal)

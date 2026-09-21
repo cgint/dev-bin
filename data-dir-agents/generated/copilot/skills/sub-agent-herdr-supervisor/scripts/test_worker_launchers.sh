@@ -9,6 +9,9 @@ HERDR_ADAPTER="$SCRIPT_DIR/herdr-worker.sh"
 STARTER="$SCRIPT_DIR/herdr-start-subagent.sh"
 TMPDIR_TEST="$(mktemp -d)"
 trap 'rm -r "$TMPDIR_TEST"' EXIT
+# Ensure the outer shell's PI_WORKER_DEFAULT_MODEL does not leak into tests
+# that do not explicitly set it.
+unset PI_WORKER_DEFAULT_MODEL
 
 fail() {
   printf 'FAIL: %s\n' "$*" >&2
@@ -112,6 +115,20 @@ chmod +x "$TMPDIR_TEST/bin/pi"
 ln -s pi "$TMPDIR_TEST/bin/pi-profile"
 ln -s ../bin/pi "$TMPDIR_TEST/direct-bin/pi"
 
+# Install a git shim before any worker invocation so the runtime's
+# `git rev-parse --show-toplevel` never resolves a real repository root
+# (and its real .sub_agent_conf) during tests.
+cat >"$TMPDIR_TEST/bin/git" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$1 $2" == 'rev-parse --show-toplevel' && -n "${FAKE_GIT_ROOT:-}" ]]; then
+  printf '%s\n' "$FAKE_GIT_ROOT"
+  exit 0
+fi
+exit 1
+EOF
+chmod +x "$TMPDIR_TEST/bin/git"
+ln -s ../bin/git "$TMPDIR_TEST/direct-bin/git"
+
 compose_worker() {
   local package="$TMPDIR_TEST/herdr/scripts"
   mkdir -p "$package"
@@ -128,6 +145,7 @@ run_worker() {
   PATH="$TMPDIR_TEST/bin:$PATH" HOME="$TMPDIR_TEST/home" PI_PROFILE_CAPTURE="$capture" \
     AUTH_OPENAI="${AUTH_OPENAI:-ready}" AUTH_COPILOT="${AUTH_COPILOT:-unready}" \
     MODEL_AVAILABLE="${MODEL_AVAILABLE:-}" FAKE_GIT_ROOT="${FAKE_GIT_ROOT:-}" \
+    PI_WORKER_DEFAULT_MODEL="${PI_WORKER_DEFAULT_MODEL:-}" \
     "$herdr_worker" --mode readonly -- @/tmp/handoff.md 'Execute the bounded task.'
 }
 
@@ -211,17 +229,6 @@ if invalid_profile_output="$(PI_WORKER_PROFILE='../unsafe' run_worker "$TMPDIR_T
 fi
 grep -q 'invalid PI_WORKER_PROFILE: ../unsafe' <<<"$invalid_profile_output" \
   || fail 'Herdr worker did not explain the rejected PI_WORKER_PROFILE'
-
-cat >"$TMPDIR_TEST/bin/git" <<'EOF'
-#!/usr/bin/env bash
-if [[ "$1 $2" == 'rev-parse --show-toplevel' && -n "${FAKE_GIT_ROOT:-}" ]]; then
-  printf '%s\n' "$FAKE_GIT_ROOT"
-  exit 0
-fi
-exit 1
-EOF
-chmod +x "$TMPDIR_TEST/bin/git"
-ln -s ../bin/git "$TMPDIR_TEST/direct-bin/git"
 
 config_root="$TMPDIR_TEST/repository"
 mkdir -p "$config_root/nested"
@@ -360,6 +367,69 @@ non_git_capture="$TMPDIR_TEST/non-git.txt"
 FAKE_GIT_ROOT='' run_worker "$non_git_capture"
 grep -qx 'openai-codex/gpt-5.6-terra' "$non_git_capture" \
   || fail 'Herdr worker did not retain default selection outside Git'
+
+env_model_capture="$TMPDIR_TEST/env-model.txt"
+FAKE_GIT_ROOT='' PI_WORKER_DEFAULT_MODEL='home-llm/qwen-model' \
+  MODEL_AVAILABLE='home-llm/qwen-model' run_worker "$env_model_capture"
+grep -qx -- '--provider' "$env_model_capture" || fail 'Herdr worker did not pass PI_WORKER_DEFAULT_MODEL provider'
+grep -qx 'home-llm' "$env_model_capture" || fail 'Herdr worker did not pass PI_WORKER_DEFAULT_MODEL provider value'
+grep -qx 'qwen-model' "$env_model_capture" || fail 'Herdr worker did not pass PI_WORKER_DEFAULT_MODEL model value'
+grep -Fqx 'https://github.com/cgint/pi-olla-autodetect' "$env_model_capture" \
+  || fail 'Herdr worker did not load the trusted extension for the PI_WORKER_DEFAULT_MODEL provider'
+if grep -qx -- '--thinking' "$env_model_capture"; then
+  fail 'Herdr worker forced a thinking level when PI_WORKER_DEFAULT_MODEL omitted one'
+fi
+
+env_thinking_capture="$TMPDIR_TEST/env-thinking.txt"
+FAKE_GIT_ROOT='' PI_WORKER_DEFAULT_MODEL='home-llm/qwen-model:off' \
+  MODEL_AVAILABLE='home-llm/qwen-model' run_worker "$env_thinking_capture"
+grep -qx -- '--thinking' "$env_thinking_capture" \
+  || fail 'Herdr worker did not pass the PI_WORKER_DEFAULT_MODEL thinking level'
+grep -qx 'off' "$env_thinking_capture" \
+  || fail 'Herdr worker did not pass the PI_WORKER_DEFAULT_MODEL thinking value'
+
+if invalid_env_thinking_output="$(FAKE_GIT_ROOT='' PI_WORKER_DEFAULT_MODEL='home-llm/qwen-model:ultra' run_worker "$TMPDIR_TEST/invalid-env-thinking.txt" 2>&1)"; then
+  fail 'Herdr worker accepted an invalid thinking level in PI_WORKER_DEFAULT_MODEL'
+fi
+grep -q 'invalid thinking level in PI_WORKER_DEFAULT_MODEL: ultra' <<<"$invalid_env_thinking_output" \
+  || fail 'Herdr worker did not explain invalid PI_WORKER_DEFAULT_MODEL thinking level'
+
+if malformed_env_output="$(FAKE_GIT_ROOT='' PI_WORKER_DEFAULT_MODEL='not-a-model' run_worker "$TMPDIR_TEST/malformed-env.txt" 2>&1)"; then
+  fail 'Herdr worker accepted a malformed PI_WORKER_DEFAULT_MODEL'
+fi
+grep -q 'invalid PI_WORKER_DEFAULT_MODEL: not-a-model' <<<"$malformed_env_output" \
+  || fail 'Herdr worker did not explain malformed PI_WORKER_DEFAULT_MODEL'
+
+if missing_provider_env_output="$(FAKE_GIT_ROOT='' PI_WORKER_DEFAULT_MODEL='justamod' run_worker "$TMPDIR_TEST/missing-provider-env.txt" 2>&1)"; then
+  fail 'Herdr worker accepted a PI_WORKER_DEFAULT_MODEL without a provider'
+fi
+grep -q 'invalid PI_WORKER_DEFAULT_MODEL: justamod' <<<"$missing_provider_env_output" \
+  || fail 'Herdr worker did not explain PI_WORKER_DEFAULT_MODEL without a provider'
+
+env_unavailable_capture="$TMPDIR_TEST/env-unavailable.txt"
+if unavailable_env_output="$(FAKE_GIT_ROOT='' PI_WORKER_DEFAULT_MODEL='home-llm/unknown-model' MODEL_AVAILABLE='' run_worker "$env_unavailable_capture" 2>&1)"; then
+  fail 'Herdr worker accepted an unavailable PI_WORKER_DEFAULT_MODEL'
+fi
+grep -q 'PI_WORKER_DEFAULT_MODEL model is unavailable: home-llm/unknown-model' <<<"$unavailable_env_output" \
+  || fail 'Herdr worker did not explain unavailable PI_WORKER_DEFAULT_MODEL'
+
+cat >"$config_root/.sub_agent_conf" <<'EOF'
+PROVIDER=home-llm
+MODEL=qwen38-flashnext-twins-direct
+EOF
+env_override_capture="$TMPDIR_TEST/env-override.txt"
+env_override_list_capture="$TMPDIR_TEST/env-override-list.txt"
+(
+  cd "$config_root/nested"
+  PI_PROFILE_LIST_CAPTURE="$env_override_list_capture" FAKE_GIT_ROOT="$config_root" \
+    PI_WORKER_DEFAULT_MODEL='home-llm/should-not-be-used' \
+    MODEL_AVAILABLE='home-llm/qwen38-flashnext-twins-direct' run_worker "$env_override_capture"
+)
+grep -qx 'qwen38-flashnext-twins-direct' "$env_override_capture" \
+  || fail '.sub_agent_conf did not override PI_WORKER_DEFAULT_MODEL'
+if grep -qx 'should-not-be-used' "$env_override_capture"; then
+  fail 'PI_WORKER_DEFAULT_MODEL leaked past an active .sub_agent_conf'
+fi
 
 if override_output="$(PATH="$TMPDIR_TEST/bin:$PATH" HOME="$TMPDIR_TEST/home" PI_PROFILE_CAPTURE="$TMPDIR_TEST/override.txt" "$herdr_worker" --mode editable -- --model unsafe 2>&1)"; then
   fail 'Herdr worker accepted a caller model override'
