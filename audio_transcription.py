@@ -302,7 +302,7 @@ class UploadCache:
 class GeminiAudioTranscriber:
     """High-quality audio transcription using Gemini"""
     
-    def __init__(self, api_key: Optional[str] = None, model_name: str = "gemini-3.5-flash-lite"):
+    def __init__(self, api_key: Optional[str] = None, model_name: str = "gemini-3.5-flash"):
         """Initialize the transcriber with API key."""
         self.api_key = api_key or os.getenv('GEMINI_API_KEY')
         if not self.api_key:
@@ -782,7 +782,7 @@ def main() -> None:
     parser.add_argument("file", help="Audio file to transcribe (e.g., .mp3, .m4a)")
     parser.add_argument(
         "--model",
-        default="gemini-3.5-flash-lite",
+        default="gemini-3.5-flash",
         choices=[
             "gemini-3.5-flash-lite",
             "gemini-3.5-flash",
@@ -793,7 +793,7 @@ def main() -> None:
             "gemini-2.5-flash-lite",
             "gemini-2.5-pro",
         ],
-        help="Gemini model to use for transcription (default: gemini-3.5-flash-lite).",
+        help="Gemini model to use for transcription (default: gemini-3.5-flash).",
     )
     parser.add_argument(
         "--reuse-remote-uploads",
