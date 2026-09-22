@@ -52,7 +52,7 @@ fi
 
 # If explicit -h/--help, show minimal help and exit before discovery
 if [[ "$HELP_REQUEST" == true ]]; then
-    echo "Usage: $SCRIPT_NAME <task> [-d <dir>] [-e <exts>] [-i <files>] [--staged] [--range <rev>] [--diff-only] [hint]"
+    echo "Usage: $SCRIPT_NAME <task> [-d <dir>] [-e <exts>] [-i <files>] [--staged] [--range <rev>] [--diff-only] [--as-is] [hint]"
     echo ""
     echo "Options:"
     echo "  -d <dir>    Limit context to specified directory (can be used multiple times)"
@@ -61,6 +61,7 @@ if [[ "$HELP_REQUEST" == true ]]; then
     echo "  --staged    Review staged changes instead of working tree"
     echo "  --range     Review a committed range (e.g., HEAD~1..HEAD)"
     echo "  --diff-only Override task mode to diff-only (no repo context)"
+    echo "  --as-is     Review files as-is on disk, skip git diff (for diff-based tasks)"
     echo "  -h          Show this help"
     echo ""
     echo "Hint:"
@@ -260,7 +261,7 @@ prompt_preview_line() {
 }
 
 usage() {
-    echo "Usage: $SCRIPT_NAME <task> [-d <dir>] [-e <exts>] [-i <files>] [--staged] [--range <rev>] [--diff-only] [hint]"
+    echo "Usage: $SCRIPT_NAME <task> [-d <dir>] [-e <exts>] [-i <files>] [--staged] [--range <rev>] [--diff-only] [--as-is] [hint]"
     echo ""
     echo "Tasks (from $(basename "$PROMPT_DIR")):"
     printf '%s\n' "$TASK_LIST" | while read -r t; do
@@ -278,6 +279,7 @@ usage() {
     echo "  --staged    Review staged changes instead of working tree"
     echo "  --range     Review a committed range (e.g., HEAD~1..HEAD)"
     echo "  --diff-only Override task mode to diff-only (no repo context)"
+    echo "  --as-is     Review files as-is on disk, skip git diff (for diff-based tasks)"
     echo "  -h          Show this help"
     echo ""
     echo "Hint:"
@@ -314,6 +316,7 @@ fi
 
 STAGED=false
 FORCE_DIFF_ONLY=false
+AS_IS=false
 RANGE_SPEC=""
 CLI_DIRS=()
 CLI_EXTS=()
@@ -340,6 +343,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --diff-only)
             FORCE_DIFF_ONLY=true
+            shift
+            ;;
+        --as-is)
+            AS_IS=true
             shift
             ;;
         -d)
@@ -394,8 +401,9 @@ HINT="${HINT_PARTS[*]:-}"
 diff_sources_set=0
 [[ "$STAGED" == true ]]       && ((++diff_sources_set)) || true
 [[ -n "$RANGE_SPEC" ]]        && ((++diff_sources_set)) || true
+[[ "$AS_IS" == true ]]        && ((++diff_sources_set)) || true
 if [[ "$diff_sources_set" -gt 1 ]]; then
-    echo "Error: --staged and --range are mutually exclusive" >&2
+    echo "Error: --staged, --range, and --as-is are mutually exclusive" >&2
     exit 1
 fi
 
@@ -434,6 +442,12 @@ fi
 # --range requires a diff-based mode
 if [[ -n "$RANGE_SPEC" && "$MODE" == "context" ]]; then
     echo "Error: --range requires a diff-based task (diff-context or diff-only), but '$TASK' uses 'context' mode" >&2
+    exit 1
+fi
+
+# --as-is makes no sense for diff-only tasks (no repo context available)
+if [[ "$AS_IS" == true && "$MODE" == "diff-only" ]]; then
+    echo "Error: --as-is is not supported for diff-only tasks (no repo context available). Use a context or diff-context task, or remove --as-is." >&2
     exit 1
 fi
 
@@ -501,6 +515,11 @@ if [[ ${#CLI_DIRS[@]} -gt 0 ]]; then
     DIRS=("${CLI_DIRS[@]}")
 fi
 
+# --as-is with no scope (-d/-i/scan-dirs): warn (falls back to full CWD scan by codegiant.py)
+if [[ "$AS_IS" == true && ${#CLI_DIRS[@]} -eq 0 && -z "$CLI_FILES" && ${#DIRS[@]} -eq 0 ]]; then
+    echo "Warning: --as-is without -d or -i will scan the entire current directory. Consider adding -d to limit scope." >&2
+fi
+
 # Override EXT if CLI -e was specified, else use frontmatter ext
 if [[ ${#CLI_EXTS[@]} -gt 0 ]]; then
     RAW_EXT="${CLI_EXTS[*]}"
@@ -520,8 +539,8 @@ TMP_PRMPT="._cg_tmp_prompt.txt"
 cleanup() { rm -f "$TMP_DIFF" "$TMP_PRMPT"; }
 trap cleanup EXIT
 
-# Diff-based modes: generate diff
-if [[ "$MODE" == diff-context || "$MODE" == diff-only ]]; then
+# Diff-based modes: generate diff (skip entirely when --as-is is set)
+if [[ "$MODE" == diff-context || "$MODE" == diff-only ]] && [[ "$AS_IS" != true ]]; then
     # Untracked check (skip for historical range diffs)
     if [[ "$CHECK_UT" == "yes" && -z "$RANGE_SPEC" && ${#GIT_DIFF_PATHSPECS[@]} -gt 0 ]]; then
         UT=$(git ls-files --others --exclude-standard -- "${GIT_DIFF_PATHSPECS[@]}" 2>/dev/null || true)
@@ -558,9 +577,18 @@ if [[ "$MODE" == diff-context || "$MODE" == diff-only ]]; then
     [[ -s "$TMP_DIFF" ]] || { echo "No changes to review."; exit 0; }
 fi
 
+# When --as-is is used on a diff-based task, inject a clarifying note into the prompt
+AS_IS_NOTE=""
+if [[ "$AS_IS" == true && "$MODE" != "context" ]]; then
+    AS_IS_NOTE="**No diff is attached and there are no changes to compare. Review the current state of the files in the specified scope directly as they exist on disk.**"
+fi
+
 # Build prompt: frontmatter-stripped body + optional hint
 {
     extract_prompt_body "$PROMPT_FILE"
+    if [[ -n "$AS_IS_NOTE" ]]; then
+        printf '\n\n%s\n' "$AS_IS_NOTE"
+    fi
     if [[ -n "$HINT" ]]; then
         printf '\n\n**Additional focus:** %s\n' "$HINT"
     fi
@@ -597,7 +625,10 @@ if [[ ${#OMIT_FILES[@]} -gt 0 ]]; then
 fi
 
 # Run codegiant
-if [[ "$MODE" == diff-context ]]; then
+if [[ "$AS_IS" == true ]]; then
+    # No diff attached — context only (scoping via -d/-e/-i still applies)
+    :
+elif [[ "$MODE" == diff-context ]]; then
     CODEGIANT_ARGS+=(-a "$TMP_DIFF")
 elif [[ "$MODE" == diff-only ]]; then
     CODEGIANT_ARGS+=(-i "$TMP_DIFF")
