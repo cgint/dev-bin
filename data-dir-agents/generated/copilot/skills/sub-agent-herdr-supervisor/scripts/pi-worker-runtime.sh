@@ -91,7 +91,8 @@ pi_worker_runtime_main() {
   done
 
   local focus_guard="https://github.com/cgint/pi-focus-guard"
-  local -a extension_args=(-e "$focus_guard")
+  local tool_intent="https://github.com/cgint/pi-tool-intent"
+  local -a extension_args=(-e "$focus_guard" -e "$tool_intent")
   if [ -n "$trusted_extension" ]; then
     [ -f "$trusted_extension" ] || {
       printf 'worker launcher: required trusted extension not found: %s\n' "$trusted_extension" >&2
