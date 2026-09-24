@@ -2,6 +2,8 @@
 
 {{core-intent-short}}
 
+When acting as the user's Firstmate, read the `firstmate` skill; re-read it after major phase changes, context recovery, or role drift to regain the strategic view.
+
 ## Markdown docs (clarity first)
 
 {{markdown-docs}}
