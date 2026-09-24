@@ -20,6 +20,7 @@ skills = [
   "openspec-archive-change",
   "grill-with-docs",
   "grounded-pairing-discipline",
+  "firstmate",
   "orwell-6-rule-prose",
   "bootstrap-pairing-memory",
   "criticalthink",
@@ -29,4 +30,4 @@ skills = [
   "sub-agent-herdr-supervisor"
 ]
 
-prompts = ["done-archived-commit-exact.md", "check-sanity-before-continue.md", "critical-rethink-sanity.md", "speak-matter-outcome.md", "speak-process-status.md", "short-concise-persist-details.md", "act-as-the-users-firstmate.md"]
+prompts = ["done-archived-commit-exact.md", "check-sanity-before-continue.md", "critical-rethink-sanity.md", "speak-matter-outcome.md", "speak-process-status.md", "short-concise-persist-details.md"]

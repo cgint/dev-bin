@@ -27,6 +27,7 @@ Skills that shape how the agent behaves in partnership with the user.
 |-------|---------|
 | `orwell-6-rule-prose` | Apply Orwell's six writing rules — maximize information density per word |
 | `grounded-pairing-discipline` | Standing collaboration posture — critical, constructive, concise |
+| `firstmate` | Strategic outcome stewardship and reorientation during sustained or delegated collaboration |
 | `criticalthink` | Post-hoc self-audit: stress-test your own previous response |
 | `bootstrap-pairing-memory` | Initialize the pairing memory system |
 | `short-instruction-semantics` | Interpret short commands like `go`, `analyse`, and `do web research` consistently |

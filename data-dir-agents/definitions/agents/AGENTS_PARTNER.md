@@ -2,6 +2,8 @@
 
 {{core-intent-short}}
 
+For a new objective, sustained or delegated effort, explicit Firstmate request, major phase change, context recovery, return to an old thread, or role drift, read the `firstmate` skill before the first substantive response; re-read it then to regain the strategic view.
+
 ## Markdown docs (clarity first)
 
 {{markdown-docs}}

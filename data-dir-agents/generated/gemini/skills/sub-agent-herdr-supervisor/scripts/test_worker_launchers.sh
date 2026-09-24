@@ -178,6 +178,7 @@ PATH="$TMPDIR_TEST/bin:$PATH" HOME="$TMPDIR_TEST/home" PI_PROFILE_CAPTURE="$edit
 assert_capture "$editable_capture" \
   'PI_WRITE_GUARD_DIRS=.' \
   minimal -ne -e 'https://github.com/cgint/pi-focus-guard' \
+  -e 'https://github.com/cgint/pi-tool-intent' \
   -e "$TMPDIR_TEST/home/.pi/profiles/minimal/agent/extensions/herdr-agent-state.ts" \
   --model openai-codex/gpt-5.6-terra --thinking minimal \
   @/tmp/handoff.md 'Execute the bounded task.'
@@ -208,6 +209,7 @@ PI_INVOCATION_CAPTURE="$direct_invocations" run_direct_worker "$direct_capture"
 assert_capture "$direct_capture" \
   'PI_WRITE_GUARD_DIRS=.' \
   -ne -e 'https://github.com/cgint/pi-focus-guard' \
+  -e 'https://github.com/cgint/pi-tool-intent' \
   -e "$TMPDIR_TEST/direct-home/.pi/agent/extensions/herdr-agent-state.ts" \
   --model openai-codex/gpt-5.6-terra --thinking minimal \
   --tools read,bash,grep,find,ls --dm-read \
@@ -265,7 +267,7 @@ grep -qx -- '-ne' "$direct_config_list_capture" \
   || fail 'direct-Pi availability probe did not use the worker discovery mode'
 grep -Fqx 'https://github.com/cgint/pi-olla-autodetect' "$direct_config_list_capture" \
   || fail 'direct-Pi availability probe did not load the provider extension'
-grep -Fq $'pi\t-ne\t-e\thttps://github.com/cgint/pi-focus-guard' "$direct_config_invocations" \
+grep -Fq $'pi\t-ne\t-e\thttps://github.com/cgint/pi-focus-guard\t-e\thttps://github.com/cgint/pi-tool-intent' "$direct_config_invocations" \
   || fail 'direct-Pi availability probe did not use plain pi'
 if grep -Fq $'pi\tdefault\t' "$direct_config_invocations"; then
   fail 'direct-Pi availability probe passed a profile name to plain pi'

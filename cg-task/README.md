@@ -35,6 +35,8 @@ Legacy `# codegiant:` task headers and legacy scoping keys are no longer support
 | `diff-only` | Diff file only, no repo context (`-i`) |
 | `context` | Repo context (optionally scoped), no diff |
 
+`--as-is` (CLI) overrides a diff-based task's input source: it skips the `git diff` gate entirely (no untracked check, no "No changes" exit) and attaches **no diff** — the task runs purely on scoped context (`-d`/`-e`/`-i`/`scan-dirs`). A clarifying note ("No diff is attached… review the files in scope directly") is injected into the prompt so a diff-oriented task doesn't expect one. `--as-is` is mutually exclusive with `--staged` and `--range`, and is rejected on `diff-only` tasks (no repo context). It warns if no scope (`-d`/`-i`/`scan-dirs`) is given, since it then scans the whole CWD.
+
 ## Tasks
 
 | Task | Mode | Purpose |
@@ -56,6 +58,7 @@ cg-task.sh diff-review                 # review unstaged changes
 cg-task.sh diff-review --staged        # review staged changes
 cg-task.sh diff-review --diff-only     # diff only, no repo context
 cg-task.sh document-review             # document review (halts on untracked)
+cg-task.sh document-review -d openspec/changes/my-change/ --as-is   # review committed docs as-is (no git diff)
 cg-task.sh architecture-review         # full context review
 cg-task.sh architecture-review "focus on module boundaries"  # with hint
 cg-task.sh explore-prep "add elasticsearch as a new information source"  # targeted recon brief
