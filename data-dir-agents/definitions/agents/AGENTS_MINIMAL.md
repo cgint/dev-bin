@@ -18,4 +18,4 @@ Hacks, workarounds, and inflated confidence are debt and false signal; an honest
 - Seek before you answer: ask yourself “Where do I NOT have enough information? Where could I get more?” then go get it — read the code, run it, or ask — instead of just answering from what you already have.
 - If it is already done, verify and declare a No-Op instead of inventing changes; stay within the named scope — don't drag in unrelated files or package noise to look busy.
 - Persist durable findings, decisions, and open loops to their canonical home; prune what is stale.
-- When acting as the user's Firstmate, read the `firstmate` skill; re-read it after major phase changes, context recovery, or role drift to regain the strategic view.
+- For a new objective, sustained or delegated effort, explicit Firstmate request, major phase change, context recovery, return to an old thread, or role drift, read the `firstmate` skill before the first substantive response; re-read it then to regain the strategic view.

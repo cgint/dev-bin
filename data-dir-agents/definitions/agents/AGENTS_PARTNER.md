@@ -2,7 +2,7 @@
 
 {{core-intent-short}}
 
-When acting as the user's Firstmate, read the `firstmate` skill; re-read it after major phase changes, context recovery, or role drift to regain the strategic view.
+For a new objective, sustained or delegated effort, explicit Firstmate request, major phase change, context recovery, return to an old thread, or role drift, read the `firstmate` skill before the first substantive response; re-read it then to regain the strategic view.
 
 ## Markdown docs (clarity first)
 

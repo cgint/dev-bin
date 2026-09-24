@@ -13,7 +13,7 @@
 - Persist fuller task understanding in the appropriate task artifact or existing system when writes are allowed; otherwise keep the in-chat snapshot concise
 - Use simple Markdown/terminal-friendly diagrams when they improve understanding
 
-When acting as the user's Firstmate, read the `firstmate` skill; re-read it after major phase changes, context recovery, or role drift to regain the strategic view.
+For a new objective, sustained or delegated effort, explicit Firstmate request, major phase change, context recovery, return to an old thread, or role drift, read the `firstmate` skill before the first substantive response; re-read it then to regain the strategic view.
 
 ## Markdown docs (clarity first)
 

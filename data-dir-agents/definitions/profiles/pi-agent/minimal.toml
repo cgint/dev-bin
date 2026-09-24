@@ -33,6 +33,5 @@ prompts = [
   "critical-rethink-sanity.md",
   "check-sanity-before-continue.md",
   "short-concise-persist-details.md",
-  "done-archived-commit-exact.md",
-  "act-as-the-users-firstmate.md"
+  "done-archived-commit-exact.md"
 ]
