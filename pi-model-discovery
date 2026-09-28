@@ -16,6 +16,9 @@ Design goals:
   - openai-compatible: generic OpenAI-compatible /v1/models
   - llamacpp-qwen-mtp: dedicated 8085-sparky Qwen MTP llama.cpp config
   - leanstral: Leanstral models with template-driven thinking (chat_template_kwargs)
+  - tensorfold: ashhart/TensorFold OpenAI-compatible endpoint (MLX/CUDA speculative
+    decoding); thinking via top-level enable_thinking / reasoning_effort params,
+    model id must match the server's --name/alias
 - Infer model metadata and thinking controls from provider kind + model name.
 
 Longer documentation:
@@ -65,6 +68,9 @@ DEFAULT_PROVIDERS = [
     {"key": "8086-sparkz", "kind": "leanstral", "baseUrl": "http://sparkz:8086/v1"},
     {"key": "8085-sparky", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://sparky:8085/v1"},
     {"key": "8086-sparky", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://sparky:8086/v1"},
+    # TensorFold (ashhart): OpenAI-compatible endpoint, exact speculative decoding.
+    # Rerun with `pi-model-discovery --only tensorfold-local` after each server start.
+    {"key": "tensorfold-local", "kind": "tensorfold", "baseUrl": "http://127.0.0.1:8080/v1"},
     # {"key": "8087-sparky", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://sparky:8087/v1"},
     # {"key": "8088-sparky", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://sparky:8088/v1"},
     # {"key": "8089-sparky", "kind": "llamacpp-qwen-mtp", "baseUrl": "http://sparky:8089/v1"},
@@ -157,6 +163,7 @@ def normalize_kind(kind: str) -> str:
         "openai": "openai-compatible",
         "openai-compatible": "openai-compatible",
         "generic-openai": "openai-compatible",
+        "tensorfold": "tensorfold",
     }
     return aliases.get(k, k)
 
@@ -189,6 +196,8 @@ def infer_kind(provider_key: str, base_url: str | None) -> str:
         return "llamacpp-qwen-mtp"
     if any(marker in key for marker in ["llamacpp-mtp", "llamacppmtp"]):
         return "llamacpp-mtp"
+    if "tensorfold" in key:
+        return "tensorfold"
     if any(marker in key for marker in ["llamacpp", "llama-cpp", "llama.cpp", "llama-local"]):
         return "llamacpp"
     if key.startswith("cpp-") or key.startswith("cpp_") or key.startswith("llama-"):
@@ -409,6 +418,13 @@ def infer_thinking_fields(kind: str, model_id: str, reasoning: bool) -> dict[str
         "thinkingLevelMap": {"off": "none"},
     }
 
+    # TensorFold (ashhart): OpenAI-compatible endpoint that honors top-level
+    # reasoning_effort and the developer role. Thinking via reasoning_effort.
+    if kind == "tensorfold":
+        fields["thinkingLevelMap"] = {"off": "none"}
+        fields["compat"] = {"supportsReasoningEffort": True, "thinkingFormat": "openai"}
+        return fields
+
     # Dedicated Qwen MTP llama.cpp endpoint (8085-sparky). It needs
     # chat_template_kwargs.enable_thinking (qwen-chat-template). Pi already
     # supports low/medium/high for reasoning models; only map off explicitly.
@@ -513,6 +529,12 @@ def provider_default_compat(kind: str) -> dict[str, Any]:
             "maxTokensField": "max_tokens",
             "requiresAssistantAfterToolResult": False,
         }
+    if kind == "tensorfold":
+        # TensorFold accepts the developer role and tools; thinking via enable_thinking.
+        return {
+            "maxTokensField": "max_tokens",
+            "requiresAssistantAfterToolResult": False,
+        }
     if kind == "llamacpp":
         return {
             "supportsDeveloperRole": False,
@@ -580,7 +602,7 @@ def build_model_entry(
 
     context_window = infer_context_window(model_id, kind, ollama_info, model_info)
     max_tokens = infer_max_tokens(model_id, context_window, ollama_info)
-    if kind in {"llamacpp-mtp", "llamacpp-qwen-mtp", "vllm-mtp", "vllm-mtp-256k"}:
+    if kind in {"llamacpp-mtp", "llamacpp-qwen-mtp", "vllm-mtp", "vllm-mtp-256k", "tensorfold"}:
         max_tokens = max(max_tokens, 8192*4)
     hard_off = endpoint_props_reasoning_format_none(endpoint_props)
     # MTP: never let endpoint props override reasoning status; MTP models always have
