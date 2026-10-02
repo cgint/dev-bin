@@ -179,6 +179,7 @@ assert_capture "$editable_capture" \
   'PI_WRITE_GUARD_DIRS=.' \
   minimal -ne -e 'https://github.com/cgint/pi-focus-guard' \
   -e 'https://github.com/cgint/pi-tool-intent' \
+  -e 'https://github.com/cgint/pi-subagent-herdr' \
   -e "$TMPDIR_TEST/home/.pi/profiles/minimal/agent/extensions/herdr-agent-state.ts" \
   --model openai-codex/gpt-5.6-terra --thinking minimal \
   @/tmp/handoff.md 'Execute the bounded task.'
@@ -203,6 +204,47 @@ grep -qx 'partner' "$partner_capture" \
 grep -qx "$TMPDIR_TEST/home/.pi/profiles/partner/agent/extensions/herdr-agent-state.ts" "$partner_capture" \
   || fail 'Herdr worker did not derive its reporter from PI_WORKER_PROFILE'
 
+# Regression: pi-subagent-herdr must appear exactly once in every worker launch
+# and model probe, alongside the existing trusted extensions.
+readonly_regression_capture="$TMPDIR_TEST/readonly-regression.txt"
+run_worker "$readonly_regression_capture"
+herdr_count="$(grep -cF 'https://github.com/cgint/pi-subagent-herdr' "$readonly_regression_capture" || true)"
+[ "$herdr_count" -eq 1 ] \
+  || fail "pi-subagent-herdr appears $herdr_count times in readonly launch (expected 1)"
+grep -qF 'https://github.com/cgint/pi-focus-guard' "$readonly_regression_capture" \
+  || fail 'readonly launch lost pi-focus-guard'
+grep -qF 'https://github.com/cgint/pi-tool-intent' "$readonly_regression_capture" \
+  || fail 'readonly launch lost pi-tool-intent'
+
+editable_regression_capture="$TMPDIR_TEST/editable-regression.txt"
+PATH="$TMPDIR_TEST/bin:$PATH" HOME="$TMPDIR_TEST/home" PI_PROFILE_CAPTURE="$editable_regression_capture" \
+  "$herdr_worker" --mode editable -- @/tmp/handoff.md 'task'
+herdr_count="$(grep -cF 'https://github.com/cgint/pi-subagent-herdr' "$editable_regression_capture" || true)"
+[ "$herdr_count" -eq 1 ] \
+  || fail "pi-subagent-herdr appears $herdr_count times in editable launch (expected 1)"
+grep -qF 'https://github.com/cgint/pi-focus-guard' "$editable_regression_capture" \
+  || fail 'editable launch lost pi-focus-guard'
+grep -qF 'https://github.com/cgint/pi-tool-intent' "$editable_regression_capture" \
+  || fail 'editable launch lost pi-tool-intent'
+
+# Model probe regression: the availability probe must also load pi-subagent-herdr.
+probe_regression_capture="$TMPDIR_TEST/probe-regression.txt"
+probe_regression_list="$TMPDIR_TEST/probe-regression-list.txt"
+FAKE_GIT_ROOT='' PI_WORKER_DEFAULT_MODEL='home-llm/some-model' \
+  MODEL_AVAILABLE='home-llm/some-model' \
+  PI_PROFILE_LIST_CAPTURE="$probe_regression_list" \
+  PATH="$TMPDIR_TEST/bin:$PATH" HOME="$TMPDIR_TEST/home" PI_PROFILE_CAPTURE="$probe_regression_capture" \
+  "$herdr_worker" --mode readonly -- @/tmp/handoff.md 'task'
+grep -qF 'https://github.com/cgint/pi-subagent-herdr' "$probe_regression_list" \
+  || fail 'model availability probe did not load pi-subagent-herdr'
+probe_herdr_count="$(grep -cF 'https://github.com/cgint/pi-subagent-herdr' "$probe_regression_list" || true)"
+[ "$probe_herdr_count" -eq 1 ] \
+  || fail "pi-subagent-herdr appears $probe_herdr_count times in model probe (expected 1)"
+grep -qF 'https://github.com/cgint/pi-focus-guard' "$probe_regression_list" \
+  || fail 'model availability probe did not load pi-focus-guard'
+grep -qF 'https://github.com/cgint/pi-tool-intent' "$probe_regression_list" \
+  || fail 'model availability probe did not load pi-tool-intent'
+
 direct_capture="$TMPDIR_TEST/direct.txt"
 direct_invocations="$TMPDIR_TEST/direct-invocations.txt"
 PI_INVOCATION_CAPTURE="$direct_invocations" run_direct_worker "$direct_capture"
@@ -210,6 +252,7 @@ assert_capture "$direct_capture" \
   'PI_WRITE_GUARD_DIRS=.' \
   -ne -e 'https://github.com/cgint/pi-focus-guard' \
   -e 'https://github.com/cgint/pi-tool-intent' \
+  -e 'https://github.com/cgint/pi-subagent-herdr' \
   -e "$TMPDIR_TEST/direct-home/.pi/agent/extensions/herdr-agent-state.ts" \
   --model openai-codex/gpt-5.6-terra --thinking minimal \
   --tools read,bash,grep,find,ls --dm-read \
@@ -267,7 +310,7 @@ grep -qx -- '-ne' "$direct_config_list_capture" \
   || fail 'direct-Pi availability probe did not use the worker discovery mode'
 grep -Fqx 'https://github.com/cgint/pi-olla-autodetect' "$direct_config_list_capture" \
   || fail 'direct-Pi availability probe did not load the provider extension'
-grep -Fq $'pi\t-ne\t-e\thttps://github.com/cgint/pi-focus-guard\t-e\thttps://github.com/cgint/pi-tool-intent' "$direct_config_invocations" \
+grep -Fq $'pi\t-ne\t-e\thttps://github.com/cgint/pi-focus-guard\t-e\thttps://github.com/cgint/pi-tool-intent\t-e\thttps://github.com/cgint/pi-subagent-herdr' "$direct_config_invocations" \
   || fail 'direct-Pi availability probe did not use plain pi'
 if grep -Fq $'pi\tdefault\t' "$direct_config_invocations"; then
   fail 'direct-Pi availability probe passed a profile name to plain pi'
