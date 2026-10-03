@@ -180,6 +180,8 @@ assert_capture "$editable_capture" \
   minimal -ne -e 'https://github.com/cgint/pi-focus-guard' \
   -e 'https://github.com/cgint/pi-tool-intent' \
   -e 'https://github.com/cgint/pi-subagent-herdr' \
+  -e 'https://github.com/cgint/pi-advisor' \
+  -e 'https://github.com/cgint/pi-mini-self-org' \
   -e "$TMPDIR_TEST/home/.pi/profiles/minimal/agent/extensions/herdr-agent-state.ts" \
   --model openai-codex/gpt-5.6-terra --thinking minimal \
   @/tmp/handoff.md 'Execute the bounded task.'
@@ -215,6 +217,10 @@ grep -qF 'https://github.com/cgint/pi-focus-guard' "$readonly_regression_capture
   || fail 'readonly launch lost pi-focus-guard'
 grep -qF 'https://github.com/cgint/pi-tool-intent' "$readonly_regression_capture" \
   || fail 'readonly launch lost pi-tool-intent'
+grep -qF 'https://github.com/cgint/pi-advisor' "$readonly_regression_capture" \
+  || fail 'readonly launch lost pi-advisor'
+grep -qF 'https://github.com/cgint/pi-mini-self-org' "$readonly_regression_capture" \
+  || fail 'readonly launch lost pi-mini-self-org'
 
 editable_regression_capture="$TMPDIR_TEST/editable-regression.txt"
 PATH="$TMPDIR_TEST/bin:$PATH" HOME="$TMPDIR_TEST/home" PI_PROFILE_CAPTURE="$editable_regression_capture" \
@@ -226,6 +232,10 @@ grep -qF 'https://github.com/cgint/pi-focus-guard' "$editable_regression_capture
   || fail 'editable launch lost pi-focus-guard'
 grep -qF 'https://github.com/cgint/pi-tool-intent' "$editable_regression_capture" \
   || fail 'editable launch lost pi-tool-intent'
+grep -qF 'https://github.com/cgint/pi-advisor' "$editable_regression_capture" \
+  || fail 'editable launch lost pi-advisor'
+grep -qF 'https://github.com/cgint/pi-mini-self-org' "$editable_regression_capture" \
+  || fail 'editable launch lost pi-mini-self-org'
 
 # Model probe regression: the availability probe must also load pi-subagent-herdr.
 probe_regression_capture="$TMPDIR_TEST/probe-regression.txt"
@@ -244,6 +254,10 @@ grep -qF 'https://github.com/cgint/pi-focus-guard' "$probe_regression_list" \
   || fail 'model availability probe did not load pi-focus-guard'
 grep -qF 'https://github.com/cgint/pi-tool-intent' "$probe_regression_list" \
   || fail 'model availability probe did not load pi-tool-intent'
+grep -qF 'https://github.com/cgint/pi-advisor' "$probe_regression_list" \
+  || fail 'model availability probe did not load pi-advisor'
+grep -qF 'https://github.com/cgint/pi-mini-self-org' "$probe_regression_list" \
+  || fail 'model availability probe did not load pi-mini-self-org'
 
 direct_capture="$TMPDIR_TEST/direct.txt"
 direct_invocations="$TMPDIR_TEST/direct-invocations.txt"
@@ -253,6 +267,8 @@ assert_capture "$direct_capture" \
   -ne -e 'https://github.com/cgint/pi-focus-guard' \
   -e 'https://github.com/cgint/pi-tool-intent' \
   -e 'https://github.com/cgint/pi-subagent-herdr' \
+  -e 'https://github.com/cgint/pi-advisor' \
+  -e 'https://github.com/cgint/pi-mini-self-org' \
   -e "$TMPDIR_TEST/direct-home/.pi/agent/extensions/herdr-agent-state.ts" \
   --model openai-codex/gpt-5.6-terra --thinking minimal \
   --tools read,bash,grep,find,ls --dm-read \
@@ -310,7 +326,7 @@ grep -qx -- '-ne' "$direct_config_list_capture" \
   || fail 'direct-Pi availability probe did not use the worker discovery mode'
 grep -Fqx 'https://github.com/cgint/pi-olla-autodetect' "$direct_config_list_capture" \
   || fail 'direct-Pi availability probe did not load the provider extension'
-grep -Fq $'pi\t-ne\t-e\thttps://github.com/cgint/pi-focus-guard\t-e\thttps://github.com/cgint/pi-tool-intent\t-e\thttps://github.com/cgint/pi-subagent-herdr' "$direct_config_invocations" \
+grep -Fq $'pi\t-ne\t-e\thttps://github.com/cgint/pi-focus-guard\t-e\thttps://github.com/cgint/pi-tool-intent\t-e\thttps://github.com/cgint/pi-subagent-herdr\t-e\thttps://github.com/cgint/pi-advisor\t-e\thttps://github.com/cgint/pi-mini-self-org' "$direct_config_invocations" \
   || fail 'direct-Pi availability probe did not use plain pi'
 if grep -Fq $'pi\tdefault\t' "$direct_config_invocations"; then
   fail 'direct-Pi availability probe passed a profile name to plain pi'

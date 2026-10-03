@@ -93,7 +93,9 @@ pi_worker_runtime_main() {
   local focus_guard="https://github.com/cgint/pi-focus-guard"
   local tool_intent="https://github.com/cgint/pi-tool-intent"
   local subagent_herdr="https://github.com/cgint/pi-subagent-herdr"
-  local -a extension_args=(-e "$focus_guard" -e "$tool_intent" -e "$subagent_herdr")
+  local advisor="https://github.com/cgint/pi-advisor"
+  local mini_self_org="https://github.com/cgint/pi-mini-self-org"
+  local -a extension_args=(-e "$focus_guard" -e "$tool_intent" -e "$subagent_herdr" -e "$advisor" -e "$mini_self_org")
   if [ -n "$trusted_extension" ]; then
     [ -f "$trusted_extension" ] || {
       printf 'worker launcher: required trusted extension not found: %s\n' "$trusted_extension" >&2
