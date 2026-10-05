@@ -271,7 +271,7 @@ assert_capture "$direct_capture" \
   -e 'https://github.com/cgint/pi-mini-self-org' \
   -e "$TMPDIR_TEST/direct-home/.pi/agent/extensions/herdr-agent-state.ts" \
   --model openai-codex/gpt-5.6-terra --thinking minimal \
-  --tools read,bash,grep,find,ls --dm-read \
+  --tools read,bash,grep,find,ls --dm-read=1 \
   @/tmp/handoff.md 'Execute the bounded task.'
 grep -Fqx $'pi\tauth\tcheck\t--provider\topenai-codex' "$direct_invocations" \
   || fail 'direct-Pi worker did not use plain pi for authentication'

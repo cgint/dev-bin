@@ -229,7 +229,7 @@ pi_worker_runtime_main() {
     pi_args+=(--model "$subagent_model" --thinking minimal)
   fi
   if [ "$mode" = "readonly" ]; then
-    pi_args+=(--tools read,bash,grep,find,ls --dm-read)
+    pi_args+=(--tools read,bash,grep,find,ls --dm-read=1)
   fi
 
   PI_WRITE_GUARD_DIRS="."
