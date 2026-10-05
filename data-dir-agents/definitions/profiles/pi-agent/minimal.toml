@@ -18,14 +18,12 @@ skills = [
   "openspec-explore",
   "openspec-archive-change",
   "grounded-pairing-discipline",
-  "firstmate",
   "orwell-6-rule-prose",
   "bootstrap-pairing-memory",
   "criticalthink",
   "short-instruction-semantics",
   "socratic-first-principles",
-  "explain-diff-html",
-  "sub-agent-herdr-supervisor"
+  "explain-diff-html"
 ]
 prompts = [
   "speak-matter-outcome.md",

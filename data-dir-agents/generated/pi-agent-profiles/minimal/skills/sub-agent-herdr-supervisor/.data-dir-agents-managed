@@ -1,4 +1,0 @@
-owner=data-dir-agents
-deployment=pi-agent-profiles/minimal
-skill=sub-agent-herdr-supervisor
-schema=1
