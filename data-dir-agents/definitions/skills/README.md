@@ -42,6 +42,7 @@ Skills for understanding, searching, and navigating codebases.
 | `codebase-search` | Deep code search with semantic and structural awareness |
 | `colgrep` | Column-aware grep patterns for code |
 | `read-code-structure` | Symbol maps and structural extraction (ctags) |
+| `general-explore` | Thinking partner for exploring ideas, investigating problems, and clarifying requirements without implementing |
 
 ### Documentation & modeling
 Skills for diagrams, docs, and architectural artifacts.

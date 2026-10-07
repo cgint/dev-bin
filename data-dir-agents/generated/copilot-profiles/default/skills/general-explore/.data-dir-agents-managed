@@ -1,0 +1,4 @@
+owner=data-dir-agents
+deployment=copilot-profiles/default
+skill=general-explore
+schema=1
