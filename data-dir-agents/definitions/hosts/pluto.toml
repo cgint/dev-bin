@@ -15,6 +15,7 @@ agents_file = "AGENTS_MINIMAL.md"
 skills = [
   "sub-agent-handoff",
   "grounded-pairing-discipline",
+  "honest-confidence",
   "orwell-6-rule-prose",
   "bootstrap-pairing-memory",
   "criticalthink",
