@@ -125,3 +125,7 @@ Use exactly one overall verdict:
 - ❌ Blocked — a severe issue remains; state the required next action
 
 After the verdict, include at most three supporting bullets. Do not hide unresolved risks or missing evidence.
+
+### What is the most important information you got out of that rethinking in the users perspective on that matter?
+
+Focus on the content of matter that this rethinking was done on.
