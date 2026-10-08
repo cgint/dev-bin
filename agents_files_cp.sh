@@ -50,6 +50,34 @@ rsync_copy_dir() {
   fi
 }
 
+sync_profile_prompts() {
+  local profile_dir="$1"
+  local target_dir="$2"
+  local prompts_src="$profile_dir/prompts"
+  local prompts_dest="$target_dir/prompts"
+  if [ ! -d "$prompts_src" ]; then
+    # Profile defines no prompts: retire the deployed set (delete-only).
+    if [ "$DELETE_RSYNC" = true ] && [ -d "$prompts_dest" ]; then
+      mkdir -p "$prompts_src"
+      rsync "${RSYNC_OPTS[@]}" --delete "$prompts_src/" "$prompts_dest/"
+    fi
+    return 0
+  fi
+  if [ "$DELETE_RSYNC" = true ]; then
+    # Mirror: remove prompts no longer in the profile (e.g. converted to skills).
+    rsync "${RSYNC_OPTS[@]}" --delete "$prompts_src/" "$prompts_dest/"
+  else
+    # Non-destructive: deploy the profile's prompts, leave retired ones in place
+    # (remove them with a subsequent agents_files_cp.sh --delete pass).
+    local prompt_file
+    mkdir -p "$prompts_dest"
+    for prompt_file in "$prompts_src"/*.md; do
+      [ -f "$prompt_file" ] || continue
+      cp -f "$prompt_file" "$prompts_dest/"
+    done
+  fi
+}
+
 managed_skill_matches() {
   local skill_dir="$1"
   local deployment="$2"
@@ -217,7 +245,7 @@ if [ -d "$GENERATED_DIR" ]; then
       echo " -- Deploying pi-agent profile '$profile_name' -> $target_dir ... (if no output then everything is up to date)"
       [ -f "$profile_dir/AGENTS.md" ] && cp -v "$profile_dir/AGENTS.md" "$target_dir/AGENTS.md"
       [ -d "$profile_dir/skills" ] && sync_managed_skills "$profile_dir/skills" "$target_dir/skills" "pi-agent-profiles/$profile_name"
-      [ -d "$profile_dir/prompts" ] && rsync_copy_dir "$profile_dir/prompts" "$target_dir/prompts"
+      sync_profile_prompts "$profile_dir" "$target_dir"
     done
   fi
 else

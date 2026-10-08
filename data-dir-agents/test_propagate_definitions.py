@@ -211,18 +211,19 @@ class TestPlanPiAgentProfile:
             dest: Path = item[2]
             assert "pi-agent-profiles/myprofile" in str(dest)
 
-    def test_partner_profile_includes_critical_rethink_sanity_prompt(self):
+    def test_partner_profile_includes_critical_rethink_sanity_skill(self):
         repo_root = Path(__file__).parent
         definitions = repo_root / "definitions"
-        prompt_name = "critical-rethink-sanity.md"
+        skill_name = "critical-rethink-sanity"
         profiles = load_pi_agent_profiles(definitions / "profiles" / "pi-agent")
         partner = next(profile for profile in profiles if profile["name"] == "partner")
 
-        assert (definitions / "prompts" / prompt_name).is_file()
-        assert prompt_name in partner["prompts"]
+        assert (definitions / "skills" / skill_name / "SKILL.md").is_file()
+        assert skill_name in partner["skills"]
+        assert f"{skill_name}.md" not in partner.get("prompts", [])
 
         planned = plan_pi_agent_profile(partner, definitions, repo_root / "generated")
-        assert prompt_name in self._dest_names(planned, "prompts")
+        assert any(f"/skills/{skill_name}/" in str(item[2]) for item in planned)
 
     def test_missing_agents_file_raises(self, tmp_path):
         spec_root = self._make_spec_root(tmp_path)

@@ -22,12 +22,12 @@ skills = [
   "short-instruction-semantics",
   "socratic-first-principles",
   "sub-agent-herdr-supervisor",
-  "ntfy-phone"
+  "ntfy-phone",
+  "check-sanity-before-continue",
+  "critical-rethink-sanity"
 ]
 
 prompts = [
-  "check-sanity-before-continue.md",
-  "critical-rethink-sanity.md",
   "short-concise-persist-details.md",
 ]
 

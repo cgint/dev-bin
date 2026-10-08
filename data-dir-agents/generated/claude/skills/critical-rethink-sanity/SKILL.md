@@ -1,5 +1,6 @@
 ---
-description: Critically review, revise, and sanity-check the current work
+name: critical-rethink-sanity
+description: When the user asks for a critical re-think, second perspective, or final sanity gate on the most recent substantive work product — a three-stage review (critical review, second-perspective reassessment and revision, final sanity gate) ending in a ✅/⚠️/❌ verdict. Distinct from criticalthink, which re-analyzes only the agent's own previous response.
 ---
 
 Perform the following workflow completely and sequentially in this single turn.

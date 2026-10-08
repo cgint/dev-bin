@@ -39,12 +39,12 @@ skills = [
   "sub-agent-cmux-supervisor",
   "sub-agent-herdr-supervisor",
   "ntfy-phone",
+  "check-sanity-before-continue",
+  "critical-rethink-sanity"
 ]
 
 prompts = [
   "done-archived-commit-exact.md",
-  "check-sanity-before-continue.md",
-  "critical-rethink-sanity.md",
   "speak-matter-outcome.md",
   "speak-process-status.md",
   "short-concise-persist-details.md",

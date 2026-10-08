@@ -25,13 +25,13 @@ skills = [
   "criticalthink",
   "short-instruction-semantics",
   "socratic-first-principles",
-  "explain-diff-html"
+  "explain-diff-html",
+  "check-sanity-before-continue",
+  "critical-rethink-sanity"
 ]
 prompts = [
   "speak-matter-outcome.md",
   "speak-process-status.md",
-  "critical-rethink-sanity.md",
-  "check-sanity-before-continue.md",
   "short-concise-persist-details.md",
   "done-archived-commit-exact.md",
   "make-me-understand.md"

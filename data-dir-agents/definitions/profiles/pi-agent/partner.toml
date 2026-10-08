@@ -29,7 +29,9 @@ skills = [
   "short-instruction-semantics",
   "socratic-first-principles",
   "explain-diff-html",
-  "sub-agent-herdr-supervisor"
+  "sub-agent-herdr-supervisor",
+  "check-sanity-before-continue",
+  "critical-rethink-sanity"
 ]
 
-prompts = ["done-archived-commit-exact.md", "check-sanity-before-continue.md", "critical-rethink-sanity.md", "speak-matter-outcome.md", "speak-process-status.md", "short-concise-persist-details.md"]
+prompts = ["done-archived-commit-exact.md", "speak-matter-outcome.md", "speak-process-status.md", "short-concise-persist-details.md"]

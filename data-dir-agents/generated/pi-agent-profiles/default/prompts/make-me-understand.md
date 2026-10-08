@@ -2,7 +2,9 @@
 description: Critically review, revise, and sanity-check the current work
 ---
 
-# Make me understand what you found out SOLELY focussing on the matter you are investigating.
+# Make me understand what you found out SOLELY focussing on the matter you are investigating
+Focus on the right flight level matching the current phase.
+E.g. Avoid technical details when it is about understanding the overall context and objectives
 
 ## What is the current state
 ...

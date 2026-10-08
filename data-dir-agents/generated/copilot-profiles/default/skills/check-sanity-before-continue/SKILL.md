@@ -1,3 +1,8 @@
+---
+name: check-sanity-before-continue
+description: Use after completing a task segment or before continuing, to run a quick sanity reflection on the current state — soundness, no hacks, tests, objections, and leftover work — with a ✅/❌/⚠️ verdict format.
+---
+
 # Sanity Reflection Checkpoint 
 
 ## General instruction now
