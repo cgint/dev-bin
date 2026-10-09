@@ -52,12 +52,13 @@ fi
 
 # If explicit -h/--help, show minimal help and exit before discovery
 if [[ "$HELP_REQUEST" == true ]]; then
-    echo "Usage: $SCRIPT_NAME <task> [-d <dir>] [-e <exts>] [-i <files>] [--staged] [--range <rev>] [--diff-only] [--as-is] [hint]"
+    echo "Usage: $SCRIPT_NAME <task> [-d <dir>] [-e <exts>] [-i <files>] [-a <file>] [--staged] [--range <rev>] [--diff-only] [--as-is] [hint]"
     echo ""
     echo "Options:"
     echo "  -d <dir>    Limit context to specified directory (can be used multiple times)"
     echo "  -e <exts>   Limit context to specified extensions (e.g., py,sh)"
     echo "  -i <files>  Limit context strictly to comma-separated files (e.g., src/main.py,src/config.py)"
+    echo "  -a <file>   Force-include a specific file (bypasses exclusions). Can repeat."
     echo "  --staged    Review staged changes instead of working tree"
     echo "  --range     Review a committed range (e.g., HEAD~1..HEAD)"
     echo "  --diff-only Override task mode to diff-only (no repo context)"
@@ -261,7 +262,7 @@ prompt_preview_line() {
 }
 
 usage() {
-    echo "Usage: $SCRIPT_NAME <task> [-d <dir>] [-e <exts>] [-i <files>] [--staged] [--range <rev>] [--diff-only] [--as-is] [hint]"
+    echo "Usage: $SCRIPT_NAME <task> [-d <dir>] [-e <exts>] [-i <files>] [-a <file>] [--staged] [--range <rev>] [--diff-only] [--as-is] [hint]"
     echo ""
     echo "Tasks (from $(basename "$PROMPT_DIR")):"
     printf '%s\n' "$TASK_LIST" | while read -r t; do
@@ -276,6 +277,7 @@ usage() {
     echo "  -d <dir>    Limit context to specified directory (can be used multiple times)"
     echo "  -e <exts>   Limit context to specified extensions (e.g., py,sh)"
     echo "  -i <files>  Limit context strictly to comma-separated files (e.g., src/main.py,src/config.py)"
+    echo "  -a <file>   Force-include a specific file (bypasses exclusions). Can repeat."
     echo "  --staged    Review staged changes instead of working tree"
     echo "  --range     Review a committed range (e.g., HEAD~1..HEAD)"
     echo "  --diff-only Override task mode to diff-only (no repo context)"
@@ -320,6 +322,7 @@ AS_IS=false
 RANGE_SPEC=""
 CLI_DIRS=()
 CLI_EXTS=()
+CLI_ADD_FILES=()
 CLI_FILES=""
 HINT_PARTS=()
 
@@ -363,6 +366,14 @@ while [[ $# -gt 0 ]]; do
                 exit 1
             fi
             CLI_EXTS+=("$2")
+            shift 2
+            ;;
+        -a)
+            if [[ $# -lt 2 ]]; then
+                echo "Error: -a requires a file argument" >&2
+                exit 1
+            fi
+            CLI_ADD_FILES+=("$2")
             shift 2
             ;;
         -i)
@@ -507,6 +518,9 @@ EXCLUDE_DIRS=()
 OMIT_FILES=()
 [[ -n "$DIRS_RAW" ]] && read -r -a DIRS <<< "$DIRS_RAW"
 [[ -n "$ADD_RAW" ]] && read -r -a ADD_FILES <<< "$ADD_RAW"
+if [[ ${#CLI_ADD_FILES[@]} -gt 0 ]]; then
+    ADD_FILES=("${CLI_ADD_FILES[@]}")
+fi
 [[ -n "$EXCLUDE_DIRS_RAW" ]] && read -r -a EXCLUDE_DIRS <<< "$EXCLUDE_DIRS_RAW"
 [[ -n "$OMIT_RAW" ]] && read -r -a OMIT_FILES <<< "$OMIT_RAW"
 
