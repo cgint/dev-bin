@@ -14,9 +14,11 @@ context: |
   Very important general instructions:
   - The most important things we need to transport through those OpenSpec artifacts are clarity so that the follow-up stages can work in alignment.
   - Think well about what technical depth of information should even be brought info OpenSpec artifacts.
-    - Focus on requirement-clarity
-    - Focus on GOAL-clarity: an easy to understand now state, gap analysis and target state on a higher level is worth way more than some nitty-gritty-current-state-code-details
-    - Example: Should line-numbers and exact code-parts be in there - fragily, maybe overspecified, does restrict implementation team
+    - Focus on requirement- and GOAL-clarity
+    - Focus on easy to understand now-state, gap analysis and target-state on a higher level
+    - Heavily avoid nitty-gritty-current-state-code-details like unless it is helpful for clarity and downstream alignment
+      - Example: Should line-numbers and exact code-parts be in there - fragily, maybe overspecified, does restrict implementation team ?
+      - Example: In case strong investigation was already done before (root-cause, tech-investigation, ...) then on the other hand those code-details do matter a lot to support alignment downstream!
 
 # Per-artifact rules (optional)
 rules:
