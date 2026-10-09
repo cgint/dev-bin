@@ -1,0 +1,4 @@
+owner=data-dir-agents
+deployment=copilot-profiles/partner
+skill=google-workspace-cli
+schema=1

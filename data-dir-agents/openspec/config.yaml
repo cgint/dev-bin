@@ -11,6 +11,12 @@ context: |
   - Frequency of Pain: Prioritize fixing the most frequent user interruptions first.
   - Task Ownership: During implementation you MUST tick off agent implementation and verification tasks timely after completing them with observable evidence. Do NOT tick off "Final verification by the user" tasks—those belong exclusively to the human user.
   - OpenSpec Pre-Merge Invariant: An OpenSpec change MUST NOT be merged into main or archived while agent implementation tasks remain unchecked in tasks.md.
+  Very important general instructions:
+  - The most important things we need to transport through those OpenSpec artifacts are clarity so that the follow-up stages can work in alignment.
+  - Think well about what technical depth of information should even be brought info OpenSpec artifacts.
+    - Focus on requirement-clarity
+    - Focus on GOAL-clarity: an easy to understand now state, gap analysis and target state on a higher level is worth way more than some nitty-gritty-current-state-code-details
+    - Example: Should line-numbers and exact code-parts be in there - fragily, maybe overspecified, does restrict implementation team
 
 # Per-artifact rules (optional)
 rules:
