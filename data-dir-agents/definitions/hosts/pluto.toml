@@ -4,16 +4,16 @@
 # skills/prompts are explicit whitelists resolved against definitions/skills/
 # and definitions/prompts/. A missing entry is a hard error (loud, not silent).
 #
-# Skill/prompt ceiling = partner profile's curated list. tldr and
-# google-workspace-cli are omitted (not present in definitions/skills/).
-# ntfy-phone NOT included (not requested for this host).
+# Skill/prompt set = lean goal (TODO-hosts-align-minimal.md, 2026-07-09).
+# Pluto: +sub-agent-handoff +firstmate.
 
 host        = "pluto"
 target_dir  = "~/.pi/agent"
 agents_file = "AGENTS_MINIMAL.md"
 
 skills = [
-  "sub-agent-handoff",
+  "web-search",
+  "general-explore",
   "grounded-pairing-discipline",
   "honest-confidence",
   "orwell-6-rule-prose",
@@ -21,15 +21,34 @@ skills = [
   "criticalthink",
   "short-instruction-semantics",
   "socratic-first-principles",
-  "sub-agent-herdr-supervisor",
   "ntfy-phone",
   "check-sanity-before-continue",
-  "critical-rethink-sanity"
+  "critical-rethink-sanity",
+  "sub-agent-handoff",
+  "firstmate"
 ]
 
 prompts = [
+  "speak-matter-outcome.md",
+  "speak-process-status.md",
   "short-concise-persist-details.md",
+  "make-me-understand.md",
 ]
 
 delete   = false
 ssh_opts = ["-o", "ConnectTimeout=5", "-o", "BatchMode=yes"]
+
+# manual_extension_list_target_state (pi extensions, goal state 2026-07-09)
+# Documentation only: no script parses this block; the deploy tooling
+# reads only the toml keys below. Records the GOAL extension set for
+# this host (phase 2 of TODO-hosts-align-minimal.md). Format:
+#   <package> <number, source-type, qualifiers>
+#   pi-olla-autodetect (1)
+#   pi-tool-intent (2)
+#   pi-mini-self-org (3)
+#   pi-web-access (4)  [currently git (nicobailon); npm variant acceptable]
+#   pi-focus-guard (5)
+#   pi-advisor (9)
+#   pi-self-reflect (11)
+#   pi-subagent-herdr (8, pluto only: always-up central place hosts subagent work)
+# Not yet enforced; intentionally no automatism.

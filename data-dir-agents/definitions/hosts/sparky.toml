@@ -4,30 +4,15 @@
 # skills/prompts are explicit whitelists resolved against definitions/skills/
 # and definitions/prompts/. A missing entry is a hard error (loud, not silent).
 #
-# Skill/prompt ceiling = partner profile's curated list. tldr and
-# google-workspace-cli are omitted (not present in definitions/skills/).
-# ntfy-phone added for the homelab fleet (recovered from sparky/twins).
+# Skill/prompt set = lean goal (TODO-hosts-align-minimal.md, 2026-07-09).
 
 host        = "sparky"
 target_dir  = "~/.pi/agent"
 agents_file = "AGENTS_MINIMAL.md"
 
 skills = [
-  "codebase-search",
-  "read-code-structure",
   "web-search",
-  "web-browser-use",
-  "diagrams",
-  "gemini-model-rules",
-  "gemini-model-rules-extreme",
-  "sub-agent-handoff",
-  "my-tools-toolbox",
-  "cmux-usage",
-  "openspec-apply-change",
-  "openspec-propose",
-  "openspec-explore",
-  "openspec-archive-change",
-  "grill-with-docs",
+  "general-explore",
   "grounded-pairing-discipline",
   "honest-confidence",
   "orwell-6-rule-prose",
@@ -35,20 +20,32 @@ skills = [
   "criticalthink",
   "short-instruction-semantics",
   "socratic-first-principles",
-  "explain-diff-html",
-  "sub-agent-cmux-supervisor",
-  "sub-agent-herdr-supervisor",
   "ntfy-phone",
   "check-sanity-before-continue",
   "critical-rethink-sanity"
 ]
 
 prompts = [
-  "done-archived-commit-exact.md",
   "speak-matter-outcome.md",
   "speak-process-status.md",
   "short-concise-persist-details.md",
+  "make-me-understand.md",
 ]
 
 delete   = false
 ssh_opts = ["-o", "ConnectTimeout=5", "-o", "BatchMode=yes"]
+
+# manual_extension_list_target_state (pi extensions, goal state 2026-07-09)
+# Documentation only: no script parses this block; the deploy tooling
+# reads only the toml keys below. Records the GOAL extension set for
+# this host (phase 2 of TODO-hosts-align-minimal.md). Format:
+#   <package> <number, source-type, qualifiers>
+#   pi-olla-autodetect (1)
+#   pi-tool-intent (2)
+#   pi-mini-self-org (3)
+#   pi-web-access (4)
+#   pi-focus-guard (5)
+#   pi-advisor (9)
+#   pi-self-reflect (11)
+#   (no pi-subagent-herdr: inference-cluster hosts do not host subagent sessions)
+# Not yet enforced; intentionally no automatism.

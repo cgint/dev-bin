@@ -3,7 +3,7 @@
 > **Interface = the GOAL-STATE section. The three tables below are the single source of truth for the TARGET.**
 > Current-on-host columns are a snapshot (2026-07-09) — re-verify against real hosts before acting
 > (ssh `ls` for skills/prompts; `pi list` per host's own binary for extensions). Goal columns are stable
-> until explicitly changed. Execution deltas are recomputed from fresh state vs goal at execution time.
+> until explicitly changed. Goal columns are the target; current columns are a snapshot (2026-07-09) for context.
 
 Date: 2026-07-09 · Status: goal decided; execution not started
 
@@ -54,7 +54,7 @@ All 31 `definitions/skills/` entries listed (30 real + README excluded). Goal = 
 | 52 | python-uv-discipline (in definitions, no host, no toml) | ✖ | ⬜ | ⬜ | ⬜ | ⬜ | ✖ | ✖ |
 | 53 | skill-architect (in definitions, no host, no toml) | ✖ | ⬜ | ⬜ | ⬜ | ⬜ | ✖ | ✖ |
 
-### Prompts (goal: 6 — P1, P2, P3, P5, P6, P7; user: P1–P7 but NOT P4)
+### Prompts (goal: 4 — P1, P2, P3, P5; P6/P7 folded into skills 25/26)
 
 All 8 known prompt files listed.
 
@@ -64,8 +64,8 @@ All 8 known prompt files listed.
 | P2 | speak-process-status.md | ✅ | ✅ | ✅ | ✅ | ⬜ | 🎯 | 🎯 |
 | P3 | short-concise-persist-details.md | ✅ | ✅ | ✅ | ✅ | ✅ | 🎯 | 🎯 |
 | P5 | make-me-understand.md | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | 🎯 | 🎯 |
-| P6 | check-sanity-before-continue.md | ✅ (twin of skill 25) | 📄 | 📄 | 📄 | 📄 | 🎯 | 🎯 |
-| P7 | critical-rethink-sanity.md | ✅ (twin of skill 26) | 📄 | 📄 | 📄 | 📄 | 🎯 | 🎯 |
+| P6 | check-sanity-before-continue.md | ✖ (folded into skill 25 — no separate prompt file) | 📄 | 📄 | 📄 | 📄 | ✖ | ✖ |
+| P7 | critical-rethink-sanity.md | ✖ (folded into skill 26 — no separate prompt file) | 📄 | 📄 | 📄 | 📄 | ✖ | ✖ |
 | P4 | done-archived-commit-exact.md | ✖ (user: NOT in goal; pairs with ext 9 final_review) | 📄 | 📄 | 📄 | ⬜ | ✖ | ✖ |
 | P8 | start-self-organising.md | ✖ (unmanaged; workflow prompt of ext 3 — open question) | 📄 | 📄 | ⬜ | ⬜ | ✖ | ✖ |
 
@@ -98,13 +98,12 @@ agent-browser, doc-rocker-web-search, pi-session-to-md, url2md (sparkz + sparky)
 
 - **inference-cluster** (sparkz, sparky, twins) — skills (12): web-search, general-explore, grounded-pairing-discipline, honest-confidence, orwell-6-rule-prose, bootstrap-pairing-memory, criticalthink, short-instruction-semantics, socratic-first-principles, ntfy-phone, check-sanity-before-continue, critical-rethink-sanity
 - **pluto** — skills (14): same 12 + sub-agent-handoff, firstmate
-- prompts (6, both groups): speak-matter-outcome.md, speak-process-status.md, short-concise-persist-details.md, make-me-understand.md, check-sanity-before-continue.md, critical-rethink-sanity.md
+- prompts (4, both groups): speak-matter-outcome.md, speak-process-status.md, short-concise-persist-details.md, make-me-understand.md
 - extensions recorded in `manual_extension_list_target_state` comment blocks: 1,2,3,4,5,9,11 (+ 8 pluto only)
 
-### Execution deltas (recompute from fresh host state vs goal at execution time)
+### Execution deltas (deployed 2026-07-09, verified MATCH)
 
-Working-tree tomls currently carry the OLD minimal+ntfy 26-skill/5-prompt state — re-edit to the lean 12+6 above.
-Host removals: one-off `agents_files_cp_remote.sh --apply --delete` pass removes all ✖ rows (incl. unmanaged drift) — `~/.pi/agent` is fully managed by the deploy.
+`--apply --delete` on all 4 hosts. 0 missing, 0 surplus. Host-side leftovers + stale prompt files pruned.
 
 ### Open questions
 
