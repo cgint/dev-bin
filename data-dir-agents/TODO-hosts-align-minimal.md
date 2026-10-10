@@ -49,14 +49,6 @@ All 31 `definitions/skills/` entries listed (30 real + README excluded). Goal = 
 | 42 | openspec-explore | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
 | 43 | openspec-archive-change | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
 | 44 | explain-diff-html | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
-| 45 | agent-browser (unmanaged drift) | ✖ | ✅ | ✅ | ⬜ | ⬜ | ✖ | ✖ |
-| 46 | doc-rocker-web-search (unmanaged drift) | ✖ | ✅ | ✅ | ⬜ | ⬜ | ✖ | ✖ |
-| 47 | pi-session-to-md (unmanaged drift) | ✖ | ✅ | ✅ | ⬜ | ⬜ | ✖ | ✖ |
-| 48 | url2md (unmanaged drift) | ✖ | ✅ | ✅ | ⬜ | ⬜ | ✖ | ✖ |
-| 49 | criticalthink-retro (unmanaged drift, sparkz only) | ✖ | ✅ | ⬜ | ⬜ | ⬜ | ✖ | ✖ |
-| 50 | colgrep (in definitions, no host, no toml) | ✖ | ⬜ | ⬜ | ⬜ | ⬜ | ✖ | ✖ |
-| 51 | firstmate (in definitions, no host, no toml) | ✖ | ⬜ | ⬜ | ⬜ | ⬜ | ✖ | ✖ |
-| 52 | python-uv-discipline (in definitions, no host, no toml) | ✖ | ⬜ | ⬜ | ⬜ | ⬜ | ✖ | ✖ |
 | 53 | skill-architect (in definitions, no host, no toml) | ✖ | ⬜ | ⬜ | ⬜ | ⬜ | ✖ | ✖ |
 
 ### Prompts (goal: 6 — P1, P2, P3, P5, P6, P7; user: P1–P7 but NOT P4)
@@ -94,6 +86,10 @@ All 14 known extensions listed.
 | 12 | @capyup/pi-goal (npm) | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
 | 13 | pi-subagents (npm) | ✖ | ✅ | 📦 | 📦 | ⬜ | ✖ | ✖ |
 | 14 | pi-intercom (npm) | ✖ | ✅ | 📦 | 📦 | ⬜ | ✖ | ✖ |
+
+### Host-side leftovers (not in `definitions/skills/`, cleared by `--delete` pass)
+
+agent-browser, doc-rocker-web-search, pi-session-to-md, url2md (sparkz + sparky), criticalthink-retro (sparkz only). Not part of the managed skill set; removed automatically by `agents_files_cp_remote.sh --apply --delete`.
 
 ### Final toml state (all 4 hosts, identical)
 
