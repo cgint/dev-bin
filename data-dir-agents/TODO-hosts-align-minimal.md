@@ -62,44 +62,59 @@ Header comment fix (all 4 hosts): only `tldr` is genuinely absent from `definiti
 
 ## Phase 2 input: extensions on the minimal profile (`pi-profile minimal list`, 2026-07-09)
 
-User packages installed under `~/.pi/profiles/minimal/agent/`:
+User packages installed under `~/.pi/profiles/minimal/agent/` (numbered 1-10, same numbering as the host table below):
 
-| extension | source |
-|---|---|
-| pi-olla-autodetect | github.com/cgint/pi-olla-autodetect |
-| pi-tool-intent | github.com/cgint/pi-tool-intent |
-| pi-mini-self-org (filtered) | github.com/cgint/pi-mini-self-org |
-| pi-web-access | github.com/nicobailon/pi-web-access |
-| pi-focus-guard | github.com/cgint/pi-focus-guard |
-| pi-smart-compact | github.com/cgint/pi-smart-compact |
-| pi-transcribe | github.com/earendil-works/pi-transcribe |
-| pi-subagent-herdr | github.com/cgint/pi-subagent-herdr |
-| pi-advisor | github.com/cgint/pi-advisor |
-| pi-btw | npm:@nguyenquangthai/pi-btw |
+| # | extension | source |
+|---|---|---|
+| 1 | pi-olla-autodetect | github.com/cgint/pi-olla-autodetect |
+| 2 | pi-tool-intent | github.com/cgint/pi-tool-intent |
+| 3 | pi-mini-self-org (filtered) | github.com/cgint/pi-mini-self-org |
+| 4 | pi-web-access | github.com/nicobailon/pi-web-access |
+| 5 | pi-focus-guard | github.com/cgint/pi-focus-guard |
+| 6 | pi-smart-compact | github.com/cgint/pi-smart-compact |
+| 7 | pi-transcribe | github.com/earendil-works/pi-transcribe |
+| 8 | pi-subagent-herdr | github.com/cgint/pi-subagent-herdr |
+| 9 | pi-advisor | github.com/cgint/pi-advisor |
+| 10 | pi-btw | npm:@nguyenquangthai/pi-btw |
+
+(11-14 exist on hosts but not in the minimal set — see host table below.)
 
 Notes:
 - **Not all of these will go to the hosts** (user) — the host extension set is a subset; which ones is an open phase-2 decision. Decision table below (Y/N/?) — user to confirm.
 
-### Extension decision table (phase 2, per host)
+### Extension GOAL state (decided 2026-07-09) — recorded in each host toml as `manual_extension_list_target_state` (comment-only, not parsed by any script)
 
-Legend: ✅ loaded by `pi list` · ✅(f) loaded but filtered · 📦 in node_modules, not listed · ⬜ not present
+Group definitions: **inference-cluster** = sparkz, sparky, twins; **pluto** = always-up central place.
 
-| # | extension | what it gives | sparkz | sparky | twins | pluto |
-|---|---|---|---|---|---|---|
-| 1 | pi-olla-autodetect | auto-discovers ollama models | ✅ | ✅ | ✅ | ✅ |
-| 2 | pi-tool-intent | enforces `intent` on read/bash | ✅ | ✅ | ✅ | ✅ |
-| 3 | pi-mini-self-org | workpad tools | ✅ | ✅ | ✅ | ✅(f) |
-| 4 | pi-web-access (npm) | web fetch/search tools | ✅ | ✅ | ✅ | ✅ (git) |
-| 5 | pi-focus-guard | focus/compaction guard | ✅ | ✅ | ✅ | ✅ |
-| 6 | pi-smart-compact | compaction | ⬜ | ⬜ | ✅ | ✅ |
-| 7 | pi-transcribe | transcribe_file tool | ⬜ | ⬜ | ⬜ | ⬜ |
-| 8 | pi-subagent-herdr | subagent_* tools | ⬜ | ⬜ | ⬜ | ✅ |
-| 9 | pi-advisor | advisor tool (needs strong model) | ⬜ | ⬜ | ⬜ | ⬜ |
-| 10 | pi-btw | btw side-comments | ⬜ | ⬜ | ⬜ | ⬜ |
-| — | @capyup/pi-goal (npm) | NOT in minimal set | ✅ | ✅ | ✅(f) | ⬜ |
-| — | pi-subagents (npm) | NOT in minimal set | ✅(f) | 📦 | 📦 | ⬜ |
-| — | pi-intercom (npm) | NOT in minimal set | ✅(f) | 📦 | 📦 | ⬜ |
-| — | pi-self-reflect (git) | NOT in minimal set | ⬜ | ⬜ | ⬜ | ✅ |
+Goal set for BOTH groups (numbering = host table below): **1, 2, 3, 4, 5, 9, 11**
+(pi-olla-autodetect, pi-tool-intent, pi-mini-self-org, pi-web-access, pi-focus-guard, pi-advisor, pi-self-reflect)
+Plus **pluto only**: 8 pi-subagent-herdr (hosts subagent work).
+
+Implied deltas from current state (phase-2 execution list):
+- **sparkz**: add pi-advisor, pi-self-reflect; remove pi-goal, pi-subagents, pi-intercom.
+- **sparky**: add pi-advisor, pi-self-reflect; remove pi-goal.
+- **twins**: add pi-advisor, pi-self-reflect; remove pi-goal, pi-smart-compact (6 not in goal).
+- **pluto**: add pi-advisor; (already has the rest incl. herdr + self-reflect).
+- Note: pi-smart-compact (6) and pi-web-access variant on pluto (git nicobailon vs npm) — decisions: 6 dropped from goal; variant acceptable as-is.
+
+Legend: ✅ loaded by `pi list` · ✅(f) loaded but filtered · 📦 in node_modules, not listed · ⬜ not present · 🎯 goal: should be present · ✖ goal: should be absent
+
+| # | extension | what it gives | sparkz | sparky | twins | pluto | target (inference-cluster) | target (pluto) |
+|---|---|---|---|---|---|---|---|---|
+| 1 | pi-olla-autodetect | auto-discovers ollama models | ✅ | ✅ | ✅ | ✅ | 🎯 | 🎯 |
+| 2 | pi-tool-intent | enforces `intent` on read/bash | ✅ | ✅ | ✅ | ✅ | 🎯 | 🎯 |
+| 3 | pi-mini-self-org | workpad tools | ✅ | ✅ | ✅ | ✅(f) | 🎯 | 🎯 |
+| 4 | pi-web-access (npm) | web fetch/search tools | ✅ | ✅ | ✅ | ✅ (git) | 🎯 | 🎯 |
+| 5 | pi-focus-guard | focus/compaction guard | ✅ | ✅ | ✅ | ✅ | 🎯 | 🎯 |
+| 6 | pi-smart-compact | compaction | ⬜ | ⬜ | ✅ | ✅ | ✖ | ✖ |
+| 7 | pi-transcribe | transcribe_file tool | ⬜ | ⬜ | ⬜ | ⬜ | ✖ | ✖ |
+| 8 | pi-subagent-herdr | subagent_* tools | ⬜ | ⬜ | ⬜ | ✅ | ✖ | 🎯 |
+| 9 | pi-advisor | advisor tool (needs strong model) | ⬜ | ⬜ | ⬜ | ⬜ | 🎯 | 🎯 |
+| 10 | pi-btw | btw side-comments | ⬜ | ⬜ | ⬜ | ⬜ | ✖ | ✖ |
+| 11 | pi-self-reflect (git) | self-reflect tool | ⬜ | ⬜ | ⬜ | ✅ | 🎯 | 🎯 |
+| 12 | @capyup/pi-goal (npm) | NOT in minimal set | ✅ | ✅ | ✅(f) | ⬜ | ✖ | ✖ |
+| 13 | pi-subagents (npm) | NOT in minimal set | ✅(f) | 📦 | 📦 | ⬜ | ✖ | ✖ |
+| 14 | pi-intercom (npm) | NOT in minimal set | ✅(f) | 📦 | 📦 | ⬜ | ✖ | ✖ |
 
 User-confirmed `pi list` outputs (2026-07-09, re-run on ALL 4 hosts with each host's own pi binary; matches ssh runs):
 - **sparkz** (nvm pi): pi-goal (npm), pi-web-access (npm), pi-subagents (npm, filtered), pi-intercom (npm, filtered), pi-tool-intent, pi-focus-guard, pi-olla-autodetect, pi-mini-self-org (git).
