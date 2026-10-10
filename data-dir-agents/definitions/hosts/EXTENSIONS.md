@@ -124,13 +124,15 @@ Consequences:
 Present on the hosts: `advisor.ts`, `diesel-km.ts`, `herdr-agent-state.ts`, and a `subagent/` dir.
 These are invisible to `pi list` and to `pi install/remove` — managed by hand only.
 
-**USER RULING (2026-07-09): leave ALL of them alone on every host. They are out of scope for
-phase 2 and for any future host alignment work — never remove or "clean up" these.**
+**USER RULING (2026-07-09): leave `diesel-km.ts`, `herdr-agent-state.ts`, and `subagent/` alone on
+every host — out of scope for phase 2 and all future host alignment work, never remove.**
 
 Specifics:
 - `herdr-agent-state.ts` — required on pluto (part of the herdr setup, ext 8). Never remove.
-- `advisor.ts` — superseded by the pi-advisor package (ext 9) on pluto. Still NOT to be removed
-  without explicit user instruction (ruling above stands).
+- `advisor.ts` — **expected to be removed once the pi-advisor package (ext 9) is installed and
+  verified on that host** (user direction 2026-07-09: replacement by the advisor extension).
+  Verify the package works first; keep the old file's content recoverable (git or copy) before
+  removing. Apply host-by-host as ext 9 lands.
 - `diesel-km.ts`, `subagent/` — origin unknown to us; do not touch.
 
 ## Verification
@@ -153,6 +155,6 @@ After each change:
 - `pi remove` only the exact source listed in settings.json (source strings must match).
 - No `--delete`-style whole-dir sweeps of `~/.pi/agent` — only the skills/prompts
   deploy script may manage those subdirs (see agents_files_cp_remote.sh).
-- **NEVER touch loose files in `~/.pi/agent/extensions/`** (`advisor.ts`, `diesel-km.ts`,
-  `herdr-agent-state.ts`, `subagent/`) — user ruling 2026-07-09: leave them alone, permanently.
-  They are not part of any extension goal and are invisible to pi install/remove.
+- **NEVER touch loose files in `~/.pi/agent/extensions/` except `advisor.ts`, and only to remove it
+  after the pi-advisor package (ext 9) is installed and verified on that host** (user ruling
+  2026-07-09). `diesel-km.ts`, `herdr-agent-state.ts`, `subagent/` stay forever.
