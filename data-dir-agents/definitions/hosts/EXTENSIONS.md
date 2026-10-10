@@ -114,6 +114,13 @@ Consequences:
 - **ext 9 pi-advisor** needs a strong model per host; sparks run codex/olla —
   check the advisor package's model config before installing, else it no-ops.
 
+## Loose extensions on pluto (hand-managed, NOT in packages registry) — as of 2026-07-09
+
+- `~/.pi/agent/extensions/herdr-agent-state.ts` — **required on pluto** (part of the herdr setup, ext 8). Never remove.
+- `~/.pi/agent/extensions/advisor.ts` — **superseded**: advisor functionality is replaced by the pi-advisor package (ext 9). Candidate for removal once ext 9 is installed and verified on pluto (confirm with user before removing).
+
+These files are invisible to `pi list` and to `pi install/remove` — they are only managed by hand.
+
 ## Verification
 
 Host-derived facts in this doc are **snapshots, not live state** — every section that
