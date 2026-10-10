@@ -165,13 +165,25 @@ PY
     fail=$((fail+1)); exit_code=1; echo; continue
   fi
 
-  # 4. transfer
-  rsync_flags=(-avh)
-  if [ "$APPLY" = false ]; then rsync_flags+=(-n); fi
-  if [ "$DELETE" = true ] || [ "$host_delete" = true ]; then rsync_flags+=(--delete); fi
+  # 4. transfer (scoped: AGENTS.md overwrite, skills/ + prompts/ with optional --delete)
+  rsync_agents_flags=(-avh)
+  if [ "$APPLY" = false ]; then rsync_agents_flags+=(-n); fi
+  if ! rsync "${rsync_agents_flags[@]}" -e "ssh $ssh_opts" "$stage/AGENTS.md" "$host:$target/AGENTS.md"; then
+    echo "  [FAIL] $host: rsync AGENTS.md failed"; fail=$((fail+1)); exit_code=1; echo; continue
+  fi
 
-  if ! rsync "${rsync_flags[@]}" -e "ssh $ssh_opts" "$stage/" "$host:$target/"; then
-    echo "  [FAIL] $host: rsync failed"; fail=$((fail+1)); exit_code=1; echo; continue
+  rsync_skill_flags=(-avh)
+  if [ "$APPLY" = false ]; then rsync_skill_flags+=(-n); fi
+  if [ "$DELETE" = true ] || [ "$host_delete" = true ]; then rsync_skill_flags+=(--delete); fi
+  if ! rsync "${rsync_skill_flags[@]}" -e "ssh $ssh_opts" "$stage/skills/" "$host:$target/skills/"; then
+    echo "  [FAIL] $host: rsync skills/ failed"; fail=$((fail+1)); exit_code=1; echo; continue
+  fi
+
+  rsync_prompt_flags=(-avh)
+  if [ "$APPLY" = false ]; then rsync_prompt_flags+=(-n); fi
+  if [ "$DELETE" = true ] || [ "$host_delete" = true ]; then rsync_prompt_flags+=(--delete); fi
+  if ! rsync "${rsync_prompt_flags[@]}" -e "ssh $ssh_opts" "$stage/prompts/" "$host:$target/prompts/"; then
+    echo "  [FAIL] $host: rsync prompts/ failed"; fail=$((fail+1)); exit_code=1; echo; continue
   fi
 
   # 5. verify (apply only)
