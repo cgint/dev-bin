@@ -20,6 +20,10 @@ All 31 `definitions/skills/` entries listed (30 real + README excluded). Goal = 
 | # | skill | in goal? | sparkz | sparky | twins | pluto | target (cluster) | target (pluto) |
 |---|---|---|---|---|---|---|---|---|
 | 3 | web-search | ✅ | ✅ | ✅ | ✅ | ⬜ | 🎯 | 🎯 |
+| 4 | web-browser-use | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
+| 5 | diagrams | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
+| 8 | sub-agent-handoff | ✖ | ✅ | ✅ | ✅ | ✅ | ✖ | ✖ |
+| 9 | my-tools-toolbox | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
 | 14 | general-explore | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | 🎯 | 🎯 |
 | 16 | grounded-pairing-discipline | ✅ | ✅ | ✅ | ✅ | ✅ | 🎯 | 🎯 |
 | 17 | honest-confidence | ✅ | ⬜ | ⬜ | ⬜ | ✅ | 🎯 | 🎯 |
@@ -31,10 +35,6 @@ All 31 `definitions/skills/` entries listed (30 real + README excluded). Goal = 
 | 24 | ntfy-phone (host extra) | ✅ | ✅ | ✅ | ✅ | ✅ | 🎯 | 🎯 |
 | 25 | check-sanity-before-continue | ✅ (prompt twin P6) | 📁 | 📁 | 📁 | 📁 | 🎯 | 🎯 |
 | 26 | critical-rethink-sanity | ✅ (prompt twin P7; pairs with ext 9) | 📁 | 📁 | 📁 | 📁 | 🎯 | 🎯 |
-| 4 | web-browser-use | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
-| 5 | diagrams | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
-| 8 | sub-agent-handoff | ✖ | ✅ | ✅ | ✅ | ✅ | ✖ | ✖ |
-| 9 | my-tools-toolbox | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
 | 27 | cmux-usage | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
 | 28 | grill-with-docs | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
 | 29 | sub-agent-cmux-supervisor | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
@@ -49,6 +49,9 @@ All 31 `definitions/skills/` entries listed (30 real + README excluded). Goal = 
 | 42 | openspec-explore | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
 | 43 | openspec-archive-change | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
 | 44 | explain-diff-html | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
+| 50 | colgrep (in definitions, no host, no toml) | ✖ | ⬜ | ⬜ | ⬜ | ⬜ | ✖ | ✖ |
+| 51 | firstmate (in definitions, no host, no toml) | ✖ | ⬜ | ⬜ | ⬜ | ⬜ | ✖ | ✖ |
+| 52 | python-uv-discipline (in definitions, no host, no toml) | ✖ | ⬜ | ⬜ | ⬜ | ⬜ | ✖ | ✖ |
 | 53 | skill-architect (in definitions, no host, no toml) | ✖ | ⬜ | ⬜ | ⬜ | ⬜ | ✖ | ✖ |
 
 ### Prompts (goal: 6 — P1, P2, P3, P5, P6, P7; user: P1–P7 but NOT P4)
@@ -77,12 +80,12 @@ All 14 known extensions listed.
 | 3 | pi-mini-self-org | ✅ (workflow prompt P8 is unmanaged — open question) | ✅ | ✅ | ✅ | ✅ | 🎯 | 🎯 |
 | 4 | pi-web-access (npm; git on pluto) | ✅ (tools for skill 3) | ✅ | ✅ | ✅ | ✅ (git) | 🎯 | 🎯 |
 | 5 | pi-focus-guard | ✅ | ✅ | ✅ | ✅ | ✅ | 🎯 | 🎯 |
-| 9 | pi-advisor | ✅ (needs strong advisor model per host) | ⬜ | ⬜ | ⬜ | ⬜ | 🎯 | 🎯 |
-| 11 | pi-self-reflect | ✅ | ⬜ | ⬜ | ⬜ | ✅ | 🎯 | 🎯 |
-| 8 | pi-subagent-herdr (pluto only) | ✅ pluto only (package skills subagent-* attach via package, not tomls) | ⬜ | ⬜ | ⬜ | ✅ | ✖ | 🎯 |
 | 6 | pi-smart-compact | ✖ | ⬜ | ⬜ | ✅ | ✅ | ✖ | ✖ |
 | 7 | pi-transcribe | ✖ | ⬜ | ⬜ | ⬜ | ⬜ | ✖ | ✖ |
+| 8 | pi-subagent-herdr (pluto only) | ✅ pluto only (package skills subagent-* attach via package, not tomls) | ⬜ | ⬜ | ⬜ | ✅ | ✖ | 🎯 |
+| 9 | pi-advisor | ✅ (needs strong advisor model per host) | ⬜ | ⬜ | ⬜ | ⬜ | 🎯 | 🎯 |
 | 10 | pi-btw | ✖ | ⬜ | ⬜ | ⬜ | ⬜ | ✖ | ✖ |
+| 11 | pi-self-reflect | ✅ | ⬜ | ⬜ | ⬜ | ✅ | 🎯 | 🎯 |
 | 12 | @capyup/pi-goal (npm) | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
 | 13 | pi-subagents (npm) | ✖ | ✅ | 📦 | 📦 | ⬜ | ✖ | ✖ |
 | 14 | pi-intercom (npm) | ✖ | ✅ | 📦 | 📦 | ⬜ | ✖ | ✖ |
