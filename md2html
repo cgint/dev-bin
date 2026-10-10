@@ -72,10 +72,20 @@ else
 fi
 
 pandoc -s \
+  --metadata colorlinks=true \
   --metadata title="$title" \
   --syntax-highlighting=tango \
   -B <(cat <<'EOF'
 <style>
+:root {
+  color-scheme: light;
+}
+
+html, body {
+  background: #ffffff !important;
+  color: #333333 !important;
+}
+
 body {
   max-width: 95% !important;
   margin: auto !important;
