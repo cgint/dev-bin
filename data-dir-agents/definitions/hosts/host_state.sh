@@ -54,12 +54,12 @@ echo "--- extensions: pi list ---"
 ssh $SSH_OPTS "$HOST" "$PI_CMD list 2>&1" || echo "[UNREACHABLE]"
 
 echo
-echo "--- extensions: live registry (packages array in settings.json) ---"
-ssh $SSH_OPTS "$HOST" "python3 -c \"import json;print(json.dumps(json.load(open('/home/cgint/.pi/agent/settings.json')).get('packages',[]),indent=1))\" 2>&1" || echo "[UNREACHABLE or no python3/settings.json]"
+echo "--- extensions: live registry (packages array in agent settings.json) ---"
+ssh $SSH_OPTS "$HOST" "python3 -c \"import json,os;print(json.dumps(json.load(open(os.path.expanduser('~/.pi/agent/settings.json'))).get('packages',[]),indent=1))\" 2>&1" || echo "[UNREACHABLE or no python3/settings.json]"
 
 echo
-echo "--- model config (provider/model/thinking) ---"
-ssh $SSH_OPTS "$HOST" "grep -E 'defaultProvider|defaultModel|thinking' /home/cgint/.pi/agent/settings.json 2>/dev/null || echo '(none set)'" || echo "[UNREACHABLE]"
+echo "--- active settings: profile-aware (pi docs: profile settings > agent-dir settings) ---"
+ssh $SSH_OPTS "$HOST" "for f in ~/.pi/profiles/*/settings.json ~/.pi/agent/settings.json; do [ -f \"\$f\" ] && echo \"== \$f ==\" && grep -E 'defaultProvider|defaultModel|thinking' \"\$f\" 2>/dev/null; done; echo '(end)'" || echo "[UNREACHABLE]"
 
 echo
 echo "--- loose extensions (~/.pi/agent/extensions/, untracked) ---"
