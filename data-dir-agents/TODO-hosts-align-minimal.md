@@ -49,6 +49,97 @@ Prompt diff (target = minimal's 5):
 
 Header comment fix (all 4 hosts): only `tldr` is genuinely absent from `definitions/skills/`; drop the `google-workspace-cli` excuse. On pluto: fix the "ntfy-phone NOT included" line (list includes it).
 
+### Skills/prompts GOAL state (decided 2026-07-09, REVISED same day) — supersedes the "minimal + ntfy" goal above
+
+**Lean goal (user): both groups need ONLY: 3 web-search, 14 general-explore, 16 grounded-pairing-discipline, 17 honest-confidence, 18 orwell-6-rule-prose, 19 bootstrap-pairing-memory, 20 criticalthink, 21 short-instruction-semantics, 22 socratic-first-principles, 24 ntfy-phone, 25 check-sanity-before-continue, 26 critical-rethink-sanity = 12 skills.**
+Plus prompts **P1, P2, P3, P5, P6, P7** (user: P1–P7 but NOT P4 `done-archived-commit-exact.md`) = 6 prompts:
+speak-matter-outcome.md, speak-process-status.md, short-concise-persist-details.md, make-me-understand.md, check-sanity-before-continue.md, critical-rethink-sanity.md
+All 12 skills + 6 prompts verified to exist in `definitions/skills/` + `definitions/prompts/` (deploy pre-flight passes).
+Group definitions: **inference-cluster** = sparkz, sparky, twins; **pluto** = always-up central place. **No per-group divergence** for skills/prompts (unlike extensions).
+
+TOML deltas vs the (already edited) working-tree tomls:
+
+| host | add to toml | remove from toml |
+|---|---|---|
+| sparkz | general-explore, honest-confidence, check-sanity-before-continue, critical-rethink-sanity | 22 entries (everything currently in toml except web-search, grounded-pairing-discipline, orwell-6-rule-prose, bootstrap-pairing-memory, criticalthink, short-instruction-semantics, socratic-first-principles, ntfy-phone) |
+| sparky | same 4 | 21 entries (same rule) |
+| twins | same 4 | 17 entries (same rule) |
+| pluto | web-search, general-explore | sub-agent-handoff, sub-agent-herdr-supervisor |
+
+Final toml state (all 4 hosts, identical):
+- skills (12): web-search, general-explore, grounded-pairing-discipline, honest-confidence, orwell-6-rule-prose, bootstrap-pairing-memory, criticalthink, short-instruction-semantics, socratic-first-principles, ntfy-phone, check-sanity-before-continue, critical-rethink-sanity
+- prompts (6): speak-matter-outcome.md, speak-process-status.md, short-concise-persist-details.md, make-me-understand.md, check-sanity-before-continue.md, critical-rethink-sanity.md
+
+Host-filesystem deltas (what the next deploy must fix, per ✖/🎯 rows in the tables below):
+- sparkz: +4 skills · −22 skill dirs (incl. unmanaged drift: agent-browser, criticalthink-retro, doc-rocker-web-search, pi-session-to-md, url2md) · +1 prompt (P5) · −3 prompt files (P4, P8 — P6/P7 stay)
+- sparky: +4 skills · −21 skill dirs (incl. agent-browser, doc-rocker-web-search, pi-session-to-md, url2md) · +1 prompt (P5) · −3 prompt files (P4, P8)
+- twins: +4 skills · −17 skill dirs · +1 prompt (P5) · −1 prompt file (P4)
+- pluto: +2 skills · −2 skill dirs (sub-agent-handoff, sub-agent-herdr-supervisor) · +3 prompts (P1, P2, P5) · −1 prompt file (P4)
+- Consequence: `--apply --delete` now removes ~20 skill dirs + P4/P8 prompt files per host — the lean goal makes the one-shot `--delete` pass even more attractive (everything on the hosts outside the 12+6 set is known surplus/drift).
+
+### Skills/prompts CURRENT vs GOAL table (on-host state verified 2026-07-09 via ssh ls; goal = lean set above)
+
+Numbering: 1–26 = lean goal skills (numbering from the earlier minimal-based table kept where it matches: 3, 14, 16–22, 24–26); 27+ = not-in-goal items seen on hosts. P1–P8 = prompts.
+
+| # | skill | in goal? | sparkz (on host) | sparky (on host) | twins (on host) | pluto (on host) | target (inference-cluster) | target (pluto) |
+|---|---|---|---|---|---|---|---|---|
+| 3 | web-search | ✅ | ✅ | ✅ | ✅ | ⬜ | 🎯 | 🎯 |
+| 14 | general-explore | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | 🎯 | 🎯 |
+| 16 | grounded-pairing-discipline | ✅ | ✅ | ✅ | ✅ | ✅ | 🎯 | 🎯 |
+| 17 | honest-confidence | ✅ | ⬜ | ⬜ | ⬜ | ✅ | 🎯 | 🎯 |
+| 18 | orwell-6-rule-prose | ✅ | ✅ | ✅ | ✅ | ✅ | 🎯 | 🎯 |
+| 19 | bootstrap-pairing-memory | ✅ | ✅ | ✅ | ✅ | ✅ | 🎯 | 🎯 |
+| 20 | criticalthink | ✅ | ✅ | ✅ | ✅ | ✅ | 🎯 | 🎯 |
+| 21 | short-instruction-semantics | ✅ | ✅ | ✅ | ✅ | ✅ | 🎯 | 🎯 |
+| 22 | socratic-first-principles | ✅ | ✅ | ✅ | ✅ | ✅ | 🎯 | 🎯 |
+| 24 | ntfy-phone (host extra) | ✅ | ✅ | ✅ | ✅ | ✅ | 🎯 | 🎯 |
+| 25 | check-sanity-before-continue | ✅ | 📁 | 📁 | 📁 | 📁 | 🎯 | 🎯 |
+| 26 | critical-rethink-sanity | ✅ | 📁 | 📁 | 📁 | 📁 | 🎯 | 🎯 |
+| 27 | cmux-usage | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
+| 28 | grill-with-docs | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
+| 29 | sub-agent-cmux-supervisor | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
+| 30 | sub-agent-herdr-supervisor | ✖ | ✅ | ✅ | ✅ | ✅ | ✖ | ✖ |
+| 31 | sub-agent-handoff | ✖ | ✅ | ✅ | ✅ | ✅ | ✖ | ✖ |
+| 32 | codebase-search | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
+| 33 | read-code-structure | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
+| 34 | web-browser-use | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
+| 35 | diagrams | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
+| 36 | gemini-model-rules | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
+| 37 | gemini-model-rules-extreme | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
+| 38 | my-tools-toolbox | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
+| 39 | google-workspace-cli | ✖ | ⬜ | ⬜ | ⬜ | ⬜ | ✖ | ✖ |
+| 40 | openspec-apply-change | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
+| 41 | openspec-propose | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
+| 42 | openspec-explore | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
+| 43 | openspec-archive-change | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
+| 44 | explain-diff-html | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
+| 45 | agent-browser (unmanaged) | ✖ | ✅ | ✅ | ⬜ | ⬜ | ✖ | ✖ |
+| 46 | doc-rocker-web-search (unmanaged) | ✖ | ✅ | ✅ | ⬜ | ⬜ | ✖ | ✖ |
+| 47 | pi-session-to-md (unmanaged) | ✖ | ✅ | ✅ | ⬜ | ⬜ | ✖ | ✖ |
+| 48 | url2md (unmanaged) | ✖ | ✅ | ✅ | ⬜ | ⬜ | ✖ | ✖ |
+| 49 | criticalthink-retro (unmanaged) | ✖ | ✅ | ⬜ | ⬜ | ⬜ | ✖ | ✖ |
+
+\* 📁 = present on host as leftover `skills/<name>/` dir (pre-migration artifact); goal state = prompt-only (P6/P7 below are NOT in goal, so the dirs go entirely).
+
+| # | prompt | in goal? | sparkz (on host) | sparky (on host) | twins (on host) | pluto (on host) | target (inference-cluster) | target (pluto) |
+|---|---|---|---|---|---|---|---|---|
+| P1 | speak-matter-outcome.md | ✅ | ✅ | ✅ | ✅ | ⬜ | 🎯 | 🎯 |
+| P2 | speak-process-status.md | ✅ | ✅ | ✅ | ✅ | ⬜ | 🎯 | 🎯 |
+| P3 | short-concise-persist-details.md | ✅ | ✅ | ✅ | ✅ | ✅ | 🎯 | 🎯 |
+| P4 | done-archived-commit-exact.md | ✖ (user: NOT in goal) | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
+| P5 | make-me-understand.md | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | 🎯 | 🎯 |
+| P6 | check-sanity-before-continue.md | ✅ (prompt twin of skill 25) | 📄 | 📄 | 📄 | 📄 | 🎯 | 🎯 |
+| P7 | critical-rethink-sanity.md | ✅ (prompt twin of skill 26) | 📄 | 📄 | 📄 | 📄 | 🎯 | 🎯 |
+| P8 | start-self-organising.md (unmanaged) | ✖ | 📄 | 📄 | ⬜ | ⬜ | ✖ | ✖ |
+
+Legend: ✅ present on host · ⬜ absent · 📁 leftover skill dir · 📄 file in prompts/ · 🎯 goal: present · ✖ goal: absent. "(unmanaged)" = not referenced by any host toml; only exists on the host filesystem.
+
+Key findings (2026-07-09, verified via ssh `ls` on each host):
+- **Hosts are further from goal than the tomls suggested**: sparkz/sparky carry 8–9 unmanaged skills (agent-browser, doc-rocker-web-search, pi-session-to-md, url2md, …) and 2–3 unmanaged prompt files that no toml ever listed. These are local drift from old deploys.
+- **check-sanity-before-continue / critical-rethink-sanity** are goal SKILLS (25, 26) AND goal PROMPTS (P6, P7) — both forms ship; they exist on all hosts as `skills/<name>/` dirs today, and the prompt files stay (only P4/P8 removed).
+- pluto: 15 goal skills missing + 4 goal prompts missing (matches the pre-deploy toml gap); also carries the two skill-dir leftovers.
+- All surplus items are removable via the phase-1 removal strategy (one-off `--delete` pass would clear every ✖ row in one shot, incl. unmanaged drift — since `~/.pi/agent` is fully managed by the deploy).
+
 ## Architecture notes (influence the work)
 
 1. **Two independent lanes, no sync.** `definitions/profiles/` → `generated/` → `agents_files_cp.sh` (documented in STRUCTURE.md). `definitions/hosts/` → `.stage/<host>/` → (SSH?) `<host>:~/.pi/agent`. Nothing links them; "host looks like minimal" is a manual invariant.
