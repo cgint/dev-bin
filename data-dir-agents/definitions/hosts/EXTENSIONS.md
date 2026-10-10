@@ -27,6 +27,10 @@ Verified 2026-07-09 against pi 1.1.0 (local + pluto, same version).
 
 Never call a host's pi from another host's install — lists differ.
 
+**Availability: only pluto is up 24/7.** sparkz/sparky/twins are inference machines and may be
+off or unreachable — that is normal, not a fault. If unreachable, note `[UNREACHABLE <date>]`
+and retry later (pluto can always be verified).
+
 ## Commands (global scope, no -l)
 
 ```
@@ -47,17 +51,32 @@ pi install npm:@scope/pkg
 pi install ./local/path
 ```
 
-## Remote execution pattern
+## Gathering host state (recon commands)
 
-All of this runs over ssh, one host at a time, with that host's own pi:
+Run per host over ssh with the host's own pi (see canonical invocation above):
 
+```bash
+H=pluto   # swap per host; PI='<canonical pi invocation>'
+
+# 1. installed packages + status (goal comparison)
+ssh -o ConnectTimeout=5 -o BatchMode=yes $H "$PI list"
+
+# 2. live registry (source of truth)
+ssh -o ConnectTimeout=5 -o BatchMode=yes $H "python3 -c \"import json;d=json.load(open('/home/cgint/.pi/agent/settings.json'));print(json.dumps(d.get('packages',[]),indent=1))\""
+
+# 3. model config (provider/default model, thinking)
+ssh -o ConnectTimeout=5 -o BatchMode=yes $H "grep -E 'defaultProvider|defaultModel|thinking' /home/cgint/.pi/agent/settings.json"
+
+# 4. pi version
+ssh -o ConnectTimeout=5 -o BatchMode=yes $H "$PI --version"
+
+# 5. loose (untracked) extensions
+ssh -o ConnectTimeout=5 -o BatchMode=yes $H "ls ~/.pi/agent/extensions/ 2>/dev/null"
 ```
-ssh -o ConnectTimeout=5 -o BatchMode=yes <host> '<per-host pi command>'
-```
 
-Install is interactive-capable → pipe approve or use non-interactive flags if the
-pi version supports them (unverified: check `pi install --help` on the target host
-before first use; trust prompts may block).
+(On sparkz/sparky/twins the settings path is also `~/.pi/agent/settings.json`; expand `~`
+or use the absolute `/home/cgint/…` path.) Record each observation with its date in the
+timestamped sections above.
 
 ## Install layout (what lands where)
 
