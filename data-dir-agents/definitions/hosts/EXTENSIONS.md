@@ -53,7 +53,12 @@ pi install ./local/path
 
 ## Gathering host state (recon commands)
 
-Run per host over ssh with the host's own pi (see canonical invocation above):
+**Preferred: `definitions/hosts/host_state.sh <host>`** — one script, prints a
+fully-timestamped state block (pi version, skills, prompts, `pi list`, live registry,
+model config, loose extensions). Read-only; safe to run repeatedly; `[UNREACHABLE]`
+markers per section if a host is down.
+
+Manual equivalents (per host, with the host's own pi):
 
 ```bash
 H=pluto   # swap per host; PI='<canonical pi invocation>'
