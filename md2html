@@ -2,6 +2,7 @@
 set -euo pipefail
 
 OPEN_IN_BROWSER=false
+VIEW_TEMP=false
 INPUT_FILE=""
 
 show_usage() {
@@ -9,9 +10,15 @@ show_usage() {
   echo ""
   echo "Convert a Markdown file into a self-contained, beautifully styled HTML file using pandoc."
   echo ""
+  echo "Modes:"
+  echo "  md2html <file.md>         Write <file>.html alongside the .md"
+  echo "  md2html --open <file.md>  Write <file>.html alongside the .md and open it in the browser"
+  echo "  md2html --view <file.md>  Render to a temp file and open it (no local artifact)"
+  echo ""
   echo "Options:"
   echo "  -h, --help    Show this help message and exit"
-  echo "  --open        Open the generated HTML file in the default browser"
+  echo "  --open        Persist the HTML next to the .md and open it in the default browser"
+  echo "  --view        Render to a unique temp file and open it; no file is left next to the .md"
 }
 
 # Parse options
@@ -23,6 +30,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --open)
       OPEN_IN_BROWSER=true
+      shift
+      ;;
+    --view)
+      VIEW_TEMP=true
       shift
       ;;
     -*)
@@ -47,9 +58,18 @@ if [[ -z "$INPUT_FILE" ]]; then
   exit 1
 fi
 
+if [[ ! -f "$INPUT_FILE" ]]; then
+  echo "Error: Input file not found: $INPUT_FILE" >&2
+  exit 1
+fi
+
 input="$INPUT_FILE"
-output="${input%.md}.html"
 title="$(basename "$input" .md)"
+if [[ "$VIEW_TEMP" == "true" ]]; then
+  output="${TMPDIR:-/tmp}/${title}.$$.html"
+else
+  output="${input%.md}.html"
+fi
 
 pandoc -s \
   --metadata title="$title" \
@@ -159,11 +179,20 @@ EOF
 ) \
   "$input" -o "$output"
 
-echo "→ $output"
-
-if [[ "$OPEN_IN_BROWSER" == "true" ]]; then
+  if [[ "$VIEW_TEMP" == "true" ]]; then
+    echo "→ $output (temp)"
+  else
+    echo "→ $output"
+  fi
+  
+if [[ "$OPEN_IN_BROWSER" == "true" || "$VIEW_TEMP" == "true" ]]; then
   if command -v open >/dev/null 2>&1; then
-    open "$output"
+    # MD2HTML_BROWSER: app name to force (e.g. "Google Chrome", "Brave Browser", "Firefox")
+    if [[ -n "${MD2HTML_BROWSER:-}" ]]; then
+      open -a "$MD2HTML_BROWSER" "$output"
+    else
+      open "$output"
+    fi
   elif command -v xdg-open >/dev/null 2>&1; then
     xdg-open "$output"
   else
