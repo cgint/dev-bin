@@ -41,6 +41,11 @@ pi update [source]       # update package or pi itself
 pi config                # interactive TUI: enable/disable individual resources of a package
 ```
 
+**Non-interactive (verified pluto 2026-07-09, pi 1.1.0):**
+`pi install <source> --no-approve` — "ignore project-local files"; no trust prompt appears
+for remote git/npm sources over ssh. `pi remove <source>` is also non-interactive. Safe to run
+unattended. (The `--approve`/`--no-approve` flags only affect *project-local* `.pi/settings.json` trust.)
+
 There is NO `pi package` / `pi extension` subcommand — the verbs hang directly off `pi`.
 
 Source formats:
