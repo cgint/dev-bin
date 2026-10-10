@@ -119,12 +119,19 @@ Consequences:
 - **ext 9 pi-advisor** needs a strong model per host; sparks run codex/olla —
   check the advisor package's model config before installing, else it no-ops.
 
-## Loose extensions on pluto (hand-managed, NOT in packages registry) — as of 2026-07-09
+## Loose extensions (hand-managed, NOT in packages registry) — as of 2026-07-09
 
-- `~/.pi/agent/extensions/herdr-agent-state.ts` — **required on pluto** (part of the herdr setup, ext 8). Never remove.
-- `~/.pi/agent/extensions/advisor.ts` — **superseded**: advisor functionality is replaced by the pi-advisor package (ext 9). Candidate for removal once ext 9 is installed and verified on pluto (confirm with user before removing).
+Present on the hosts: `advisor.ts`, `diesel-km.ts`, `herdr-agent-state.ts`, and a `subagent/` dir.
+These are invisible to `pi list` and to `pi install/remove` — managed by hand only.
 
-These files are invisible to `pi list` and to `pi install/remove` — they are only managed by hand.
+**USER RULING (2026-07-09): leave ALL of them alone on every host. They are out of scope for
+phase 2 and for any future host alignment work — never remove or "clean up" these.**
+
+Specifics:
+- `herdr-agent-state.ts` — required on pluto (part of the herdr setup, ext 8). Never remove.
+- `advisor.ts` — superseded by the pi-advisor package (ext 9) on pluto. Still NOT to be removed
+  without explicit user instruction (ruling above stands).
+- `diesel-km.ts`, `subagent/` — origin unknown to us; do not touch.
 
 ## Verification
 
@@ -146,3 +153,6 @@ After each change:
 - `pi remove` only the exact source listed in settings.json (source strings must match).
 - No `--delete`-style whole-dir sweeps of `~/.pi/agent` — only the skills/prompts
   deploy script may manage those subdirs (see agents_files_cp_remote.sh).
+- **NEVER touch loose files in `~/.pi/agent/extensions/`** (`advisor.ts`, `diesel-km.ts`,
+  `herdr-agent-state.ts`, `subagent/`) — user ruling 2026-07-09: leave them alone, permanently.
+  They are not part of any extension goal and are invisible to pi install/remove.
