@@ -10,7 +10,7 @@ Date: 2026-07-09 · Status: goal decided; execution not started
 ## GOAL STATE (the interface)
 
 Groups: **inference-cluster** = sparkz, sparky, twins · **pluto** = always-up central place.
-Skills/prompts: **identical for both groups**. Extensions: pluto-only 8.
+Skills/prompts: **pluto diverges** (+ skills 8, 51). Extensions: pluto-only 8.
 Legend: ✅ present on host · ⬜ absent · 📁 leftover skill dir (goal: re-shipped as skill) · 📄 prompt file · 📦 in node_modules, not listed · 🎯 goal: present · ✖ goal: absent.
 
 ### Skills (goal: 12, both groups identical)
@@ -22,7 +22,7 @@ All 31 `definitions/skills/` entries listed (30 real + README excluded). Goal = 
 | 3 | web-search | ✅ | ✅ | ✅ | ✅ | ⬜ | 🎯 | 🎯 |
 | 4 | web-browser-use | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
 | 5 | diagrams | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
-| 8 | sub-agent-handoff | ✖ | ✅ | ✅ | ✅ | ✅ | ✖ | ✖ |
+| 8 | sub-agent-handoff | ✅ pluto only | ✅ | ✅ | ✅ | ✅ | ✖ | 🎯 |
 | 9 | my-tools-toolbox | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
 | 14 | general-explore | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | 🎯 | 🎯 |
 | 16 | grounded-pairing-discipline | ✅ | ✅ | ✅ | ✅ | ✅ | 🎯 | 🎯 |
@@ -50,7 +50,7 @@ All 31 `definitions/skills/` entries listed (30 real + README excluded). Goal = 
 | 43 | openspec-archive-change | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
 | 44 | explain-diff-html | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
 | 50 | colgrep (in definitions, no host, no toml) | ✖ | ⬜ | ⬜ | ⬜ | ⬜ | ✖ | ✖ |
-| 51 | firstmate (in definitions, no host, no toml) | ✖ | ⬜ | ⬜ | ⬜ | ⬜ | ✖ | ✖ |
+| 51 | firstmate (pluto only) | ✅ pluto only | ⬜ | ⬜ | ⬜ | ⬜ | ✖ | 🎯 |
 | 52 | python-uv-discipline (in definitions, no host, no toml) | ✖ | ⬜ | ⬜ | ⬜ | ⬜ | ✖ | ✖ |
 | 53 | skill-architect (in definitions, no host, no toml) | ✖ | ⬜ | ⬜ | ⬜ | ⬜ | ✖ | ✖ |
 
@@ -94,10 +94,11 @@ All 14 known extensions listed.
 
 agent-browser, doc-rocker-web-search, pi-session-to-md, url2md (sparkz + sparky), criticalthink-retro (sparkz only). Not part of the managed skill set; removed automatically by `agents_files_cp_remote.sh --apply --delete`.
 
-### Final toml state (all 4 hosts, identical)
+### Final toml state
 
-- skills (12): web-search, general-explore, grounded-pairing-discipline, honest-confidence, orwell-6-rule-prose, bootstrap-pairing-memory, criticalthink, short-instruction-semantics, socratic-first-principles, ntfy-phone, check-sanity-before-continue, critical-rethink-sanity
-- prompts (6): speak-matter-outcome.md, speak-process-status.md, short-concise-persist-details.md, make-me-understand.md, check-sanity-before-continue.md, critical-rethink-sanity.md
+- **inference-cluster** (sparkz, sparky, twins) — skills (12): web-search, general-explore, grounded-pairing-discipline, honest-confidence, orwell-6-rule-prose, bootstrap-pairing-memory, criticalthink, short-instruction-semantics, socratic-first-principles, ntfy-phone, check-sanity-before-continue, critical-rethink-sanity
+- **pluto** — skills (14): same 12 + sub-agent-handoff, firstmate
+- prompts (6, both groups): speak-matter-outcome.md, speak-process-status.md, short-concise-persist-details.md, make-me-understand.md, check-sanity-before-continue.md, critical-rethink-sanity.md
 - extensions recorded in `manual_extension_list_target_state` comment blocks: 1,2,3,4,5,9,11 (+ 8 pluto only)
 
 ### Execution deltas (recompute from fresh host state vs goal at execution time)
