@@ -8,6 +8,12 @@ Status: goal state decided (2026-07-09); execution not started
 
 ## GOAL STATE (the interface)
 
+**Authority: these three tables are the single source of truth for the TARGET/GOAL.
+The current-on-host columns are a snapshot (2026-07-09) for context only — they MUST be
+re-verified against the real hosts before any action (ssh ls for skills/prompts,
+`pi list` per host's own pi binary for extensions). Goal columns never need re-checking;
+execution deltas are recomputed from fresh state vs goal at execution time.**
+
 Groups: **inference-cluster** = sparkz, sparky, twins · **pluto** = always-up central place.
 Skills/prompts: **identical for both groups**. Extensions: pluto-only 8.
 Legend: ✅ present on host · ⬜ absent · 📁 leftover skill dir (goal: re-shipped as skill) · 📄 prompt file · 🎯 goal: present · ✖ goal: absent.
