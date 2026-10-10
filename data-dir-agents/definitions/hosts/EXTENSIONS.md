@@ -16,7 +16,7 @@ Verified 2026-07-09 against pi 1.1.0 (local + pluto, same version).
 
 - All 4 hosts: `~/.pi/agent/` (no profile layer on hosts; pluto confirmed `~/.pi/profiles/` empty).
 
-## Per-host pi binary (canonical invocation)
+## Per-host pi binary (canonical invocation) — as of 2026-07-09
 
 | host | command |
 |---|---|
@@ -76,7 +76,7 @@ Prefer `pi remove <source>`. Manual fallback (if pi CLI misbehaves remotely):
 
 The packages array in settings.json is the source of truth; the dirs are cache.
 
-## Per-host model (affects filtering + advisor)
+## Per-host model (affects filtering + advisor) — host state as of 2026-07-09, re-verify before acting
 
 | host | provider | model |
 |---|---|---|
@@ -91,6 +91,11 @@ Consequences:
   check the advisor package's model config before installing, else it no-ops.
 
 ## Verification
+
+Host-derived facts in this doc are **snapshots, not live state** — every section that
+quotes host reality (model table, pi version, layouts, current package sets) carries its
+observation date. Re-verify the relevant section before acting on it; update the date
+when you re-observe.
 
 After each change:
 1. `pi list` on the host (its own binary) → compare vs the goal row in the md.
