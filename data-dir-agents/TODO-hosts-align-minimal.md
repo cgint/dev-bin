@@ -1,7 +1,92 @@
 # Host specs vs pi-agent minimal — alignment work
 
+> **Interface = the GOAL-STATE section only** (user 2026-07-09). Everything below it is stale
+> investigation narrative — do not execute from it; the three tables there ARE the goal.
+
 Date: 2026-07-09
-Status: investigated, not yet implemented
+Status: goal state decided (2026-07-09); execution not started
+
+## GOAL STATE (the interface)
+
+Groups: **inference-cluster** = sparkz, sparky, twins · **pluto** = always-up central place.
+Skills/prompts: **identical for both groups**. Extensions: pluto-only 8.
+Legend: ✅ present on host · ⬜ absent · 📁 leftover skill dir (goal: re-shipped as skill) · 📄 prompt file · 🎯 goal: present · ✖ goal: absent.
+
+### Skills (goal: 12, both groups identical)
+
+| # | skill | ext coupling | sparkz | sparky | twins | pluto | target (cluster) | target (pluto) |
+|---|---|---|---|---|---|---|---|---|
+| 3 | web-search | tools come from ext 4 | ✅ | ✅ | ✅ | ⬜ | 🎯 | 🎯 |
+| 14 | general-explore | — | ⬜ | ⬜ | ⬜ | ⬜ | 🎯 | 🎯 |
+| 16 | grounded-pairing-discipline | — | ✅ | ✅ | ✅ | ✅ | 🎯 | 🎯 |
+| 17 | honest-confidence | — | ⬜ | ⬜ | ⬜ | ✅ | 🎯 | 🎯 |
+| 18 | orwell-6-rule-prose | — | ✅ | ✅ | ✅ | ✅ | 🎯 | 🎯 |
+| 19 | bootstrap-pairing-memory | — | ✅ | ✅ | ✅ | ✅ | 🎯 | 🎯 |
+| 20 | criticalthink | — | ✅ | ✅ | ✅ | ✅ | 🎯 | 🎯 |
+| 21 | short-instruction-semantics | — | ✅ | ✅ | ✅ | ✅ | 🎯 | 🎯 |
+| 22 | socratic-first-principles | — | ✅ | ✅ | ✅ | ✅ | 🎯 | 🎯 |
+| 24 | ntfy-phone (host extra) | standalone | ✅ | ✅ | ✅ | ✅ | 🎯 | 🎯 |
+| 25 | check-sanity-before-continue | prompt twin P6 | 📁 | 📁 | 📁 | 📁 | 🎯 | 🎯 |
+| 26 | critical-rethink-sanity | prompt twin P7; pairs with ext 9 | 📁 | 📁 | 📁 | 📁 | 🎯 | 🎯 |
+
+Not in goal (remove from tomls + hosts): 27 cmux-usage, 28 grill-with-docs, 29 sub-agent-cmux-supervisor, 30 sub-agent-herdr-supervisor, 31 sub-agent-handoff, 32 codebase-search, 33 read-code-structure, 34 web-browser-use, 35 diagrams, 36 gemini-model-rules, 37 gemini-model-rules-extreme, 38 my-tools-toolbox, 39 google-workspace-cli, 40–43 openspec-{apply,propose,explore,archive-change}, 44 explain-diff-html, 45–49 unmanaged drift (agent-browser, doc-rocker-web-search, pi-session-to-md, url2md, criticalthink-retro).
+
+### Prompts (goal: 6 — P1, P2, P3, P5, P6, P7; user: P1–P7 but NOT P4)
+
+| # | prompt | ext/skill coupling | sparkz | sparky | twins | pluto | target (cluster) | target (pluto) |
+|---|---|---|---|---|---|---|---|---|
+| P1 | speak-matter-outcome.md | — | ✅ | ✅ | ✅ | ⬜ | 🎯 | 🎯 |
+| P2 | speak-process-status.md | — | ✅ | ✅ | ✅ | ⬜ | 🎯 | 🎯 |
+| P3 | short-concise-persist-details.md | — | ✅ | ✅ | ✅ | ✅ | 🎯 | 🎯 |
+| P5 | make-me-understand.md | — | ⬜ | ⬜ | ⬜ | ⬜ | 🎯 | 🎯 |
+| P6 | check-sanity-before-continue.md | twin of skill 25 | 📄 | 📄 | 📄 | 📄 | 🎯 | 🎯 |
+| P7 | critical-rethink-sanity.md | twin of skill 26 | 📄 | 📄 | 📄 | 📄 | 🎯 | 🎯 |
+| P4 | done-archived-commit-exact.md | **NOT in goal** (pairs with ext 9 final_review — user dropped it anyway) | 📄 | 📄 | 📄 | ⬜ | ✖ | ✖ |
+| P8 | start-self-organising.md | unmanaged; workflow prompt of ext 3 | 📄 | 📄 | ⬜ | ⬜ | ✖ | ✖ |
+
+### Extensions (goal: 1,2,3,4,5,9,11 both groups + 8 pluto only)
+
+| # | extension | skill/prompt coupling | sparkz | sparky | twins | pluto | target (cluster) | target (pluto) |
+|---|---|---|---|---|---|---|---|---|
+| 1 | pi-olla-autodetect | — | ✅ | ✅ | ✅ | ✅ | 🎯 | 🎯 |
+| 2 | pi-tool-intent | — | ✅ | ✅ | ✅ | ✅ | 🎯 | 🎯 |
+| 3 | pi-mini-self-org | workflow prompt P8 is UNMANAGED (open question below) | ✅ | ✅ | ✅ | ✅ | 🎯 | 🎯 |
+| 4 | pi-web-access | tools for skill 3 | ✅ | ✅ | ✅ | ✅ (git) | 🎯 | 🎯 |
+| 5 | pi-focus-guard | — | ✅ | ✅ | ✅ | ✅ | 🎯 | 🎯 |
+| 9 | pi-advisor | final_review pairs with P4 (out) | ⬜ | ⬜ | ⬜ | ⬜ | 🎯 | 🎯 |
+| 11 | pi-self-reflect | — | ⬜ | ⬜ | ⬜ | ✅ | 🎯 | 🎯 |
+| 8 | pi-subagent-herdr (pluto only) | package skills subagent-* attach via package, not tomls | ⬜ | ⬜ | ⬜ | ✅ | ✖ | 🎯 |
+| 6 | pi-smart-compact | ✖ out (present on twins+pluto today) | ⬜ | ⬜ | ✅ | ✅ | ✖ | ✖ |
+| 7 | pi-transcribe | ✖ out | ⬜ | ⬜ | ⬜ | ⬜ | ✖ | ✖ |
+| 10 | pi-btw | ✖ out | ⬜ | ⬜ | ⬜ | ⬜ | ✖ | ✖ |
+| 12 | @capyup/pi-goal | ✖ out (not in minimal set) | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
+| 13 | pi-subagents | ✖ out | ✅ | 📦 | 📦 | ⬜ | ✖ | ✖ |
+| 14 | pi-intercom | ✖ out | ✅ | 📦 | 📦 | ⬜ | ✖ | ✖ |
+
+### Final toml state (all 4 hosts, identical)
+
+- skills (12): web-search, general-explore, grounded-pairing-discipline, honest-confidence, orwell-6-rule-prose, bootstrap-pairing-memory, criticalthink, short-instruction-semantics, socratic-first-principles, ntfy-phone, check-sanity-before-continue, critical-rethink-sanity
+- prompts (6): speak-matter-outcome.md, speak-process-status.md, short-concise-persist-details.md, make-me-understand.md, check-sanity-before-continue.md, critical-rethink-sanity.md
+- extensions recorded in `manual_extension_list_target_state` comment blocks: 1,2,3,4,5,9,11 (+ 8 pluto only)
+
+### Execution deltas (from current tomls / hosts to goal)
+
+TOML deltas (working-tree tomls currently carry the OLD minimal+ntfy 26-skill/5-prompt state):
+- sparkz: toml → add general-explore, honest-confidence, check-sanity-before-continue, critical-rethink-sanity (skills) + make-me-understand.md (prompt); drop 22 non-goal skills + P4 (keep P6/P7)
+- sparky: same as sparkz (drop 21 non-goal skills)
+- twins: same 4 skills + P5; drop 17 non-goal skills + P4
+- pluto: add web-search, general-explore + P1, P2, P5; drop sub-agent-handoff, sub-agent-herdr-supervisor + P4
+- Hosts additionally: one-off `--apply --delete` pass removes all ✖ rows (incl. unmanaged drift) — `~/.pi/agent` is fully managed by the deploy.
+
+### Open questions (against the goal state)
+
+1. **P8 `start-self-organising.md`**: unmanaged workflow prompt of ext 3. A `--delete` pass removes it from sparks; pluto/twins never had it. Options: (a) add P8 to goal + tomls (all hosts), (b) accept ext 3 running without its prompt, (c) ship it some other way.
+2. **P4 out + ext 9 in**: final_review tool arrives while its final-gate prompt is dropped — confirmed deliberate (user chose lean prompts).
+3. Extension preconditions (from phase-2 notes): 9 needs a strong advisor model per host; 3 is model-filtered on pluto; install/uninstall mechanism per host not yet specified.
+
+---
+
+## STALE investigation narrative (2026-07-09, pre-revision) — kept for provenance only
 
 ## Decision (user)
 
