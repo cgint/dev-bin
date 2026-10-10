@@ -5,14 +5,21 @@ Status: investigated, not yet implemented
 
 ## Decision (user)
 
+### Skills goal (phase 1) — identical for ALL hosts
+
 - `definitions/profiles/pi-agent/minimal.toml` is the source of truth for skill/prompt lists.
-- Hosts (`definitions/hosts/*.toml`) must look like minimal.
+- Every host (`definitions/hosts/*.toml`) = **minimal's list + `ntfy-phone`** (minus skills that don't exist in `definitions/skills/` = `tldr`). Same 26 skills + 5 prompts on all 4 hosts.
 - Intended host-only extra: `ntfy-phone`.
 - NOT intended on hosts: `cmux-usage`, `sub-agent-cmux-supervisor`, `sub-agent-herdr-supervisor`, `grill-with-docs`.
+- **pluto is the reference host** (user: "pluto is how hosts should be skilled — the others have too many"): pluto's shape is closest to the target; the direction of work is trimming sparkz/sparky/twins down, plus expanding pluto (it lacks 15 minimal skills).
 - **Removals may need hand work**: per-host `delete = false` and default deploy has no `--delete` → skills/prompts removed from tomls LINGER on hosts. Removal = either a one-off `--apply --delete` pass (risky: deletes anything on the host not in the whitelist, e.g. local drift) or manual `ssh <host> rm -rf ~/.pi/agent/skills/<name>`.
-- **Phase 2 (not now): pi extensions.** Likely to install extensions on the hosts. Keep out of scope for this alignment work; revisit when the toml alignment is done and deployed. Reference set = the minimal profile's extensions (user: "those are the extensions on the minimal config").
-- Resulting target: **host = minimal's list + `ntfy-phone`** (minus skills that don't exist in `definitions/skills/`).
-- **pluto is the reference host** (user: "pluto is how hosts should be skilled — the others have too many"). pluto ≈ target shape; the direction of work is trimming sparkz/sparky/twins down, plus small fixes on pluto itself (add 15 missing minimal skills, drop herdr supervisor, fix its header comment).
+
+### Extensions goal (phase 2) — DIVERGES per group (decided 2026-07-09)
+
+- **inference-cluster** (sparkz, sparky, twins) and **pluto** (always-up central place) both get: 1 pi-olla-autodetect, 2 pi-tool-intent, 3 pi-mini-self-org, 4 pi-web-access, 5 pi-focus-guard, 9 pi-advisor, 11 pi-self-reflect.
+- **pluto additionally**: 8 pi-subagent-herdr (hosts subagent work).
+- Recorded per host in `manual_extension_list_target_state` comment blocks (documentation only, not parsed by any script; no automatism).
+- Reference set was the minimal profile's extensions (user: "those are the extensions on the minimal config"); hosts get a deliberate subset.
 
 ## Verified facts
 
@@ -82,20 +89,24 @@ User packages installed under `~/.pi/profiles/minimal/agent/` (numbered 1-10, sa
 Notes:
 - **Not all of these will go to the hosts** (user) — the host extension set is a subset; which ones is an open phase-2 decision. Decision table below (Y/N/?) — user to confirm.
 
-### Extension GOAL state (decided 2026-07-09) — recorded in each host toml as `manual_extension_list_target_state` (comment-only, not parsed by any script)
+### Extension goal state (decided 2026-07-09) — recorded in each host toml as `manual_extension_list_target_state` (comment-only, not parsed by any script)
 
 Group definitions: **inference-cluster** = sparkz, sparky, twins; **pluto** = always-up central place.
 
-Goal set for BOTH groups (numbering = host table below): **1, 2, 3, 4, 5, 9, 11**
-(pi-olla-autodetect, pi-tool-intent, pi-mini-self-org, pi-web-access, pi-focus-guard, pi-advisor, pi-self-reflect)
+Goal set for BOTH groups (numbering = host table below): **1, 2, 3, 4, 5, 9, 11** (pi-olla-autodetect, pi-tool-intent, pi-mini-self-org, pi-web-access, pi-focus-guard, pi-advisor, pi-self-reflect)
 Plus **pluto only**: 8 pi-subagent-herdr (hosts subagent work).
 
 Implied deltas from current state (phase-2 execution list):
-- **sparkz**: add pi-advisor, pi-self-reflect; remove pi-goal, pi-subagents, pi-intercom.
-- **sparky**: add pi-advisor, pi-self-reflect; remove pi-goal.
-- **twins**: add pi-advisor, pi-self-reflect; remove pi-goal, pi-smart-compact (6 not in goal).
-- **pluto**: add pi-advisor; (already has the rest incl. herdr + self-reflect).
-- Note: pi-smart-compact (6) and pi-web-access variant on pluto (git nicobailon vs npm) — decisions: 6 dropped from goal; variant acceptable as-is.
+- **sparkz**: add 9, 11; remove 12, 13, 14.
+- **sparky**: add 9, 11; remove 12.
+- **twins**: add 9, 11; remove 12, 6 (pi-smart-compact not in goal).
+- **pluto**: add 9 only (already has 1–5, 8, 11; 6 pi-smart-compact not in goal → remove).
+- Note: pi-smart-compact (6) dropped from goal for all hosts; pi-web-access variant on pluto (git nicobailon vs npm) acceptable as-is.
+
+Open preconditions for phase-2 execution (unverified):
+- **9 pi-advisor** needs a stronger advisor model configured per host — unknown which models the hosts run.
+- **3 pi-mini-self-org** is model-filtered on pluto (and minimal) — may be a no-op on hosts whose model filters it.
+- **Install/uninstall mechanism** not yet specified (pi package manager syntax per host; npm vs git sources).
 
 Legend: ✅ loaded by `pi list` · ✅(f) loaded but filtered · 📦 in node_modules, not listed · ⬜ not present · 🎯 goal: should be present · ✖ goal: should be absent
 
@@ -135,11 +146,21 @@ Observations:
 - pi-subagent-herdr is the origin of the subagent_* tools (and its subagent-* skills live outside definitions/skills — they attach via the package, not the host tomls).
 - Extensions install into the profile's agent dir (here `~/.pi/profiles/minimal/agent/`); hosts use `~/.pi/agent` → phase 2 needs a per-host extension install/deploy mechanism (host tomls have no extension key today).
 
-1. ~~Answer Q1–Q4.~~ Q1, Q2 answered; Q3 (make-me-understand.md) and Q4 (shuttle orphan) still open.
-2. Edit `definitions/hosts/{sparkz,sparky,twins,pluto}.toml` per diff table.
-3. Fix header comments (all 4).
-4. Deploy: `agents_files_cp_remote.sh --apply` (add per-host removal strategy first — see Decision bullet above: one-off `--delete` pass vs hand-remove via ssh). Verify on hosts afterwards (skill dirs present/absent as expected).
-5. (Phase 2, separate): pi extensions on the hosts — design, toml support, deploy.
-6. Remove orphan `.stage/shuttle/`.
-7. Decide: structural generator for host specs (drift-proofing).
-8. Per repo convention: commit `definitions/` changes together with affected `generated/` outputs if any.
+## Ordered steps
+
+### Phase 1 — skills (all decisions made, ready to execute)
+1. ~~Answer Q1–Q4.~~ **All answered** (deploy tool = `agents_files_cp_remote.sh`; pluto = reference/intended shape; `make-me-understand.md` added; shuttle orphan to be removed).
+2. Edit `definitions/hosts/{sparkz,sparky,twins,pluto}.toml` per diff table (add/remove skills + prompts).
+3. Fix header comments (all 4): only `tldr` genuinely absent from `definitions/skills/`; fix pluto's "ntfy-phone NOT included" line.
+4. Deploy: `agents_files_cp_remote.sh --apply` + removal strategy for lingering skills (one-off `--delete` pass vs hand-rm via ssh — see Decision). Verify on hosts afterwards.
+5. Remove orphan `.stage/shuttle/`.
+6. Commit `definitions/` changes (host tomls) together with affected `generated/` outputs if any.
+
+### Phase 2 — extensions (goal decided; execution not started)
+1. Verify preconditions: per-host model config (unblocks 9 pi-advisor + 3 pi-mini-self-org questions); pi package install/uninstall syntax per host.
+2. Apply per-host deltas (see implied deltas above), using each host's own pi binary (see canonical invocation notes).
+3. Verify with `pi list` on each host; update this doc + toml comment blocks if reality diverges.
+
+### Later (separate decisions)
+- Structural option: derive host tomls from `minimal + {ntfy-phone}` in the generator (drift-proofing).
+- Automatism for `manual_extension_list_target_state` (currently explicitly manual).
