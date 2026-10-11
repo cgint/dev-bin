@@ -2,6 +2,12 @@
 name: my-tools-toolbox
 description: The toolbox (webs.sh for web-search, asks.sh for documentation- and code-search, speaks.sh for text-to-speech, url2md.py, pi-session-to-md, ...)
 ---
+# Finding a tool — do NOT run filesystem-wide find:
+# 1. Grep the catalog by capability: rg "<what you need>" ~/.local/bin/TOOLS_AGENTS.txt
+# 2. Know the name? → which <tool> && <tool> -h
+#    Executables are the full name (e.g. cg-task.sh, not cg-task — the bare name is a directory).
+# 3. No -h, or human-only tool? → cat ~/.local/bin/TOOLS_INTERNAL.txt (or read the script header)
+
 # CLI Tools Catalog
 # Run <tool> -h for detailed usage information
 
@@ -9,7 +15,8 @@ description: The toolbox (webs.sh for web-search, asks.sh for documentation- and
 
 - webs.sh             Web search via Gemini with grounding; accepts file + prompt, outputs to stdout or file ::: Example: webs.sh "latest AI news" ::: Allow at least **180s** per run; on timeout retry with a higher limit before giving up
 - asks.sh             Query documentation using BM25 search and generate answers by topic ::: Example: asks.sh my-sourcecode "Where doe we use Gemini Live API" ::: list of topics by simply running asks.sh
-- codegiant.py        Orchestrates context collection and LLM interaction for code tasks ::: Example: codegiant.py -y -o diff_review.md -t "review the diff.txt - Only reports real issues" -e py,js,txt,html
+cg-task.sh          Unified codegiant task dispatcher for prompt-file based reviews ::: Example: cg-task.sh diff-review --staged, cg-task.sh document-review -d <dir> --as-is
+codegiant.py        Orchestrates context collection and LLM interaction for code tasks ::: Example: codegiant.py -y -o diff_review.md -t "review the diff.txt - Only reports real issues" -e py,js,txt,html
 - codecollector.py    Gathers project context into a single markdown file for LLM consumption ::: Example: codecollector.py -y -o context.md
 - aider.sh            Launches aider AI coding assistant with preconfigured environment ::: Example: aider.sh
 - speaks.sh           Text-to-speech using AI; reads text or files aloud (default: Live streaming playback). Supports `--wav out.wav` to write a WAV via GenerateContent TTS ::: Example: speaks.sh "Hi" ::: Example: speaks.sh --wav out.wav "Hi" ::: Allow at least **180s** per run
@@ -34,6 +41,7 @@ description: The toolbox (webs.sh for web-search, asks.sh for documentation- and
 --- HTML & WEB ---
 
 - agent-browser       Browser automation CLI (installed system-wide). Use -h for detailed instructions. Chain multiple commands in a single one-line shell execution for speed ::: Example: agent-browser set viewport 1024 768 && agent-browser open <url> && agent-browser screenshot ./openspec/.../<useful-name>.png
+- browsershot.sh      Helper script for one-command screenshots (URL -> PNG). Use -h for help. ::: Example: browsershot.sh https://example.com
 - url2md.py           Fetch URL and convert HTML to Markdown (Pandoc required); default stdout for agents ::: Example: url2md.py https://example.com ::: url2md.py <url> -o out.md ::: Do not use for github.com
 - html_cleaner.sh     Clean HTML files, optionally minify, using BeautifulSoup ::: Example: html_cleaner.sh input.html output.html
 
