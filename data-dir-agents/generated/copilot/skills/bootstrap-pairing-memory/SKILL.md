@@ -45,9 +45,12 @@ Turn a clarified project intent into durable pairing memory and establish its st
    - Decide early what belongs to the repository versus what belongs only to private/internal agent workspace.
 
 3. Establish the memory boundary first.
-   - `agent/` is only for internal scratch notes, private evidence, helper material, and other agent-internal working files.
+   - `agent/` is a **tracked, committed** directory for agent-internal organization: memory files, task lists, logbooks, and agent-facing instructions. It is part of the repository.
+   - `agent/scratch/` is the **gitignored** subdirectory for transient working material: raw scan output, unpromoted handoffs, scratch logs, and intermediate files. It is never committed.
+   - During setup, create `agent/scratch/` and add it to `.gitignore` (e.g. `agent/scratch/`). Do NOT gitignore `agent/` itself — only the scratch subdirectory.
    - Durable pairing memory must live in repository-owned files such as root `AGENTS.md`, `PROJECT_OVERVIEW.md`, `docs/`, decision logs, or status docs.
    - If something should help future humans or agents understand the repo, place it outside `agent/`.
+   - Transient material in `agent/scratch/` that passes the selection test must be promoted to its canonical home before the scratch file is discarded.
 
 4. Create or update root memory.
    - Maintain `AGENTS.md` as concise durable directives, repo purpose, startup routine, key docs, workflows, risks, and open knowledge gaps.
@@ -57,6 +60,7 @@ Turn a clarified project intent into durable pairing memory and establish its st
 5. Install the standing stewardship contract in root `AGENTS.md`.
    - Assign agents the **authority, responsibility, and accountability** to steward durable pairing memory without waiting for repeated user requests.
    - Define stewardship and remembering using the meanings above.
+   - Define the `agent/` vs `agent/scratch/` distinction in the standing rules: `agent/` is tracked and committed (agent-internal organization); `agent/scratch/` is gitignored and transient (raw working files, unpromoted handoffs). Durable findings must be promoted from `agent/scratch/` to their canonical repository-owned home.
    - Define memory as future-oriented curation, not a record of what felt important in the current session. Judge candidates by expected future usefulness rather than present salience, novelty, difficulty, or effort.
    - Install a compact selection test agents can use under pressure: **FUTURE → CONSEQUENCE → ESSENCE → HOME**.
      - **Future:** Who could use this later, and in what situation?
@@ -84,6 +88,7 @@ Turn a clarified project intent into durable pairing memory and establish its st
    - Confirm that root `AGENTS.md` defines durable pairing memory, assigns its stewardship to agents, and contains the memory checkpoint.
    - Confirm that remembering requires filesystem persistence.
    - Confirm that important bootstrap knowledge is organized in repository-owned memory rather than left only in chat or `agent/`.
+   - Confirm that `agent/scratch/` exists, is gitignored, and that `agent/` (the parent) is NOT gitignored — only the scratch subdirectory is excluded from version control.
    - Show changed files and explain what future sessions should read first.
    - Leave open questions explicit.
 
@@ -91,7 +96,8 @@ Turn a clarified project intent into durable pairing memory and establish its st
 
 - Do not implement product/code behavior as part of this workflow unless the user separately approves implementation.
 - Do not store secrets or credentials.
-- Keep raw/private evidence in ignored/local areas unless explicit approval is given.
+- Keep raw/private evidence in `agent/scratch/` (gitignored) unless explicit approval is given to commit it.
+- `agent/` is tracked and committed; `agent/scratch/` is gitignored. Never gitignore `agent/` wholesale.
 - `agent/` must not become the only home of durable pairing memory.
 - Prefer concise pointers over duplicated long-form context.
 - Time-sensitive memory should be marked with enough date/time context to avoid false permanence.
