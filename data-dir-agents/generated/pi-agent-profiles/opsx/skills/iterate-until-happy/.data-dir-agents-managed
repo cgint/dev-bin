@@ -1,0 +1,4 @@
+owner=data-dir-agents
+deployment=pi-agent-profiles/opsx
+skill=iterate-until-happy
+schema=1

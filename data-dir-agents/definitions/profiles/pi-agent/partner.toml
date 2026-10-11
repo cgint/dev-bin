@@ -31,7 +31,8 @@ skills = [
   "explain-diff-html",
   "sub-agent-herdr-supervisor",
   "check-sanity-before-continue",
-  "critical-rethink-sanity"
+  "critical-rethink-sanity",
+  "iterate-until-happy"
 ]
 
 prompts = ["done-archived-commit-exact.md", "speak-matter-outcome.md", "speak-process-status.md", "short-concise-persist-details.md"]

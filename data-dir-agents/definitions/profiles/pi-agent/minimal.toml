@@ -27,7 +27,8 @@ skills = [
   "socratic-first-principles",
   "explain-diff-html",
   "check-sanity-before-continue",
-  "critical-rethink-sanity"
+  "critical-rethink-sanity",
+  "iterate-until-happy"
 ]
 prompts = [
   "speak-matter-outcome.md",

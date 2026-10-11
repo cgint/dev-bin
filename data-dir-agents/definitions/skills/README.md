@@ -30,6 +30,7 @@ Skills that shape how the agent behaves in partnership with the user.
 | `honest-confidence` | Structured confidence percentage metrics (problem-understanding / info-sufficiency / solution-confidence) for high-uncertainty decisions or explicit user request |
 | `firstmate` | Strategic outcome stewardship and reorientation during sustained or delegated collaboration |
 | `criticalthink` | Post-hoc self-audit: stress-test your own previous response |
+| `iterate-until-happy` | Iterate on your own work until genuinely satisfied; no artificial cap, honest escalation when blocked |
 | `bootstrap-pairing-memory` | Initialize the pairing memory system |
 | `short-instruction-semantics` | Interpret short commands like `go`, `analyse`, and `do web research` consistently |
 | `skill-architect` | Design and author new agent skills |

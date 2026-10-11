@@ -28,5 +28,6 @@ skills = [
   "socratic-first-principles",
   "explain-diff-html",
   "sub-agent-cmux-supervisor",
-  "sub-agent-herdr-supervisor"
+  "sub-agent-herdr-supervisor",
+  "iterate-until-happy"
 ]
