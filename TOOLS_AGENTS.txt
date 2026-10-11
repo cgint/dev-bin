@@ -42,4 +42,4 @@ browsershot.sh      Helper script for one-command screenshots (URL -> PNG). Use 
 
 --- UTILITIES ---
 
-timeout.sh          Run a command with a timeout in seconds ::: Example: timeout.sh 4 >server-startup-logs-check>
+timeout.sh          Run a command with a timeout in seconds ::: Example: timeout.sh 42 ./start-server.sh

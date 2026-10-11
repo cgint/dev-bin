@@ -21,7 +21,7 @@ die() {
 }
 
 show_help() {
-    sed -n '3,7p' "$0" | sed 's/^# //' | sed 's/^#//'
+    sed -n '3,4p' "$0" | sed 's/^# //' | sed 's/^#//'
     cat >&2 <<'EOF'
 
 Options:

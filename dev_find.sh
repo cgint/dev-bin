@@ -23,6 +23,16 @@ usage() {
 
 # Validate input
 [ $# -eq 0 ] && usage
+case "$1" in
+    -h|--help)
+        echo "Usage: $0 <query> [extension1] [extension2] ..."
+        echo "Search file contents in $HOME/dev for <query> (grep with smart defaults)."
+        echo "Default extensions: ts js py yaml yml toml json md rst"
+        echo "Example: $0 'function name' py ts html"
+        echo "Example: $0 search-term (uses default extensions)"
+        exit 0
+        ;;
+esac
 
 # Set up variables
 QUERY=$1

@@ -3,6 +3,7 @@
 # Optional: emit only matching file paths (one per line).
 # Useful for piping into tools like: dev_file_find.sh --files-only foo | xargs cat
 FILES_ONLY=0
+ORIG_FIRST_ARG="$1"
 if [ "$1" = "--files-only" ] || [ "$1" = "--quiet" ] || [ "$1" = "-q" ] || [ "$1" = "-F" ]; then
     FILES_ONLY=1
     shift
@@ -28,6 +29,10 @@ if [ -z "$1" ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
     echo "- Skips common build/venv/cache dirs (e.g. node_modules, .git, build, dist)"
     echo
     echo "Usage: $0 [--files-only|--quiet|-q] <query>"
+    # Distinguish explicit help (success) from missing-args error (failure).
+    # Check both the original first arg and the current $1 (post-flag-shift).
+    if [ "$ORIG_FIRST_ARG" = "-h" ] || [ "$ORIG_FIRST_ARG" = "--help" ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then exit 0; fi
+    exit 1
     exit 1
 fi
 
