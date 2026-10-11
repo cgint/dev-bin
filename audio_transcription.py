@@ -6,7 +6,7 @@
 # requires-python = ">=3.12"
 # ///
 """
-High-quality audio transcription using Google Gemini API (gemini-3.6-flash, gemini-3.5-flash-lite, gemini-2.5-pro).
+High-quality audio transcription using Google Gemini API (gemini-3.8-flash, gemini-3.5-flash-lite, gemini-2.5-pro).
 Handles large audio files (MP3, M4A, WAV, etc.) by converting and splitting when needed, then uploading to Gemini Files API.
 """
 
@@ -217,18 +217,18 @@ def build_thinking_config(model_name: str) -> genai_types.ThinkingConfig:
     Builds the appropriate ThinkingConfig for the given Gemini model.
 
     Model-specific thinking behavior in Google GenAI API (verified empirically):
-    - Gemini 3.7 Flash (gemini-3.7-flash):
+    - Gemini 3.8 Flash (gemini-3.8-flash):
         Supports thinking_budget=0 (completely disabled) or thinking_level="LOW".
     - Gemini Pro models (gemini-2.5-pro, gemini-3.1-pro-preview):
         Require thinking mode (thinking_budget >= 128). Budget 0 causes HTTP 400.
-    - Gemini 3.x Flash / Flash-Lite models (gemini-3.6-flash, gemini-3.5-flash, gemini-3.5-flash-lite, gemini-3.1-flash-lite):
+    - Gemini 3.x Flash / Flash-Lite models (gemini-3.8-flash, gemini-3.5-flash-lite, gemini-3.1-flash-lite):
         Setting `thinking_budget: 0` causes HTTP 400 INVALID_ARGUMENT.
         To minimize reasoning overhead and latency for transcription tasks,
         `thinking_level="MINIMAL"` is used.
     - Gemini 2.5 Flash / Flash-Lite models (gemini-2.5-flash, gemini-2.5-flash-lite):
         Support `thinking_budget: 0` to disable thinking.
     """
-    if "3.7" in model_name:
+    if "3.8" in model_name:
         return genai_types.ThinkingConfig(
             thinking_budget=0,
             include_thoughts=False
@@ -302,7 +302,7 @@ class UploadCache:
 class GeminiAudioTranscriber:
     """High-quality audio transcription using Gemini"""
     
-    def __init__(self, api_key: Optional[str] = None, model_name: str = "gemini-3.5-flash"):
+    def __init__(self, api_key: Optional[str] = None, model_name: str = "gemini-3.8-flash"):
         """Initialize the transcriber with API key."""
         self.api_key = api_key or os.getenv('GEMINI_API_KEY')
         if not self.api_key:
@@ -353,19 +353,7 @@ class GeminiAudioTranscriber:
                 "output_price_per_million": 1.50,
                 "output_price_per_million_high": 1.50,
             },
-            "gemini-3.5-flash": {
-                "input_price_per_million": 0.50,
-                "input_price_per_million_high": 0.50,
-                "output_price_per_million": 3.00,
-                "output_price_per_million_high": 3.00,
-            },
-            "gemini-3.6-flash": {
-                "input_price_per_million": 1.50,
-                "input_price_per_million_high": 1.50,
-                "output_price_per_million": 9.00,
-                "output_price_per_million_high": 9.00,
-            },
-            "gemini-3.7-flash": {
+            "gemini-3.8-flash": {
                 "input_price_per_million": 1.50,
                 "input_price_per_million_high": 1.50,
                 "output_price_per_million": 9.00,
@@ -782,18 +770,16 @@ def main() -> None:
     parser.add_argument("file", help="Audio file to transcribe (e.g., .mp3, .m4a)")
     parser.add_argument(
         "--model",
-        default="gemini-3.5-flash",
+        default="gemini-3.8-flash",
         choices=[
             "gemini-3.5-flash-lite",
-            "gemini-3.5-flash",
-            "gemini-3.6-flash",
-            "gemini-3.7-flash",
+            "gemini-3.8-flash",
             "gemini-3.1-flash-lite",
             "gemini-2.5-flash",
             "gemini-2.5-flash-lite",
             "gemini-2.5-pro",
         ],
-        help="Gemini model to use for transcription (default: gemini-3.5-flash).",
+        help="Gemini model to use for transcription (default: gemini-3.8-flash).",
     )
     parser.add_argument(
         "--reuse-remote-uploads",

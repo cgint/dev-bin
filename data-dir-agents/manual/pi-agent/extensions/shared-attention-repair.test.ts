@@ -212,7 +212,7 @@ test("command falls back to owned defaults when repair env vars are unset", asyn
     const harness = commandHarness(true);
     await harness.command();
     expect(harness.calls.find).toEqual([
-      { provider: "google", model: "gemini-3.7-flash" },
+      { provider: "google", model: "gemini-3.8-flash" },
     ]);
     expect(harness.calls.complete).toBe(1);
     expect(harness.calls.sent).toHaveLength(1);
@@ -221,7 +221,7 @@ test("command falls back to owned defaults when repair env vars are unset", asyn
       value: expect.objectContaining({
         details: expect.objectContaining({
           provider: "google",
-          model: "gemini-3.7-flash",
+          model: "gemini-3.8-flash",
           usage: { input: 1200, output: 42, cacheRead: 0, cacheWrite: 0 },
         }),
         content: projection,

@@ -4,7 +4,7 @@ const DEFAULT_BUDGET = 100;
 const MIN_BUDGET = 1;
 const MAX_BUDGET = 100;
 const DEFAULT_REPAIR_PROVIDER = "google";
-const DEFAULT_REPAIR_MODEL = "gemini-3.7-flash";
+const DEFAULT_REPAIR_MODEL = "gemini-3.8-flash";
 
 export interface RepairMessage {
   role: string;
