@@ -47,5 +47,5 @@ ssh_opts = ["-o", "ConnectTimeout=5", "-o", "BatchMode=yes"]
 #   pi-focus-guard (5)
 #   pi-advisor (9)
 #   pi-self-reflect (11)
-#   (no pi-subagent-herdr: inference-cluster hosts do not host subagent sessions)
+#   pi-subagent-herdr (8, all hosts: every host crosses all herdr cells — pkg + herdr-agent-state.ts + subagent/config.json; decided 2026-07-09)
 # Not yet enforced; intentionally no automatism.

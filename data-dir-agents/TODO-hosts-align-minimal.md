@@ -69,9 +69,11 @@ All 8 known prompt files listed.
 | P4 | done-archived-commit-exact.md | ✖ (user: NOT in goal; pairs with ext 9 final_review) | 📄 | 📄 | 📄 | ⬜ | ✖ | ✖ |
 | P8 | start-self-organising.md | ✖ (unmanaged; workflow prompt of ext 3 — open question) | 📄 | 📄 | ⬜ | ⬜ | ✖ | ✖ |
 
-### Extensions (goal: 1,2,3,4,5,9,11 both groups + 8 pluto only)
+### Extensions (goal: 1,2,3,4,5,9,11 both groups + 8 all hosts)
 
 All 14 known extensions listed.
+
+**Herdr on all hosts (decided 2026-07-09, deployed + verified same day).** "All herdr cells crossed" = 3 cells per host: (1) the `pi-subagent-herdr` package (row 8 below, registry-tracked), (2) loose `~/.pi/agent/extensions/herdr-agent-state.ts` (md5 `edf90e8…`, hand-managed, NOT registry), (3) loose `~/.pi/agent/extensions/subagent/config.json` (md5 `c6a766b0…`, hand-managed, NOT registry). All 4 hosts verified 2026-07-09: package count≥1 + clone present, both loose-file md5s exact. Only the package is registry-tracked; the two loose files are seeded/copied by hand (source of truth: pluto for state.ts, cluster for config.json). See `hosts/EXTENSIONS.md`.
 
 | # | extension | in goal? | sparkz | sparky | twins | pluto | target (cluster) | target (pluto) |
 |---|---|---|---|---|---|---|---|---|
@@ -82,7 +84,7 @@ All 14 known extensions listed.
 | 5 | pi-focus-guard | ✅ | ✅ | ✅ | ✅ | ✅ | 🎯 | 🎯 |
 | 6 | pi-smart-compact | ✖ | ⬜ | ⬜ | ✅ | ✅ | ✖ | ✖ |
 | 7 | pi-transcribe | ✖ | ⬜ | ⬜ | ⬜ | ⬜ | ✖ | ✖ |
-| 8 | pi-subagent-herdr (pluto only) | ✅ pluto only (package skills subagent-* attach via package, not tomls) | ⬜ | ⬜ | ⬜ | ✅ | ✖ | 🎯 |
+| 8 | pi-subagent-herdr (all hosts; package skills subagent-* attach via package, not tomls) | ✅ all hosts | 🎯 | 🎯 | 🎯 | ✅ | 🎯 | 🎯 |
 | 9 | pi-advisor | ✅ (needs strong advisor model per host) | ⬜ | ⬜ | ⬜ | ⬜ | 🎯 | 🎯 |
 | 10 | pi-btw | ✖ | ⬜ | ⬜ | ⬜ | ⬜ | ✖ | ✖ |
 | 11 | pi-self-reflect | ✅ | ⬜ | ⬜ | ⬜ | ✅ | 🎯 | 🎯 |
@@ -99,7 +101,7 @@ agent-browser, doc-rocker-web-search, pi-session-to-md, url2md (sparkz + sparky)
 - **inference-cluster** (sparkz, sparky, twins) — skills (12): web-search, general-explore, grounded-pairing-discipline, honest-confidence, orwell-6-rule-prose, bootstrap-pairing-memory, criticalthink, short-instruction-semantics, socratic-first-principles, ntfy-phone, check-sanity-before-continue, critical-rethink-sanity
 - **pluto** — skills (14): same 12 + sub-agent-handoff, firstmate
 - prompts (4, both groups): speak-matter-outcome.md, speak-process-status.md, short-concise-persist-details.md, make-me-understand.md
-- extensions recorded in `manual_extension_list_target_state` comment blocks: 1,2,3,4,5,9,11 (+ 8 pluto only)
+- extensions recorded in `manual_extension_list_target_state` comment blocks: 1,2,3,4,5,9,11,8 (all hosts; 8 = herdr, now on all 4)
 
 ### Execution deltas (deployed 2026-07-09, verified MATCH)
 
@@ -143,9 +145,9 @@ agent-browser, doc-rocker-web-search, pi-session-to-md, url2md (sparkz + sparky)
 8. Commit `definitions/hosts/*.toml` + this md.
 
 **Phase 2 — extensions**
-1. Verify preconditions: per-host model config (unblocks ext 9 + ext 3); pi package install/uninstall syntax per host.
-2. Apply per-host deltas (from Extensions table), using each host's own pi binary.
-3. Verify with `pi list` on each host; update this doc + toml comment blocks if reality diverges.
+1. ✅ Verify preconditions: per-host model config (recon 2026-07-09, see `hosts/EXTENSIONS.md`); pi `install --no-approve` confirmed non-interactive (pi 1.1.0). — DONE
+2. ✅ Herdr on all hosts (decided 2026-07-09): all 4 hosts now cross all 3 herdr cells — package + `herdr-agent-state.ts` + `subagent/config.json` — deployed + independently verified same day.
+3. Remaining: per-host deltas for ext 9 (pi-advisor) + 11 (pi-self-reflect) install / out-of-goal removals (see Extensions table); verify with `pi list`; update this doc if reality diverges. — PENDING
 
 **Later (separate decisions)**
 - Structural option: derive host tomls from a goal-set in the generator (drift-proofing).

@@ -119,6 +119,24 @@ Consequences:
 - **ext 9 pi-advisor** needs a strong model per host; sparks run codex/olla —
   check the advisor package's model config before installing, else it no-ops.
 
+## Herdr agent cells (all 4 hosts) — as of 2026-07-09
+
+"All herdr cells crossed" = 3 cells on **every** host (goal decided 2026-07-09, deployed + verified same day):
+
+| cell | path / entry | managed by | source of truth |
+|---|---|---|---|
+| 1 package | `pi-subagent-herdr` in `settings.json` packages (`https://github.com/cgint/pi-subagent-herdr`) | `pi install/remove` | registry |
+| 2 state ext | `~/.pi/agent/extensions/herdr-agent-state.ts` (md5 `edf90e82d6d6b1527c97b2d5125e6a86`) | hand (loose, NOT registry) | pluto copy |
+| 3 parallel cfg | `~/.pi/agent/extensions/subagent/config.json` (md5 `c6a766b01b892a6d9fe999d748e220cf`) | hand (loose, NOT registry) | cluster copy |
+
+Install/seed procedure:
+- cell 1: `pi install https://github.com/cgint/pi-subagent-herdr --no-approve` (per-host pi, non-interactive).
+- cell 2: `ssh pluto 'cat ~/.pi/agent/extensions/herdr-agent-state.ts' | ssh <host> 'cat > ~/.pi/agent/extensions/herdr-agent-state.ts'` then verify md5 `edf90e8…`.
+- cell 3: `mkdir -p ~/.pi/agent/extensions/subagent` + seed from a cluster host's config.json, verify md5 `c6a766b0…`.
+- Verify all 3: `host_state.sh <host>` + registry grep + both md5sums.
+
+Note: cells 2+3 are loose hand-managed files — the deploy script and `pi install` do NOT manage them.
+
 ## Loose extensions (hand-managed, NOT in packages registry) — as of 2026-07-09
 
 Present on the hosts: `advisor.ts`, `diesel-km.ts`, `herdr-agent-state.ts`, and a `subagent/` dir.
