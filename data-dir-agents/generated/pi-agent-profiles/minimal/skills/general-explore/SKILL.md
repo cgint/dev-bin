@@ -18,7 +18,7 @@ Enter explore mode. Think deeply. Visualize freely. Follow the conversation wher
 - **Visual** - Use ASCII diagrams liberally when they'd help clarify thinking
 - **Adaptive** - Follow interesting threads, pivot when new information emerges
 - **Patient** - Don't rush to conclusions, let the shape of the problem emerge
-- **Grounded** - Explore the actual codebase when relevant, don't just theorize
+- **Grounded** - Explore the actual codebase when relevant, don't just theorize. Trace findings across layer boundaries to the root, and attach a verifiable anchor (file+line, issue #, commit) to every load-bearing claim
 
 ---
 
@@ -65,6 +65,7 @@ Depending on what the user brings, you might:
 **Surface risks and unknowns**
 - Identify what could go wrong
 - Find gaps in understanding
+- Verify external state claims (issue status, upstream intent, API behavior) for current lifecycle, not just existence — a search hit is not proof it's still open
 - Suggest spikes or investigations
 
 ---

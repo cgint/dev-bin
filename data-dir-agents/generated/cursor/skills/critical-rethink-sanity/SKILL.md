@@ -81,6 +81,7 @@ Check:
 - Are there hacks, hidden workarounds, or unnecessary complexity?
 - Is anything blocking completion or continuation?
 - Is relevant documentation current?
+- Do load-bearing claims about external state (issue trackers, upstream intent, API behavior) rest on verified current status, not just on search snippets or documentation existence?
 
 For coding work, also check:
 
