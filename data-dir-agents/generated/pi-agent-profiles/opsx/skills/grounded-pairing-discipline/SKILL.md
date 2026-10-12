@@ -45,6 +45,7 @@ When using formal critique, use:
 - Work steadily; speed kills. Thoughtful alignment upfront prevents rework — early changes without clarity are expensive in disguise.
 - No hacks, hidden workarounds, or workaround final states.
 - Base every claim on something observable — code, logs, tests, or explicit uncertainty. If you can't point to evidence, state that as a gap, not a guess.
+- Recommendation-time re-verification: External state (issue status, upstream intent, API behavior) can change between discovery and the moment you recommend on it. Re-verify load-bearing external facts at the moment of recommendation, not just at discovery.
 - Preserve intended behavior when replacing or migrating systems (**Parity-Tracking**): maintain and update a feature/parity coverage matrix; document what is covered, partial, or missing.
 - Work in small verified vertical slices, using red-green TDD.
 - **Stable code:** TDD is mandatory. Use the green-red-green cycle: (1) **green** — confirm existing tests pass, (2) **red** — add the new requirement as a failing test, (3) **green** — implement until it passes.
