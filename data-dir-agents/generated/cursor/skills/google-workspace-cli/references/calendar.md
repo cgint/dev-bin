@@ -13,7 +13,7 @@ When listing events across a specific time interval (e.g. a day or week agenda),
 }
 ```
 - **Why**: Without `"singleEvents": true`, recurring events only exist at their original series creation timestamp. They will **not** appear within subsequent date ranges unless expanded into individual instances.
-- Note: Google Calendar API requires `orderBy="startTime"` whenever `singleEvents=true`.
+- Note: Google Calendar API requires `singleEvents=true` whenever `orderBy="startTime"` is used. Always pair them for chronological agenda listings.
 
 ### 2. Calendar scope (`calendarId`)
 - **Default personal calendar**: Explicitly pass `"calendarId": "primary"` (or `--calendar primary` depending on command style).
