@@ -14,9 +14,9 @@ you're papering over with "this is fine for now."
 This is not a one-shot check. It is a **loop**:
 
 ```
-  ┌──────────────────────────────────────────────────┐
-  │                                                  │
-  ▼                                                  │
+  ┌─────────────────────────────────────────────────┐
+  │                                                 │
+  ▼                                                 │
 ┌──────────┐    unhappy    ┌──────────────────┐     │
 │  Inspect │──────────────▶│  Diagnose & Fix  │─────┘
 │  result  │               │                  │

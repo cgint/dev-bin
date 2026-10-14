@@ -9,6 +9,13 @@ Use the `gws` CLI to interact with Google Workspace APIs (Drive, Sheets, Gmail, 
 
 This skill is intentionally **discovery-first**: don’t hardcode flags from help output; instead, ask the tool for the current truth.
 
+## Service references (deep dives)
+
+Load specialized reference files for grounded operational traps, query patterns, and service recipes:
+
+- Calendar: [references/calendar.md](references/calendar.md) (singleEvents recurring expansion, primary vs multi-calendar scope, agenda queries, Meet creation)
+- Drive / Gmail / Sheets: inspect via CLI discovery (`gws schema ...`) or add focused reference files as patterns emerge.
+
 ## Discoverability first
 
 ```bash
@@ -32,6 +39,15 @@ gws <service> <resource> [sub-resource] <method> [flags]
 
 Rule of thumb:
 - if you’re unsure what goes into query params vs request body, trust `gws schema …`.
+
+## JSON output parsing rule for scripts & codemode
+
+`gws` stdout may emit non-JSON preamble logs before the payload (e.g. `Using keyring backend: keyring`). Calling `JSON.parse(stdout)` directly will fail.
+
+Defensive parsing guidance:
+- Check if the command supports quiet/JSON-only flags (discover via `gws -h`).
+- When parsing raw stdout in code, strip informational prefix lines or extract the JSON payload (locate the initial `{` or `[` after any log preamble).
+- Retain the raw output if parsing fails to diagnose credential, network, or keyring warnings.
 
 ## Authentication (general patterns)
 
