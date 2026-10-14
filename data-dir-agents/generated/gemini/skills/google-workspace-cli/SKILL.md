@@ -11,10 +11,10 @@ This skill is intentionally **discovery-first**: don’t hardcode flags from hel
 
 ## Service references (deep dives)
 
-Load specialized reference files for grounded operational traps, query patterns, and service recipes:
+Load specialized reference files for operational rules, traps, and query examples:
 
-- Calendar: [references/calendar.md](references/calendar.md) (singleEvents recurring expansion, primary vs multi-calendar scope, agenda queries, Meet creation)
-- Drive / Gmail / Sheets: inspect via CLI discovery (`gws schema ...`) or add focused reference files as patterns emerge.
+- Calendar: [references/calendar.md](references/calendar.md) (recurring event expansion, primary calendar scope, agenda queries)
+- Drive: [references/drive.md](references/drive.md) (listing files, fetching metadata, schema inspection)
 
 ## Discoverability first
 
@@ -39,6 +39,16 @@ gws <service> <resource> [sub-resource] <method> [flags]
 
 Rule of thumb:
 - if you’re unsure what goes into query params vs request body, trust `gws schema …`.
+
+## Generic command pattern
+
+```bash
+# Query parameters are passed as JSON to --params
+gws <service> <resource> <method> --params '{"paramKey": "paramValue"}'
+
+# Request bodies (for writes/mutations) are passed as JSON to --json
+gws <service> <resource> <method> --json '{"bodyKey": "bodyValue"}'
+```
 
 ## JSON output parsing rule for scripts & codemode
 
@@ -69,19 +79,6 @@ Security:
 - Before running **write / delete / share / send-email** actions, explicitly confirm intent with the user.
 - If the CLI offers a preview mode (often called something like `--dry-run`), prefer it first — but **discover the exact flag name** via `gws -h`.
 - For sensitive content (PII), check whether the CLI offers sanitization/screening features and confirm usage with the user.
-
-## Minimal examples
-
-```bash
-# List something (exact params vary; check schema/help)
-gws drive files list --params '{"pageSize": 10}'
-
-# Fetch a single resource
-gws drive files get --params '{"fileId": "..."}'
-
-# Inspect what a method expects
-gws schema drive.files.list --resolve-refs
-```
 
 ## Tip: harvesting upstream “recipes” (optional)
 
