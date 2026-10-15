@@ -156,7 +156,7 @@ resolve_or_create_target_pane() {
   local has_running_pi
 
   pane_list="$(herdr --session "$SESSION" pane list 2>&1 || echo '{}')"
-  pane_count="$(echo "$pane_list" | grep -o '"pane_id"' | wc -l | tr -d ' ')"
+  pane_count="$(echo "$pane_list" | { grep -o '"pane_id"' || true; } | wc -l | tr -d ' ')"
   TARGET_PANE=""
 
   if [ "$pane_count" -eq 0 ]; then
@@ -244,8 +244,11 @@ launch_pi_in_target_pane() {
     done
   fi
 
+  # The pi invocation itself: profile, memory read, and AGENTS.md injection.
+  local pi_profile_cmd="pi-profile minimal --dm-read --append-system-prompt /Users/christian.gintenreiter/.pi/profiles/minimal/agent/AGENTS.md"
+
   local pi_cmd
-  pi_cmd="cd $(printf '%q' "$TARGET_DIR"); [ -f $(printf '%q' "$ENV_FILE") ] && { source $(printf '%q' "$ENV_FILE"); rm -f $(printf '%q' "$ENV_FILE"); }; pi-profile minimal --dm-read --append-system-prompt /Users/christian.gintenreiter/.pi/profiles/minimal/agent/AGENTS.md${extra_args}"
+  pi_cmd="cd $(printf '%q' "$TARGET_DIR"); [ -f $(printf '%q' "$ENV_FILE") ] && { source $(printf '%q' "$ENV_FILE"); rm -f $(printf '%q' "$ENV_FILE"); }; ${pi_profile_cmd}${extra_args}"
 
   # Give terminal subshell 50ms to be fully interactive before injecting
   sleep 0.05
