@@ -114,23 +114,31 @@ sanitize_poisoned_session() {
 
 # ------------------------------------------------------------------------------
 # 4. ensure_herdr_server
-#    WHAT: Starts the background Herdr server daemon if not already running.
-#    WHY:  Herdr architecture relies on a persistent server daemon per named session.
-#          We poll with `pane list` until the socket is active and responsive.
+#    WHAT: Attaches a background client to the named session to ensure the herdr
+#          server for that session is running.
+#    WHY:  `herdr <session> server` is interactive (it starts the server AND keeps
+#          a foreground client attached; it prints "did you mean to open the Herdr
+#          TUI?" and exits when stdin is not a TTY). Instead, spawn
+#          `herdr session attach` in the background: it auto-spawns the server
+#          if needed, and the server keeps living for as long as this client
+#          stays attached.
 # ------------------------------------------------------------------------------
 ensure_herdr_server() {
-  if ! herdr --session "$SESSION" pane list >/dev/null 2>&1; then
-    herdr --session "$SESSION" server >/dev/null 2>&1 &
-    local attempts=0
-    until herdr --session "$SESSION" pane list >/dev/null 2>&1; do
-      sleep 0.05
-      attempts=$((attempts + 1))
-      if [ "$attempts" -ge 40 ]; then
-        echo "[orca-herdr] ERROR: Herdr server failed to start within 2s for session $SESSION" >&2
-        exit 1
-      fi
-    done
+  if herdr --session "$SESSION" pane list >/dev/null 2>&1; then
+    return 0
   fi
+  echo "[orca-herdr] Starting herdr server for session: $SESSION" >&2
+  herdr session attach "$SESSION" </dev/null >/dev/null 2>&1 &
+  BG_ATTACH_PID=$!
+  local attempts=0
+  until herdr --session "$SESSION" pane list >/dev/null 2>&1; do
+    sleep 0.05
+    attempts=$((attempts + 1))
+    if [ "$attempts" -ge 40 ]; then
+      echo "[orca-herdr] ERROR: herdr server failed to start within 2s for session $SESSION" >&2
+      exit 1
+    fi
+  done
 }
 
 # ------------------------------------------------------------------------------
@@ -147,18 +155,29 @@ resolve_or_create_target_pane() {
   local create_out
   local has_running_pi
 
-  pane_list="$(herdr --session "$SESSION" pane list 2>/dev/null || echo "{}")"
+  pane_list="$(herdr --session "$SESSION" pane list 2>&1 || echo '{}')"
   pane_count="$(echo "$pane_list" | grep -o '"pane_id"' | wc -l | tr -d ' ')"
   TARGET_PANE=""
 
   if [ "$pane_count" -eq 0 ]; then
-    create_out="$(herdr --session "$SESSION" workspace create --cwd "$TARGET_DIR" 2>/dev/null)"
-    TARGET_PANE="$(echo "$create_out" | grep -o '"pane_id":"[^"]*"' | head -1 | cut -d'"' -f4)"
+    echo "[orca-herdr] No panes in session $SESSION, creating workspace in $TARGET_DIR" >&2
+    create_out="$(herdr --session "$SESSION" workspace create --cwd "$TARGET_DIR" 2>&1)"
+    if ! echo "$create_out" | grep -q '"pane_id"'; then
+      echo "[orca-herdr] ERROR: workspace create failed for session $SESSION:" >&2
+      echo "$create_out" >&2
+      exit 1
+    fi
+    TARGET_PANE="$(echo "$create_out" | grep -o '"pane_id"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed -E 's/.*"pane_id"[[:space:]]*:[[:space:]]*"([^"]*)".*/\1/')"
   else
     has_running_pi="$(echo "$pane_list" | grep -E '("agent_status":"(working|idle)"|"terminal_title":"[^"]*π)' || true)"
     if [ -z "$has_running_pi" ]; then
-      TARGET_PANE="$(echo "$pane_list" | grep -o '"pane_id":"[^"]*"' | head -1 | cut -d'"' -f4)"
+      TARGET_PANE="$(echo "$pane_list" | grep -o '"pane_id"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed -E 's/.*"pane_id"[[:space:]]*:[[:space:]]*"([^"]*)".*/\1/')"
     fi
+  fi
+
+  if [ -z "${TARGET_PANE:-}" ]; then
+    echo "[orca-herdr] ERROR: no target pane available for session $SESSION; not attaching to an empty session" >&2
+    exit 1
   fi
 }
 
@@ -212,6 +231,7 @@ prepare_env_file() {
 # ------------------------------------------------------------------------------
 launch_pi_in_target_pane() {
   if [ -z "${TARGET_PANE:-}" ]; then
+    echo "[orca-herdr] WARNING: no target pane, skipping pi launch" >&2
     return 0
   fi
 
@@ -229,7 +249,11 @@ launch_pi_in_target_pane() {
 
   # Give terminal subshell 50ms to be fully interactive before injecting
   sleep 0.05
-  herdr --session "$SESSION" pane run "$TARGET_PANE" "$pi_cmd"
+  echo "[orca-herdr] Launching pi in pane $TARGET_PANE (session: $SESSION)" >&2
+  herdr --session "$SESSION" pane run "$TARGET_PANE" "$pi_cmd" || {
+    echo "[orca-herdr] ERROR: failed to launch pi in pane $TARGET_PANE" >&2
+    exit 1
+  }
 }
 
 # ------------------------------------------------------------------------------
@@ -238,6 +262,7 @@ launch_pi_in_target_pane() {
 #    WHY:  Transfers interactive terminal control to herdr session attach.
 # ------------------------------------------------------------------------------
 attach_to_session() {
+  echo "[orca-herdr] Attaching to session: $SESSION" >&2
   exec herdr session attach "$SESSION"
 }
 
