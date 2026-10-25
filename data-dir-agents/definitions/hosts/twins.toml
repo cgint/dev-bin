@@ -22,7 +22,8 @@ skills = [
   "socratic-first-principles",
   "ntfy-phone",
   "check-sanity-before-continue",
-  "critical-rethink-sanity"
+  "critical-rethink-sanity",
+  "iterate-until-happy"
 ]
 
 prompts = [

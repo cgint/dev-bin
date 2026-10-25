@@ -24,6 +24,7 @@ skills = [
   "ntfy-phone",
   "check-sanity-before-continue",
   "critical-rethink-sanity",
+  "iterate-until-happy",
   "sub-agent-handoff",
   "firstmate"
 ]
