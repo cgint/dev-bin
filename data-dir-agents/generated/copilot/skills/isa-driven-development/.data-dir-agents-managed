@@ -1,0 +1,4 @@
+owner=data-dir-agents
+deployment=copilot
+skill=isa-driven-development
+schema=1

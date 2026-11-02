@@ -28,7 +28,8 @@ skills = [
   "explain-diff-html",
   "check-sanity-before-continue",
   "critical-rethink-sanity",
-  "iterate-until-happy"
+  "iterate-until-happy",
+  "isa-driven-development"
 ]
 prompts = [
   "speak-matter-outcome.md",
