@@ -4,7 +4,7 @@
 # skills/prompts are explicit whitelists resolved against definitions/skills/
 # and definitions/prompts/. A missing entry is a hard error (loud, not silent).
 #
-# Skill/prompt set = lean goal (TODO-hosts-align-minimal.md, 2026-07-09).
+# Skill/prompt set = lean goal (GOAL-STATE.md, 2026-07-09).
 
 host        = "twins"
 target_dir  = "~/.pi/agent"
@@ -39,7 +39,7 @@ ssh_opts = ["-o", "ConnectTimeout=5", "-o", "BatchMode=yes"]
 # manual_extension_list_target_state (pi extensions, goal state 2026-07-09)
 # Documentation only: no script parses this block; the deploy tooling
 # reads only the toml keys below. Records the GOAL extension set for
-# this host (phase 2 of TODO-hosts-align-minimal.md). Format:
+# this host (phase 2 of GOAL-STATE.md). Format:
 #   <package> <number, source-type, qualifiers>
 #   pi-olla-autodetect (1)
 #   pi-tool-intent (2)

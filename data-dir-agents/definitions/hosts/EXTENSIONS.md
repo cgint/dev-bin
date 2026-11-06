@@ -1,12 +1,12 @@
 # Extension management on homelab hosts (phase 2)
 
 How to install/remove/verify pi extensions on the 4 hosts. Companion to
-`TODO-hosts-align-minimal.md` (goal state = its Extensions table).
+`GOAL-STATE.md` (goal state = its Extensions table).
 Verified 2026-07-09 against pi 1.1.0 (local + pluto, same version).
 
 ## Source of truth
 
-- **Goal**: `TODO-hosts-align-minimal.md` → Extensions table (the 🎯 columns).
+- **Goal**: `GOAL-STATE.md` → Extensions table (the 🎯 columns).
 - **State**: each host toml's `manual_extension_list_target_state` comment block
   (documentation only — no script parses it).
 - **Live registry**: `<agent_dir>/settings.json` → `packages` array. This is what
@@ -163,7 +163,7 @@ when you re-observe.
 After each change:
 1. `pi list` on the host (its own binary) → compare vs the goal row in the md.
 2. `grep -A20 '"packages"' ~/.pi/agent/settings.json` → registry matches goal.
-3. Update `TODO-hosts-align-minimal.md` current-columns + toml comment block if
+3. Update `GOAL-STATE.md` current-columns + toml comment block if
    reality diverges from goal.
 
 ## Safety

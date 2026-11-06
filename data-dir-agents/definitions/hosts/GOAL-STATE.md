@@ -1,21 +1,26 @@
-# Host specs vs pi-agent minimal — alignment work
+# Host tomls — requirement doc (GOAL-STATE)
 
-> **Interface = the GOAL-STATE section. The three tables below are the single source of truth for the TARGET.**
-> Current-on-host columns are a snapshot (2026-07-09) — re-verify against real hosts before acting
-> (ssh `ls` for skills/prompts; `pi list` per host's own binary for extensions). Goal columns are stable
-> until explicitly changed. Goal columns are the target; current columns are a snapshot (2026-07-09) for context.
+> **Role: requirement doc, not a TODO.** This file defines WHAT each host toml
+> (`definitions/hosts/*.toml`) must contain: the GOAL-STATE tables below are the single source of
+> truth for every host's skill/prompt/extension set. The tomls are the deployable projection of
+> this doc — when they change, change the goal tables here in the same commit. Never the reverse.
+> Sections marked **[requirement]** are binding; sections marked **[record]** are dated snapshots
+> and deploy history — context only, not to be re-enforced without re-verification.
 
-Date: 2026-07-09 · Status: goal decided; execution not started
+Status: requirements active · phase-1 lean deployment 2026-07-09 · openspec addition to pluto 2026-07-10 (see Execution deltas [record]).
 
-## GOAL STATE (the interface)
+## GOAL STATE (the interface) **[requirement]**
 
 Groups: **inference-cluster** = sparkz, sparky, twins · **pluto** = always-up central place.
-Skills/prompts: **pluto diverges** (+ skills 8, 51). Extensions: pluto-only 8.
+Skills/prompts: **pluto diverges** (+ skills 8, 51, 40–43). Extensions: pluto-only 8.
 Legend: ✅ present on host · ⬜ absent · 📁 leftover skill dir (goal: re-shipped as skill) · 📄 prompt file · 📦 in node_modules, not listed · 🎯 goal: present · ✖ goal: absent.
+> Current-on-host columns (✅/⬜/📁/📄/📦) are dated snapshots — re-verify against real hosts
+> (ssh `ls` for skills/prompts; `pi list` per host's own binary) before acting on them.
+> Only the 🎯/✖ target columns are binding.
 
-### Skills (goal: 12 cluster / 18 pluto — pluto diverges)
+### Skills (goal: 13 cluster / 19 pluto — pluto diverges)
 
-All 31 `definitions/skills/` entries listed (30 real + README excluded). Goal = 🎯.
+All 37 `definitions/skills/` entries listed (36 real + README excluded). Goal = 🎯.
 
 | # | skill | in goal? | sparkz | sparky | twins | pluto | target (cluster) | target (pluto) |
 |---|---|---|---|---|---|---|---|---|
@@ -53,6 +58,8 @@ All 31 `definitions/skills/` entries listed (30 real + README excluded). Goal = 
 | 51 | firstmate (pluto only) | ✅ pluto only | ⬜ | ⬜ | ⬜ | ⬜ | ✖ | 🎯 |
 | 52 | python-uv-discipline (in definitions, no host, no toml) | ✖ | ⬜ | ⬜ | ⬜ | ⬜ | ✖ | ✖ |
 | 53 | skill-architect (in definitions, no host, no toml) | ✖ | ⬜ | ⬜ | ⬜ | ⬜ | ✖ | ✖ |
+| 54 | iterate-until-happy | ✅ (added to tomls 2026-07, row backfilled 2026-07-10) | ✅ | ✅ | ✅ | ✅ | 🎯 | 🎯 |
+| 55 | isa-driven-development | ✅ (added to tomls in 2a35b25, row backfilled 2026-07-10) | ✅ | ✅ | ✅ | ✅ | 🎯 | 🎯 |
 
 ### Prompts (goal: 4 — P1, P2, P3, P5; P6/P7 folded into skills 25/26)
 
@@ -92,22 +99,22 @@ All 14 known extensions listed.
 | 13 | pi-subagents (npm) | ✖ | ✅ | 📦 | 📦 | ⬜ | ✖ | ✖ |
 | 14 | pi-intercom (npm) | ✖ | ✅ | 📦 | 📦 | ⬜ | ✖ | ✖ |
 
-### Host-side leftovers (not in `definitions/skills/`, cleared by `--delete` pass)
+### Host-side leftovers (not in `definitions/skills/`, cleared by `--delete` pass) **[record — snapshot 2026-07-09]**
 
 agent-browser, doc-rocker-web-search, pi-session-to-md, url2md (sparkz + sparky), criticalthink-retro (sparkz only). Not part of the managed skill set; removed automatically by `agents_files_cp_remote.sh --apply --delete`.
 
-### Final toml state
+### Final toml state **[requirement]**
 
-- **inference-cluster** (sparkz, sparky, twins) — skills (12): web-search, general-explore, grounded-pairing-discipline, honest-confidence, orwell-6-rule-prose, bootstrap-pairing-memory, criticalthink, short-instruction-semantics, socratic-first-principles, ntfy-phone, check-sanity-before-continue, critical-rethink-sanity
-- **pluto** — skills (18): same 12 + sub-agent-handoff, firstmate, openspec-propose, openspec-apply-change, openspec-explore, openspec-archive-change (added 2026-07-10; requires openspec CLI on host — see open question 5)
+- **inference-cluster** (sparkz, sparky, twins) — skills (13): web-search, general-explore, grounded-pairing-discipline, honest-confidence, orwell-6-rule-prose, bootstrap-pairing-memory, criticalthink, short-instruction-semantics, socratic-first-principles, ntfy-phone, check-sanity-before-continue, critical-rethink-sanity, iterate-until-happy
+- **pluto** — skills (19): same 13 + sub-agent-handoff, firstmate, openspec-propose, openspec-apply-change, openspec-explore, openspec-archive-change (openspec-* added 2026-07-10; requires openspec CLI on host — see open question 5, resolved)
 - prompts (4, both groups): speak-matter-outcome.md, speak-process-status.md, short-concise-persist-details.md, make-me-understand.md
 - extensions recorded in `manual_extension_list_target_state` comment blocks: 1,2,3,4,5,9,11,8 (all hosts; 8 = herdr, now on all 4)
 
-### Execution deltas (deployed 2026-07-09, verified MATCH)
+### Execution deltas (deployed 2026-07-09, verified MATCH) **[record]**
 
 `--apply --delete` on all 4 hosts. 0 missing, 0 surplus. Host-side leftovers + stale prompt files pruned.
 
-### Open questions
+### Open questions **[requirement — active decisions]**
 
 1. **P8 `start-self-organising.md`**: unmanaged workflow prompt of ext 3. A `--delete` pass removes it from sparks; pluto/twins never had it. Options: (a) add P8 to goal + tomls (all hosts), (b) accept ext 3 running without its prompt, (c) ship it some other way.
 2. **Ext 9 (pi-advisor) lands with no prompt/skill routing to it** in the goal (P4 out; skill 26 covers critical-review only). Decide: intentional, or add a routing prompt.
@@ -117,7 +124,7 @@ agent-browser, doc-rocker-web-search, pi-session-to-md, url2md (sparkz + sparky)
 
 ---
 
-## Execution mechanics (canonical, verified 2026-07-09)
+## Execution mechanics (canonical, verified 2026-07-09) **[process — how to deploy, not what]**
 
 ### Deploy tool
 
