@@ -5,7 +5,8 @@
 # and definitions/prompts/. A missing entry is a hard error (loud, not silent).
 #
 # Skill/prompt set = lean goal (TODO-hosts-align-minimal.md, 2026-07-09).
-# Pluto: +sub-agent-handoff +firstmate.
+# Pluto: +sub-agent-handoff +firstmate +openspec-* (2026-07-10: 4 openspec skills
+# added per user decision; requires openspec CLI on host — see TODO doc open question 5).
 
 host        = "pluto"
 target_dir  = "~/.pi/agent"
@@ -26,7 +27,11 @@ skills = [
   "critical-rethink-sanity",
   "iterate-until-happy",
   "sub-agent-handoff",
-  "firstmate"
+  "firstmate",
+  "openspec-propose",
+  "openspec-apply-change",
+  "openspec-explore",
+  "openspec-archive-change"
 ]
 
 prompts = [

@@ -13,7 +13,7 @@ Groups: **inference-cluster** = sparkz, sparky, twins · **pluto** = always-up c
 Skills/prompts: **pluto diverges** (+ skills 8, 51). Extensions: pluto-only 8.
 Legend: ✅ present on host · ⬜ absent · 📁 leftover skill dir (goal: re-shipped as skill) · 📄 prompt file · 📦 in node_modules, not listed · 🎯 goal: present · ✖ goal: absent.
 
-### Skills (goal: 12, both groups identical)
+### Skills (goal: 12 cluster / 18 pluto — pluto diverges)
 
 All 31 `definitions/skills/` entries listed (30 real + README excluded). Goal = 🎯.
 
@@ -44,10 +44,10 @@ All 31 `definitions/skills/` entries listed (30 real + README excluded). Goal = 
 | 36 | gemini-model-rules | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
 | 37 | gemini-model-rules-extreme | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
 | 39 | google-workspace-cli | ✖ | ⬜ | ⬜ | ⬜ | ⬜ | ✖ | ✖ |
-| 40 | openspec-apply-change | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
-| 41 | openspec-propose | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
-| 42 | openspec-explore | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
-| 43 | openspec-archive-change | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
+| 40 | openspec-apply-change | ✅ pluto only (2026-07-10) | ✅ | ✅ | ✅ | ⬜ | ✖ | 🎯 |
+| 41 | openspec-propose | ✅ pluto only (2026-07-10) | ✅ | ✅ | ✅ | ⬜ | ✖ | 🎯 |
+| 42 | openspec-explore | ✅ pluto only (2026-07-10) | ✅ | ✅ | ✅ | ⬜ | ✖ | 🎯 |
+| 43 | openspec-archive-change | ✅ pluto only (2026-07-10) | ✅ | ✅ | ✅ | ⬜ | ✖ | 🎯 |
 | 44 | explain-diff-html | ✖ | ✅ | ✅ | ✅ | ⬜ | ✖ | ✖ |
 | 50 | colgrep (in definitions, no host, no toml) | ✖ | ⬜ | ⬜ | ⬜ | ⬜ | ✖ | ✖ |
 | 51 | firstmate (pluto only) | ✅ pluto only | ⬜ | ⬜ | ⬜ | ⬜ | ✖ | 🎯 |
@@ -99,7 +99,7 @@ agent-browser, doc-rocker-web-search, pi-session-to-md, url2md (sparkz + sparky)
 ### Final toml state
 
 - **inference-cluster** (sparkz, sparky, twins) — skills (12): web-search, general-explore, grounded-pairing-discipline, honest-confidence, orwell-6-rule-prose, bootstrap-pairing-memory, criticalthink, short-instruction-semantics, socratic-first-principles, ntfy-phone, check-sanity-before-continue, critical-rethink-sanity
-- **pluto** — skills (14): same 12 + sub-agent-handoff, firstmate
+- **pluto** — skills (18): same 12 + sub-agent-handoff, firstmate, openspec-propose, openspec-apply-change, openspec-explore, openspec-archive-change (added 2026-07-10; requires openspec CLI on host — see open question 5)
 - prompts (4, both groups): speak-matter-outcome.md, speak-process-status.md, short-concise-persist-details.md, make-me-understand.md
 - extensions recorded in `manual_extension_list_target_state` comment blocks: 1,2,3,4,5,9,11,8 (all hosts; 8 = herdr, now on all 4)
 
@@ -113,6 +113,7 @@ agent-browser, doc-rocker-web-search, pi-session-to-md, url2md (sparkz + sparky)
 2. **Ext 9 (pi-advisor) lands with no prompt/skill routing to it** in the goal (P4 out; skill 26 covers critical-review only). Decide: intentional, or add a routing prompt.
 3. **Skill 3 (web-search) requires ext 4 (pi-web-access)** — no dependency guard. Phase-2 install order should verify ext 4 first.
 4. **Extension preconditions (phase-2)**: 9 needs a strong advisor model per host; 3 is model-filtered on pluto; install/uninstall mechanism per host not yet specified.
+5. ~~Openspec CLI on pluto~~ **RESOLVED 2026-07-10**: skills 40–43 require the `openspec` CLI; pluto had none. Installed user-local: `npm install -g --prefix ~/.local @fission-ai/openspec` → v1.16.0, symlink `~/.local/bin/openspec`, resolvable on login shells (`~/.local/bin` via `.profile`). Skills deployed + CLI verified same day. Local reference install is the same package (v1.16.0, homebrew node).
 
 ---
 
