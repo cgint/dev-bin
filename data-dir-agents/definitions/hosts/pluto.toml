@@ -7,6 +7,7 @@
 # Skill/prompt set = lean goal (GOAL-STATE.md, 2026-07-09).
 # Pluto: +sub-agent-handoff +firstmate +openspec-* (2026-07-10: 4 openspec skills
 # added per user decision; requires openspec CLI on host — see TODO doc open question 5).
+# +isa-driven-development (2026-07-11: per user request; GOAL-STATE row 55).
 
 host        = "pluto"
 target_dir  = "~/.pi/agent"
@@ -28,6 +29,7 @@ skills = [
   "iterate-until-happy",
   "sub-agent-handoff",
   "firstmate",
+  "isa-driven-development",
   "openspec-propose",
   "openspec-apply-change",
   "openspec-explore",
