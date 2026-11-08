@@ -61,3 +61,14 @@ Residual (upstream pi-subagent-herdr, Mac-only by design): `orca-herdr-pi-start-
 - Assumption: profiles stay wanted **on the Mac** (`agents_files_cp.sh` still deploys `~/.pi/profiles/*` there). Dropping them on the Mac too = definitions-level change package (separate).
 - Purge timing for the quarantine copy.
 - Residual recreators on hosts: any `pi --profile X` run on a host re-creates a profile data dir — out of scope (usage-side).
+
+## pi-profile hardened (2026-11-08 17:00, commit TBD)
+pi-profile already refused nonexistent profile dirs (exit 1 before `exec pi`), but the
+16:25 event slipped through: the homelab agent pre-created a bare stub
+(`mkdir -p ~/.pi/profiles/minimal/agent/extensions`), the plain `-d` check passed, pi
+started and initialized the data dir itself (auth.json, models-store.json, tmp/).
+Fix: named profiles now require **deployed content** (`agent/AGENTS.md` — every
+generated profile ships it) before pi runs; bare stubs are refused with a deploy hint.
+`--list`/`--update-all` only show/touch deployed profiles. Verified: starting
+`pi-profile <any-name>` can no longer create a profile dir; covered by
+`tests/pi-profile-guard.test.sh` (6 cases, TDD red→green).

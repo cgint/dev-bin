@@ -9,6 +9,9 @@
 #   pi-profile --list       # list deployed profiles
 #   pi-profile --update-all # update every profile (default + each named profile
 #                           # under ~/.pi/profiles) via 'pi update --all'
+#
+# pi-profile never creates a profile: a named profile must already be deployed
+# (AGENTS.md present) or the start is refused before pi runs.
 
 set -euo pipefail
 
@@ -47,7 +50,8 @@ list_profiles() {
     for d in "$PI_BASE/profiles"/*/; do
       [ -d "$d" ] || continue
       name=$(basename "$d")
-      if [ -d "$d/agent" ]; then
+      # only profiles that are actually deployed (and startable) are listed
+      if [ -f "$d/agent/AGENTS.md" ]; then
         echo "  $name     -> $d/agent"
       fi
     done
@@ -88,13 +92,13 @@ if [ "$PROFILE" = "--update-all" ]; then
     run_update "default" "$PI_BASE/agent"
   fi
 
-  # Update each named profile
+  # Update each named profile (deployed only — never initialize a stub)
   if [ -d "$PI_BASE/profiles" ]; then
     for d in "$PI_BASE/profiles"/*/; do
       [ -d "$d" ] || continue
       name=$(basename "$d")
       agent_dir="$d/agent"
-      [ -d "$agent_dir" ] || continue
+      [ -f "$agent_dir/AGENTS.md" ] || continue
       run_update "$name" "$agent_dir"
     done
   fi
@@ -107,15 +111,26 @@ fi
 shift
 
 if [ "$PROFILE" = "default" ]; then
-  export PI_CODING_AGENT_DIR="$PI_BASE/agent"
-else
-  export PI_CODING_AGENT_DIR="$PI_BASE/profiles/$PROFILE/agent"
+  if [ ! -d "$PI_BASE/agent" ]; then
+    echo "Default agent dir not found at $PI_BASE/agent" >&2
+    exit 1
+  fi
+elif [ ! -f "$PI_BASE/profiles/$PROFILE/agent/AGENTS.md" ]; then
+  # Refuse before pi runs: pi would otherwise initialize/create the data dir
+  # itself (auth.json, models-store.json, tmp/). A bare directory — e.g.
+  # 'mkdir -p .../agent/extensions' — is not a deployed profile.
+  if [ -d "$PI_BASE/profiles/$PROFILE/agent" ]; then
+    echo "Profile '$PROFILE' exists at $PI_BASE/profiles/$PROFILE/agent but is not deployed (no AGENTS.md)." >&2
+  else
+    echo "Profile '$PROFILE' not found at $PI_BASE/profiles/$PROFILE/agent" >&2
+  fi
+  echo "Deploy profiles from the main Mac via agents_files_cp.sh. pi-profile never creates a profile; 'pi-profile --list' shows deployable profiles." >&2
+  exit 1
 fi
 
-if [ ! -d "$PI_CODING_AGENT_DIR" ]; then
-  echo "Profile '$PROFILE' not found at $PI_CODING_AGENT_DIR" >&2
-  echo "Run agents_files_cp.sh to deploy profiles. Use 'pi-profile --list' to see available profiles." >&2
-  exit 1
+export PI_CODING_AGENT_DIR="$PI_BASE/profiles/$PROFILE/agent"
+if [ "$PROFILE" = "default" ]; then
+  export PI_CODING_AGENT_DIR="$PI_BASE/agent"
 fi
 
 exec pi "$@"
