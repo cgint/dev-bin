@@ -77,12 +77,19 @@ done
     while IFS= read -r g; do echo "$(dirname "$g")"; done >> "$CANDIDATES_F"
 
 # --- Phase 2: batch stat all candidates at once ---
-# stat -f '%m %N' outputs: mtime space path (one per line)
-# We join this with the label computed from the path
+# mtime space path (one per line); label is derived from the path below.
+# Dialect probe: BSD/macOS accepts -f '%m %N' (exit 0); GNU/uutils reject the
+# unknown %N directive (exit non-zero) and fall back to a 'File: "path"' listing
+# that would pollute the parse. BSD branch is the original, working macOS path.
+if stat -f '%m %N' / >/dev/null 2>&1; then
+    STAT_CMD=(stat -f '%m %N')
+else
+    STAT_CMD=(stat -c '%Y %n')
+fi
 : > "$ENTRIES_F"
 if [ -s "$CANDIDATES_F" ]; then
     # Batch stat all paths (handles spaces via careful parsing)
-    xargs stat -f '%m %N' < "$CANDIDATES_F" 2>/dev/null | \
+    xargs "${STAT_CMD[@]}" < "$CANDIDATES_F" 2>/dev/null | \
     while IFS= read -r line; do
         mtime="${line%% *}"
         path="${line#* }"
