@@ -8,6 +8,10 @@ as-of: 2026-11-08 · repo: `~/dev/dev-bin` (main)
 
 Unrelated pre-existing test failures on pluto (not touched by this change): `tests/md2html.test.sh` (pandoc 3.7 rejects `--syntax-highlighting`), `tests/watchdiff.test.sh` (`state/ready` timeout).
 
+**Recreator found + fixed (2026-11-08 16:35):** herdr worker launches on pluto (`herdr-worker.sh` → `pi-worker-runtime.sh`) prefer `pi-profile minimal` whenever `pi-profile` is on PATH (it is — dev-bin is on PATH); this recreated `~/.pi/profiles/minimal` at 16:25 and blocked all herdr workers with `required trusted extension not found`. Fix: `export PI_WORKER_PROFILE=default` in pluto's `~/.bashrc` (the runtime's designed env override — no repo edits) → workers resolve to `~/.pi/agent`, where `herdr-agent-state.ts` exists; simulated worker launch passes the extension check. Second recreation renamed away to `~/.pi-profiles.recreated-20261108`.
+
+Residual (upstream pi-subagent-herdr, Mac-only by design): `orca-herdr-pi-start-named-session.sh:248` hardcodes `pi-profile minimal`; `test_worker_launchers.sh` covers profile behavior — hosts must keep pinning `PI_WORKER_PROFILE=default`.
+
 ## Diagram
 
 ![Deploy flow](./PLAN-mac-only-deploy.svg)
