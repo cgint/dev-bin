@@ -147,7 +147,7 @@ baseline_html() {
   [[ -s "$style" ]] || fail "could not extract style block from $SCRIPT_PATH"
   title="$(basename "$src" .md)"
   pandoc -s --metadata colorlinks=true --metadata title="$title" \
-    --syntax-highlighting=tango -B "$style" "$src" -o "$out"
+    --highlight-style=tango -B "$style" "$src" -o "$out"
 }
 
 # Table after a text line with no blank line: one blank line is inserted, so a real table renders.

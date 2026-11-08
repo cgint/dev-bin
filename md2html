@@ -192,7 +192,7 @@ fi
 pandoc -f markdown+lists_without_preceding_blankline-blank_before_blockquote -s \
   --metadata colorlinks=true \
   --metadata title="$title" \
-  --syntax-highlighting=tango \
+  --highlight-style=tango \
   -B <(cat <<'EOF'
 <style>
 :root {
