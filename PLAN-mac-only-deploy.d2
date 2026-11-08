@@ -1,0 +1,23 @@
+direction: down
+
+mac: MacBook-Pro.local (main Mac) {
+  shape: rectangle
+  cp: agents_files_cp.sh — local deploy
+  remote: agents_files_cp_remote.sh — bundle push
+}
+
+guard: host guard: hostname -s == MacBook-Pro — else warning + exit 2 {
+  shape: diamond
+  style.fill: "#fde68a"
+}
+
+hosts: homelab hosts (pluto, sparky, sparkz, twins) {
+  shape: rectangle
+  agent: ~/.pi/agent — bundle target + consolidated sessions
+  forbidden: ~/.pi/profiles — must not exist {
+    style.fill: "#fecaca"
+  }
+}
+mac -> guard: scripts run only here
+guard -> hosts: local script runs on hosts are blocked
+mac.remote -> hosts.agent: ssh + rsync (--host --apply)

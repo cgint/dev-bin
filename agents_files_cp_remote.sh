@@ -38,6 +38,7 @@ usage() {
   cat <<'EOF'
 Usage: agents_files_cp_remote.sh [--apply] [--delete] [--host HOST] [-h]
 Deploy pi-agent bundles to hosts in definitions/hosts/*.toml.
+Main Mac only (MacBook-Pro.local) — this driver pushes to the hosts itself.
   --apply   transfer for real (default is dry-run)
   --delete  enable rsync --delete for all hosts (DANGEROUS)
   --host H  only this host
@@ -54,6 +55,17 @@ while [ $# -gt 0 ]; do
     *) echo "Unknown argument: $1" >&2; usage >&2; exit 2 ;;
   esac
 done
+
+# Main-Mac-only guard: this driver runs on the main Mac and pushes to hosts itself.
+# AGENTS_FILES_CP_HOSTNAME: test injection for the detected hostname — not a supported bypass.
+ALLOWED_HOST="MacBook-Pro"
+CURRENT_HOST="${AGENTS_FILES_CP_HOSTNAME:-$(hostname -s)}"
+if [ "$CURRENT_HOST" != "$ALLOWED_HOST" ]; then
+  echo "ERROR: agents_files_cp_remote.sh is the deploy driver for the main Mac (allowed host: $ALLOWED_HOST.local)." >&2
+  echo "  Detected host: $CURRENT_HOST" >&2
+  echo "  Run it on the main Mac; it pushes bundles to homelab hosts itself (default dry-run, --apply to transfer)." >&2
+  exit 2
+fi
 
 toml_get() {
   # toml_get <file> <key> — print value; lists print one item per line

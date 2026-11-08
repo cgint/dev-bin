@@ -6,6 +6,8 @@ usage() {
   cat <<'EOF'
 Usage: agents_files_cp.sh [--delete] [--openspec-config]
 Deploy generated agent definitions to local agent config dirs.
+Main Mac only (MacBook-Pro.local); homelab hosts are served by
+agents_files_cp_remote.sh from the main Mac.
   --delete           also remove retired files/dirs from synced targets (skill dirs,
                        profile prompts/commands, gemini/claude commands); active contents always mirror source
   --openspec-config  also roll out openspec/config.yaml to existing OpenSpec directories
@@ -35,6 +37,19 @@ for arg in "$@"; do
       ;;
   esac
 done
+
+# Main-Mac-only guard: local deploy runs on the main Mac only. Homelab hosts
+# receive their bundles from the main Mac via agents_files_cp_remote.sh
+# (definitions/hosts/*.toml). AGENTS_FILES_CP_HOSTNAME: test injection for the
+# detected hostname — not a supported bypass.
+ALLOWED_HOST="MacBook-Pro"
+CURRENT_HOST="${AGENTS_FILES_CP_HOSTNAME:-$(hostname -s)}"
+if [ "$CURRENT_HOST" != "$ALLOWED_HOST" ]; then
+  echo "ERROR: agents_files_cp.sh may only run on the main Mac ($ALLOWED_HOST.local)." >&2
+  echo "  Detected host: $CURRENT_HOST" >&2
+  echo "  Homelab hosts are deployed from the main Mac via: agents_files_cp_remote.sh --host <host> --apply" >&2
+  exit 2
+fi
 
 RSYNC_OPTS=(-avh)
 readonly MANAGED_SKILL_MARKER=".data-dir-agents-managed"
