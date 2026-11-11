@@ -421,8 +421,11 @@ class GeminiAudioTranscriber:
                 f"Supported models: {supported}. "
                 "Add pricing for this model in the pricing dict."
             )
-        prompt_tokens = token_usage.get('prompt_token_count', 0)
-        output_tokens = token_usage.get('candidates_token_count', 0)
+        # `or 0` instead of dict-default: blocked responses can carry the keys
+        # with an explicit None value (e.g. candidates_token_count=None when no
+        # candidate was generated), which would crash the arithmetic below.
+        prompt_tokens = token_usage.get('prompt_token_count') or 0
+        output_tokens = token_usage.get('candidates_token_count') or 0
         
         # Determine pricing tier based on prompt size
         input_price = (self.pricing[self.model_name]['input_price_per_million'] 
@@ -452,7 +455,16 @@ class GeminiAudioTranscriber:
                 finish_reason_as_text = response.candidates[0].finish_reason.name if hasattr(response.candidates[0].finish_reason, 'name') else str(response.candidates[0].finish_reason)
             logger.info(f"Finish reason: {finish_reason_as_text}")
         else:
-            logger.warning("No candidates found in the response.")
+            # No candidates: check prompt_feedback before falling back to the
+            # STOP default, otherwise a blocked request (block_reason=OTHER,
+            # candidates=None) is silently reported as a successful STOP.
+            block_reason = getattr(getattr(response, 'prompt_feedback', None), 'block_reason', None)
+            if block_reason:
+                block_reason_text = block_reason.name if hasattr(block_reason, 'name') else str(block_reason)
+                finish_reason_as_text = f"BLOCKED_{block_reason_text}"
+                logger.error(f"Request blocked by the API (prompt_feedback.block_reason={block_reason_text}); no candidates were generated.")
+            else:
+                logger.warning("No candidates found in the response.")
         
         return finish_reason_as_text
     
@@ -482,7 +494,12 @@ class GeminiAudioTranscriber:
         response_has_text = hasattr(response, 'text') and response.text is not None
         pure_text: str | None = response.text if response_has_text else None
         # Check finish reason first to avoid accessing response.text when it will fail
-        if finish_reason_as_text == "RECITATION":
+        if finish_reason_as_text.startswith("BLOCKED_"):
+            block_reason_text = finish_reason_as_text[len("BLOCKED_"):]
+            output_text = f"**TRANSCRIPTION BLOCKED**: The API blocked the request before any candidate was generated (prompt_feedback.block_reason={block_reason_text})."
+            output_text = output_text + "\n\n" + (pure_text if pure_text else "Response did not contain text.")
+            logger.warning(f"Transcription blocked by the API - block_reason={block_reason_text} - response_has_text={response_has_text}")
+        elif finish_reason_as_text == "RECITATION":
             output_text = "**TRANSCRIPTION BLOCKED**: The model detected potential copyrighted material and refused to transcribe this audio file."
             output_text = output_text + "\n\n" + (pure_text if pure_text else "Response did not contain text.")
             logger.warning(f"Transcription blocked due to potential copyrighted material detection - response_has_text={response_has_text}")
@@ -581,10 +598,13 @@ class GeminiAudioTranscriber:
             # Extract token usage information
             if hasattr(response, 'usage_metadata') and response.usage_metadata:
                 token_usage = {
-                    'prompt_token_count': getattr(response.usage_metadata, 'prompt_token_count', 0),
-                    'cached_content_token_count': getattr(response.usage_metadata, 'cached_content_token_count', 0),
-                    'candidates_token_count': getattr(response.usage_metadata, 'candidates_token_count', 0),
-                    'total_token_count': getattr(response.usage_metadata, 'total_token_count', 0),
+                    # `or 0` guards against explicit None values on blocked
+                    # responses (getattr default does not apply when the
+                    # attribute exists but is None).
+                    'prompt_token_count': getattr(response.usage_metadata, 'prompt_token_count', 0) or 0,
+                    'cached_content_token_count': getattr(response.usage_metadata, 'cached_content_token_count', 0) or 0,
+                    'candidates_token_count': getattr(response.usage_metadata, 'candidates_token_count', 0) or 0,
+                    'total_token_count': getattr(response.usage_metadata, 'total_token_count', 0) or 0,
                 }
 
             # Save raw response as JSON if path provided
@@ -614,6 +634,12 @@ class GeminiAudioTranscriber:
                 break
 
             output_text = attempt_text
+            if finish_reason_as_text.startswith("BLOCKED_"):
+                # Blocking is deterministic (same prompt -> same block_reason);
+                # retrying identical requests would only burn API cost.
+                logger.error(f"Not retrying: request was blocked by the API ({finish_reason_as_text}).")
+                break
+
             if cur_attempt < max_attempts:
                 logger.info(f"Retrying due to finish_reason={finish_reason_as_text} (attempt {cur_attempt}/{max_attempts})...")
                 time.sleep(0.5)
