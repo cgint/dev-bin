@@ -12,7 +12,7 @@ This is conceptual planning, not implementation authorization. Particular design
 
 ## Orient from files
 
-Read `../../../AGENTS.md` and `../../../PROJECT_OVERVIEW.md`, then the relevant intent, questions and source pointers. Use `../../../docs/WAYFINDING_PLAN.md` for this effort's destination and approach. Resolve paths relative to this skill directory.
+Read the repo's `AGENTS.md` and `PROJECT_OVERVIEW.md` (if present), then the relevant intent, questions and source pointers. If the repo has a `docs/WAYFINDING_PLAN.md`, use it for this effort's destination and approach. Resolve these relative to the repo root, not this skill directory.
 
 Keep information, planning, concepts, evidence and decisions in their canonical filesystem homes. Goal text stays lean: outcome, brief completion condition and file pointers. Do not create a second tracker or duplicate the conceptual corpus.
 
@@ -59,4 +59,4 @@ Moving to implementation planning or construction is a separate scope decision. 
 Local adaptation created 2026-10-10 at the user's request, inspired by Matt Pocock's Wayfinder:
 https://raw.githubusercontent.com/mattpocock/skills/refs/heads/main/skills/engineering/wayfinder/SKILL.md
 
-The unchanged downloaded original remains at `../waifinder/SKILL.md`; its recorded hash and the adaptation rationale are in `../../../docs/WAYFINDING_PLAN.md`. This skill deliberately replaces upstream tracker machinery and mandatory research-branch pushes with filesystem-owned, client-centred conceptual collaboration. It requires no companion skills, remote tracker or automatic publication.
+Adaptation rationale and the original's recorded hash are in the repo where this adaptation was created (docs/WAYFINDING_PLAN.md). This skill deliberately replaces upstream tracker machinery and mandatory research-branch pushes with filesystem-owned, client-centred conceptual collaboration. It requires no companion skills, remote tracker or automatic publication.
