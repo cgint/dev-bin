@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# agents_files_cp_remote.sh — ship per-host pi-agent bundles to homelab hosts.
+# agents_files_cp_remote.sh — ship pi-agent bundles or agy skills to homelab hosts.
 # Copies rendered agent bundles to remote hosts via ssh/rsync.
 # Note: does NOT run the generator — renders AGENTS.md on the fly from definitions/.
 #
@@ -14,7 +14,7 @@
 #   delete      = false            # per-host rsync --delete (DANGEROUS)
 #   ssh_opts    = [...]            # extra ssh options
 #
-# Usage: agents_files_cp_remote.sh [--apply] [--delete] [--host HOST] [-h]
+# Usage: agents_files_cp_remote.sh [--apply] [--delete] [--host HOST] [--agy-only] [-h]
 #   default = dry-run. --apply transfers for real. --delete enables rsync --delete.
 #
 # Per host: ssh unreachable -> [SKIP] (non-fatal); target dir missing -> [SKIP]
@@ -36,21 +36,23 @@ STAGE="$DATA_DIR/.stage"
 
 usage() {
   cat <<'EOF'
-Usage: agents_files_cp_remote.sh [--apply] [--delete] [--host HOST] [-h]
-Deploy pi-agent bundles to hosts in definitions/hosts/*.toml.
+Usage: agents_files_cp_remote.sh [--apply] [--delete] [--host HOST] [--agy-only] [-h]
+Deploy pi-agent bundles or agy skills to hosts in definitions/hosts/*.toml.
 Main Mac only (MacBook-Pro.local) — this driver pushes to the hosts itself.
-  --apply   transfer for real (default is dry-run)
-  --delete  enable rsync --delete for all hosts (DANGEROUS)
-  --host H  only this host
+  --apply     transfer for real (default is dry-run)
+  --delete    mirror pi-agent dirs or remove retired repo-managed agy skills
+  --host H    only this host
+  --agy-only  deploy generated skills to ~/.gemini/config/skills only
 EOF
 }
 
-APPLY=false; DELETE=false; HOST_FILTER=""
+APPLY=false; DELETE=false; HOST_FILTER=""; AGY_ONLY=false
 while [ $# -gt 0 ]; do
   case "$1" in
     --apply)  APPLY=true; shift ;;
     --delete) DELETE=true; shift ;;
     --host)   HOST_FILTER="${2:?--host needs a value}"; shift 2 ;;
+    --agy-only) AGY_ONLY=true; shift ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown argument: $1" >&2; usage >&2; exit 2 ;;
   esac
@@ -91,7 +93,12 @@ fi
 
 echo "agents_files_cp_remote.sh — $({ $APPLY && echo APPLY; } || echo DRY-RUN)"
 
+if [ "$AGY_ONLY" = true ]; then
+  source "$DATA_DIR/agy-skills.sh"
+fi
+
 exit_code=0; ok=0; skip=0; fail=0
+matched=false
 
 for toml in "$HOSTS_DIR"/*.toml; do
   host=$(toml_get "$toml" host)
@@ -101,6 +108,19 @@ for toml in "$HOSTS_DIR"/*.toml; do
   ssh_opts=$(toml_get "$toml" ssh_opts | tr '\n' ' ')
 
   if [ -n "$HOST_FILTER" ] && [ "$host" != "$HOST_FILTER" ]; then
+    continue
+  fi
+  matched=true
+
+  if [ "$AGY_ONLY" = true ]; then
+    echo "== $host -> ~/.gemini/config/skills =="
+    if deploy_agy_skills "$DATA_DIR/generated/gemini/skills" "$APPLY" "$DELETE" "$host" "$ssh_opts"; then
+      ok=$((ok+1))
+    else
+      echo "  [FAIL] $host: agy skill deployment failed"
+      fail=$((fail+1))
+      exit_code=1
+    fi
     continue
   fi
 
@@ -220,6 +240,11 @@ PY
   ok=$((ok+1))
   echo
 done
+
+if [ "$AGY_ONLY" = true ] && [ "$matched" = false ]; then
+  echo "ERROR: no configured host named $HOST_FILTER" >&2
+  exit 1
+fi
 
 echo "summary: $ok ok, $skip skipped, $fail failed"
 exit "$exit_code"

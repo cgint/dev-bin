@@ -4,19 +4,21 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Usage: agents_files_cp.sh [--delete] [--openspec-config]
+Usage: agents_files_cp.sh [--delete] [--openspec-config | --agy-only]
 Deploy generated agent definitions to local agent config dirs.
 Main Mac only (MacBook-Pro.local); homelab hosts are served by
 agents_files_cp_remote.sh from the main Mac.
   --delete           also remove retired files/dirs from synced targets (skill dirs,
                        profile prompts/commands, gemini/claude commands); active contents always mirror source
   --openspec-config  also roll out openspec/config.yaml to existing OpenSpec directories
+  --agy-only        deploy existing generated skills to ~/.gemini/config/skills only
   -h, --help         show this help
 EOF
 }
 
 DELETE_RSYNC=false
 ROLLOUT_OPENSPEC_CONFIG=false
+AGY_ONLY=false
 for arg in "$@"; do
   case "$arg" in
     --delete)
@@ -24,6 +26,9 @@ for arg in "$@"; do
       ;;
     --openspec-config)
       ROLLOUT_OPENSPEC_CONFIG=true
+      ;;
+    --agy-only)
+      AGY_ONLY=true
       ;;
     -h|--help)
       usage
@@ -144,6 +149,7 @@ AGENTS_SRC_DATA_DIR="$SCRIPT_DIR/data-dir-agents"
 USER_HOME_DIR="$HOME"
 
 GENERATED_DIR="$AGENTS_SRC_DATA_DIR/generated"
+GEMINI_SKILLS_SOURCE="$GENERATED_DIR/gemini/skills"
 
 GEMINI_AGENTS_DIR="$USER_HOME_DIR/.gemini"
 CLAUDE_AGENTS_DIR="$USER_HOME_DIR/.claude"
@@ -154,6 +160,16 @@ GEMINI_AGENTS_FILE="$GEMINI_AGENTS_DIR/GEMINI.md"
 CLAUDE_AGENTS_FILE="$CLAUDE_AGENTS_DIR/CLAUDE.md"
 CODEX_AGENTS_FILE="$CODEX_AGENTS_DIR/AGENTS.md"
 COPILOT_AGENTS_FILE="$COPILOT_AGENTS_DIR/copilot-instructions.md"
+
+if [ "$AGY_ONLY" = true ]; then
+  if [ "$ROLLOUT_OPENSPEC_CONFIG" = true ]; then
+    echo 'ERROR: --agy-only cannot be combined with --openspec-config' >&2
+    exit 2
+  fi
+  source "$AGENTS_SRC_DATA_DIR/agy-skills.sh"
+  deploy_agy_skills "$GEMINI_SKILLS_SOURCE" true "$DELETE_RSYNC"
+  exit 0
+fi
 
 echo
 echo "Deploying agents files to the config directories that exist..."
@@ -180,8 +196,14 @@ if [ -d "$GENERATED_DIR" ]; then
   if [ -d "$GEMINI_AGENTS_DIR" ] && [ -d "$GENERATED_DIR/gemini/commands" ]; then
     rsync_copy_dir "$GENERATED_DIR/gemini/commands" "$GEMINI_AGENTS_DIR/commands"
   fi
-  if [ -d "$GEMINI_AGENTS_DIR" ] && [ -d "$GENERATED_DIR/gemini/skills" ]; then
-    sync_managed_skills "$GENERATED_DIR/gemini/skills" "$GEMINI_AGENTS_DIR/skills" "gemini"
+  if [ -d "$GEMINI_AGENTS_DIR" ] && [ -d "$GEMINI_SKILLS_SOURCE" ]; then
+    sync_managed_skills "$GEMINI_SKILLS_SOURCE" "$GEMINI_AGENTS_DIR/skills" "gemini"
+  fi
+
+  # An initialized Antigravity CLI uses the global Antigravity config root.
+  if [ -d "$GEMINI_AGENTS_DIR/antigravity-cli" ] && [ -d "$GEMINI_AGENTS_DIR/config" ]; then
+    source "$AGENTS_SRC_DATA_DIR/agy-skills.sh"
+    deploy_agy_skills "$GEMINI_SKILLS_SOURCE" true "$DELETE_RSYNC"
   fi
 
   # Claude Code: copy CLAUDE.md + commands + skills into ~/.claude/
