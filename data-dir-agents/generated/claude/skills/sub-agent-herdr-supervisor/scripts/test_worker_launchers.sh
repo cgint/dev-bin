@@ -11,7 +11,7 @@ TMPDIR_TEST="$(mktemp -d)"
 trap 'rm -r "$TMPDIR_TEST"' EXIT
 # Ensure the outer shell's PI_WORKER_DEFAULT_MODEL does not leak into tests
 # that do not explicitly set it.
-unset PI_WORKER_DEFAULT_MODEL
+unset PI_WORKER_DEFAULT_MODEL PI_WORKER_PROFILE PI_CODING_AGENT_DIR
 
 fail() {
   printf 'FAIL: %s\n' "$*" >&2
@@ -28,11 +28,9 @@ assert_capture() {
 }
 
 mkdir -p "$TMPDIR_TEST/bin" "$TMPDIR_TEST/direct-bin" \
-  "$TMPDIR_TEST/home/.pi/profiles/minimal/agent/extensions" \
-  "$TMPDIR_TEST/home/.pi/profiles/partner/agent/extensions" \
+  "$TMPDIR_TEST/home/.pi/agent/extensions" \
   "$TMPDIR_TEST/direct-home/.pi/agent/extensions"
-: >"$TMPDIR_TEST/home/.pi/profiles/minimal/agent/extensions/herdr-agent-state.ts"
-: >"$TMPDIR_TEST/home/.pi/profiles/partner/agent/extensions/herdr-agent-state.ts"
+: >"$TMPDIR_TEST/home/.pi/agent/extensions/herdr-agent-state.ts"
 : >"$TMPDIR_TEST/direct-home/.pi/agent/extensions/herdr-agent-state.ts"
 cat >"$TMPDIR_TEST/bin/pi" <<'EOF'
 #!/usr/bin/env bash
@@ -73,8 +71,8 @@ while [ "$probe_index" -lt "${#probe_args[@]}" ]; do
 done
 
 if [ "$list_models" = true ]; then
-  if [ -n "${PI_PROFILE_LIST_CAPTURE:-}" ]; then
-    printf '%s\n' "$@" >"$PI_PROFILE_LIST_CAPTURE"
+  if [ -n "${PI_LIST_CAPTURE:-}" ]; then
+    printf '%s\n' "$@" >"$PI_LIST_CAPTURE"
   fi
   if [ "$discovery" = false ]; then
     case "${list_query%%/*}" in
@@ -108,11 +106,12 @@ for ((auth_index = 1; auth_index <= $# - 3; auth_index++)); do
     exit 0
   fi
 done
-printf 'PI_WRITE_GUARD_DIRS=%s\n' "${PI_WRITE_GUARD_DIRS:-}" >"$PI_PROFILE_CAPTURE"
-printf '%s\n' "$@" >>"$PI_PROFILE_CAPTURE"
+printf 'PI_WRITE_GUARD_DIRS=%s\n' "${PI_WRITE_GUARD_DIRS:-}" >"$PI_ARGUMENT_CAPTURE"
+printf '%s\n' "$@" >>"$PI_ARGUMENT_CAPTURE"
 EOF
 chmod +x "$TMPDIR_TEST/bin/pi"
-ln -s pi "$TMPDIR_TEST/bin/pi-profile"
+printf "#!/bin/sh\nexit 83\n" >"$TMPDIR_TEST/bin/pi-profile"
+chmod +x "$TMPDIR_TEST/bin/pi-profile"
 ln -s ../bin/pi "$TMPDIR_TEST/direct-bin/pi"
 
 # Install a git shim before any worker invocation so the runtime's
@@ -142,7 +141,7 @@ herdr_worker="$(compose_worker)"
 
 run_worker() {
   local capture="$1"
-  PATH="$TMPDIR_TEST/bin:$PATH" HOME="$TMPDIR_TEST/home" PI_PROFILE_CAPTURE="$capture" \
+  PATH="$TMPDIR_TEST/bin:$PATH" HOME="$TMPDIR_TEST/home" PI_ARGUMENT_CAPTURE="$capture" \
     AUTH_OPENAI="${AUTH_OPENAI:-ready}" AUTH_COPILOT="${AUTH_COPILOT:-unready}" \
     MODEL_AVAILABLE="${MODEL_AVAILABLE:-}" FAKE_GIT_ROOT="${FAKE_GIT_ROOT:-}" \
     PI_WORKER_DEFAULT_MODEL="${PI_WORKER_DEFAULT_MODEL:-}" \
@@ -151,7 +150,7 @@ run_worker() {
 
 run_direct_worker() {
   local capture="$1"
-  PATH="$TMPDIR_TEST/direct-bin:/usr/bin:/bin" HOME="$TMPDIR_TEST/direct-home" PI_PROFILE_CAPTURE="$capture" \
+  PATH="$TMPDIR_TEST/direct-bin:/usr/bin:/bin" HOME="$TMPDIR_TEST/direct-home" PI_ARGUMENT_CAPTURE="$capture" \
     PI_INVOCATION_CAPTURE="${PI_INVOCATION_CAPTURE:-}" \
     AUTH_OPENAI="${AUTH_OPENAI:-ready}" AUTH_COPILOT="${AUTH_COPILOT:-unready}" \
     MODEL_AVAILABLE="${MODEL_AVAILABLE:-}" FAKE_GIT_ROOT="${FAKE_GIT_ROOT:-}" \
@@ -173,16 +172,16 @@ assert_invalid_arguments --mode unsafe -- @/tmp/handoff.md
 assert_invalid_arguments --mode readonly @/tmp/handoff.md
 
 editable_capture="$TMPDIR_TEST/editable.txt"
-PATH="$TMPDIR_TEST/bin:$PATH" HOME="$TMPDIR_TEST/home" PI_PROFILE_CAPTURE="$editable_capture" \
+PATH="$TMPDIR_TEST/bin:$PATH" HOME="$TMPDIR_TEST/home" PI_ARGUMENT_CAPTURE="$editable_capture" \
   "$herdr_worker" --mode editable -- @/tmp/handoff.md 'Execute the bounded task.'
 assert_capture "$editable_capture" \
   'PI_WRITE_GUARD_DIRS=.' \
-  minimal -ne -e 'https://github.com/cgint/pi-focus-guard' \
+  -ne -e 'https://github.com/cgint/pi-focus-guard' \
   -e 'https://github.com/cgint/pi-tool-intent' \
   -e 'https://github.com/cgint/pi-subagent-herdr' \
   -e 'https://github.com/cgint/pi-advisor' \
   -e 'https://github.com/cgint/pi-mini-self-org' \
-  -e "$TMPDIR_TEST/home/.pi/profiles/minimal/agent/extensions/herdr-agent-state.ts" \
+  -e "$TMPDIR_TEST/home/.pi/agent/extensions/herdr-agent-state.ts" \
   --model openai-codex/gpt-5.6-terra --thinking minimal \
   @/tmp/handoff.md 'Execute the bounded task.'
 
@@ -194,17 +193,16 @@ grep -qx 'github-copilot/gpt-5.6-terra' "$fallback_capture" \
 herdr_capture="$TMPDIR_TEST/herdr.txt"
 run_worker "$herdr_capture"
 grep -qx 'PI_WRITE_GUARD_DIRS=\.' "$herdr_capture" || fail 'Herdr worker did not set the cwd write guard'
-grep -qx "$TMPDIR_TEST/home/.pi/profiles/minimal/agent/extensions/herdr-agent-state.ts" "$herdr_capture" \
-  || fail 'Herdr worker did not use the default minimal lifecycle reporter'
-grep -qx 'minimal' "$herdr_capture" \
-  || fail 'Herdr worker did not use the default minimal profile'
+grep -qx "$TMPDIR_TEST/home/.pi/agent/extensions/herdr-agent-state.ts" "$herdr_capture" \
+  || fail 'Herdr worker did not use the default lifecycle reporter'
 
-partner_capture="$TMPDIR_TEST/partner.txt"
-PI_WORKER_PROFILE=partner run_worker "$partner_capture"
-grep -qx 'partner' "$partner_capture" \
-  || fail 'Herdr worker did not honor PI_WORKER_PROFILE override'
-grep -qx "$TMPDIR_TEST/home/.pi/profiles/partner/agent/extensions/herdr-agent-state.ts" "$partner_capture" \
-  || fail 'Herdr worker did not derive its reporter from PI_WORKER_PROFILE'
+override_dir="$TMPDIR_TEST/home/alternate agent"
+mkdir -p "$override_dir/extensions"
+: >"$override_dir/extensions/herdr-agent-state.ts"
+override_capture="$TMPDIR_TEST/agent-dir-override.txt"
+PI_WORKER_PROFILE=default PI_CODING_AGENT_DIR='~/alternate agent' run_worker "$override_capture"
+grep -qxF "$override_dir/extensions/herdr-agent-state.ts" "$override_capture" \
+  || fail 'Herdr worker reporter did not honor the native agent directory override'
 
 # Regression: pi-subagent-herdr must appear exactly once in every worker launch
 # and model probe, alongside the existing trusted extensions.
@@ -223,7 +221,7 @@ grep -qF 'https://github.com/cgint/pi-mini-self-org' "$readonly_regression_captu
   || fail 'readonly launch lost pi-mini-self-org'
 
 editable_regression_capture="$TMPDIR_TEST/editable-regression.txt"
-PATH="$TMPDIR_TEST/bin:$PATH" HOME="$TMPDIR_TEST/home" PI_PROFILE_CAPTURE="$editable_regression_capture" \
+PATH="$TMPDIR_TEST/bin:$PATH" HOME="$TMPDIR_TEST/home" PI_ARGUMENT_CAPTURE="$editable_regression_capture" \
   "$herdr_worker" --mode editable -- @/tmp/handoff.md 'task'
 herdr_count="$(grep -cF 'https://github.com/cgint/pi-subagent-herdr' "$editable_regression_capture" || true)"
 [ "$herdr_count" -eq 1 ] \
@@ -242,8 +240,8 @@ probe_regression_capture="$TMPDIR_TEST/probe-regression.txt"
 probe_regression_list="$TMPDIR_TEST/probe-regression-list.txt"
 FAKE_GIT_ROOT='' PI_WORKER_DEFAULT_MODEL='home-llm/some-model' \
   MODEL_AVAILABLE='home-llm/some-model' \
-  PI_PROFILE_LIST_CAPTURE="$probe_regression_list" \
-  PATH="$TMPDIR_TEST/bin:$PATH" HOME="$TMPDIR_TEST/home" PI_PROFILE_CAPTURE="$probe_regression_capture" \
+  PI_LIST_CAPTURE="$probe_regression_list" \
+  PATH="$TMPDIR_TEST/bin:$PATH" HOME="$TMPDIR_TEST/home" PI_ARGUMENT_CAPTURE="$probe_regression_capture" \
   "$herdr_worker" --mode readonly -- @/tmp/handoff.md 'task'
 grep -qF 'https://github.com/cgint/pi-subagent-herdr' "$probe_regression_list" \
   || fail 'model availability probe did not load pi-subagent-herdr'
@@ -282,13 +280,13 @@ fi
 if direct_profile_output="$(PI_WORKER_PROFILE=partner run_direct_worker "$TMPDIR_TEST/direct-invalid.txt" 2>&1)"; then
   fail 'direct-Pi worker accepted a non-default PI_WORKER_PROFILE'
 fi
-grep -q 'pi-profile is unavailable; cannot select non-default profile: partner' <<<"$direct_profile_output" \
+grep -q 'Pi profiles have been removed: partner' <<<"$direct_profile_output" \
   || fail 'direct-Pi worker did not explain the rejected profile'
 
 if invalid_profile_output="$(PI_WORKER_PROFILE='../unsafe' run_worker "$TMPDIR_TEST/invalid.txt" 2>&1)"; then
   fail 'Herdr worker accepted an invalid PI_WORKER_PROFILE'
 fi
-grep -q 'invalid PI_WORKER_PROFILE: ../unsafe' <<<"$invalid_profile_output" \
+grep -q 'Pi profiles have been removed: ../unsafe' <<<"$invalid_profile_output" \
   || fail 'Herdr worker did not explain the rejected PI_WORKER_PROFILE'
 
 config_root="$TMPDIR_TEST/repository"
@@ -303,7 +301,7 @@ config_capture="$TMPDIR_TEST/config.txt"
 config_list_capture="$TMPDIR_TEST/config-list.txt"
 (
   cd "$config_root/nested"
-  PI_PROFILE_LIST_CAPTURE="$config_list_capture" FAKE_GIT_ROOT="$config_root" \
+  PI_LIST_CAPTURE="$config_list_capture" FAKE_GIT_ROOT="$config_root" \
     MODEL_AVAILABLE='home-llm/qwen38-flashnext-twins-direct' run_worker "$config_capture"
 )
 grep -Fqx 'https://github.com/cgint/pi-olla-autodetect' "$config_capture" \
@@ -318,7 +316,7 @@ direct_config_list_capture="$TMPDIR_TEST/direct-config-list.txt"
 direct_config_invocations="$TMPDIR_TEST/direct-config-invocations.txt"
 (
   cd "$config_root/nested"
-  PI_INVOCATION_CAPTURE="$direct_config_invocations" PI_PROFILE_LIST_CAPTURE="$direct_config_list_capture" \
+  PI_INVOCATION_CAPTURE="$direct_config_invocations" PI_LIST_CAPTURE="$direct_config_list_capture" \
     FAKE_GIT_ROOT="$config_root" MODEL_AVAILABLE='home-llm/qwen38-flashnext-twins-direct' \
     run_direct_worker "$direct_config_capture"
 )
@@ -482,7 +480,7 @@ env_override_capture="$TMPDIR_TEST/env-override.txt"
 env_override_list_capture="$TMPDIR_TEST/env-override-list.txt"
 (
   cd "$config_root/nested"
-  PI_PROFILE_LIST_CAPTURE="$env_override_list_capture" FAKE_GIT_ROOT="$config_root" \
+  PI_LIST_CAPTURE="$env_override_list_capture" FAKE_GIT_ROOT="$config_root" \
     PI_WORKER_DEFAULT_MODEL='home-llm/should-not-be-used' \
     MODEL_AVAILABLE='home-llm/qwen38-flashnext-twins-direct' run_worker "$env_override_capture"
 )
@@ -492,7 +490,7 @@ if grep -qx 'should-not-be-used' "$env_override_capture"; then
   fail 'PI_WORKER_DEFAULT_MODEL leaked past an active .sub_agent_conf'
 fi
 
-if override_output="$(PATH="$TMPDIR_TEST/bin:$PATH" HOME="$TMPDIR_TEST/home" PI_PROFILE_CAPTURE="$TMPDIR_TEST/override.txt" "$herdr_worker" --mode editable -- --model unsafe 2>&1)"; then
+if override_output="$(PATH="$TMPDIR_TEST/bin:$PATH" HOME="$TMPDIR_TEST/home" PI_ARGUMENT_CAPTURE="$TMPDIR_TEST/override.txt" "$herdr_worker" --mode editable -- --model unsafe 2>&1)"; then
   fail 'Herdr worker accepted a caller model override'
 fi
 grep -q 'caller may not override launcher configuration: --model' <<<"$override_output" \

@@ -12,6 +12,7 @@
 host        = "pluto"
 target_dir  = "~/.pi/agent"
 agents_file = "AGENTS_MINIMAL.md"
+codex_bin   = ".npm-global/bin/codex"
 
 skills = [
   "web-search",

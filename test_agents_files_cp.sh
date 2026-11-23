@@ -41,40 +41,44 @@ fi
 grep -q 'Usage: agents_files_cp.sh' "$TMPDIR_TEST/help.out" || fail '--help lost its usage header'
 
 HOME="$TMPDIR_TEST/home"
-TARGET="$HOME/.pi/profiles/partner/agent"
+TARGET="$HOME/.pi/agent"
 SKILLS="$TARGET/skills"
-mkdir -p "$SKILLS/sub-agent-herdr-supervisor/scripts" "$SKILLS/unmanaged-skill"
-printf 'old helper\n' >"$SKILLS/sub-agent-herdr-supervisor/scripts/retired-helper.sh"
+mkdir -p "$SKILLS/codebase-search/scripts" "$SKILLS/unmanaged-skill"
+printf 'old helper\n' >"$SKILLS/codebase-search/scripts/retired-helper.sh"
 printf 'do not delete\n' >"$SKILLS/unmanaged-skill/keep.txt"
 
-mkdir -p "$SKILLS/retired-managed-skill" "$SKILLS/other-profile-skill"
+mkdir -p "$SKILLS/retired-managed-skill" "$SKILLS/other-deployment-skill"
 cat >"$SKILLS/retired-managed-skill/.data-dir-agents-managed" <<'EOF'
 owner=data-dir-agents
-deployment=pi-agent-profiles/partner
+deployment=pi-agent
 skill=retired-managed-skill
 schema=1
 EOF
-cat >"$SKILLS/other-profile-skill/.data-dir-agents-managed" <<'EOF'
+cat >"$SKILLS/other-deployment-skill/.data-dir-agents-managed" <<'EOF'
 owner=data-dir-agents
-deployment=pi-agent-profiles/default
-skill=other-profile-skill
+deployment=copilot
+skill=other-deployment-skill
 schema=1
 EOF
 
 AGENTS_FILES_CP_HOSTNAME=MacBook-Pro HOME="$HOME" "$TMPDIR_TEST/bin/agents_files_cp.sh" >/dev/null
 
 test -f "$SKILLS/unmanaged-skill/keep.txt" || fail 'ordinary rollout deleted an unmanaged sibling skill'
+test ! -e "$HOME/.pi/profiles" || fail "ordinary rollout created Pi profiles"
+mkdir -p "$TARGET/sessions/project"
+printf "session contents\n" >"$TARGET/sessions/project/preserved.jsonl"
 test -d "$SKILLS/retired-managed-skill" || fail 'ordinary rollout deleted a stale managed skill directory'
-test ! -e "$SKILLS/sub-agent-herdr-supervisor/scripts/retired-helper.sh" \
+test ! -e "$SKILLS/codebase-search/scripts/retired-helper.sh" \
   || fail 'ordinary rollout retained a stale file inside an active managed skill'
-test -f "$SKILLS/sub-agent-herdr-supervisor/.data-dir-agents-managed" \
-  || fail 'ordinary rollout did not deploy the Herdr ownership marker'
+test -f "$SKILLS/codebase-search/.data-dir-agents-managed" \
+  || fail 'ordinary rollout did not deploy the default Pi ownership marker'
 
 AGENTS_FILES_CP_HOSTNAME=MacBook-Pro HOME="$HOME" "$TMPDIR_TEST/bin/agents_files_cp.sh" --delete >/dev/null
 
 test ! -e "$SKILLS/retired-managed-skill" || fail '--delete retained a stale managed skill directory'
+test -f "$TARGET/sessions/project/preserved.jsonl" || fail "rollout touched session history"
 test -f "$SKILLS/unmanaged-skill/keep.txt" || fail '--delete removed an unmanaged sibling skill'
-test -d "$SKILLS/other-profile-skill" || fail '--delete removed a skill owned by another profile'
+test -d "$SKILLS/other-deployment-skill" || fail '--delete removed a skill owned by another deployment'
 
 printf 'PASS: main-Mac host guard\n'
 printf 'PASS: managed-skill deployment contract\n'

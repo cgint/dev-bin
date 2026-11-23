@@ -1,0 +1,6 @@
+{
+  "name": "dev-bin",
+  "version": "1.0.0+7c7495cc0a9e",
+  "description": "Agent skills maintained in dev-bin.",
+  "skills": "./skills/"
+}

@@ -14,7 +14,7 @@
 
 ## Sources of truth
 
-- `definitions/agents/AGENTS_GPT52.md` → `generated/pi-agent/AGENTS.md`
+- `definitions/agents/AGENTS_MINIMAL.md` → `generated/pi-agent/AGENTS.md`
 - `definitions/skills/<skill>/...` → generated skills
 - `definitions/prompts/*.md` → generated prompts
 

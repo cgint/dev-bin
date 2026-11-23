@@ -1,4 +1,0 @@
-owner=data-dir-agents
-deployment=pi-agent-profiles/minimal
-skill=check-sanity-before-continue
-schema=1

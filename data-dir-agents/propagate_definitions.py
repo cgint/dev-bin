@@ -14,7 +14,7 @@ Canonical sources in this repo:
   - definitions/agents/blocks/*.md                  (reusable content blocks; placeholders resolve to blocks/<name>.md)
   - definitions/skills/<skill>/...                  (full pi-agent skill directories)
   - definitions/prompts/*.md                        (pi-agent prompt templates)
-  - definitions/profiles/pi-agent/<name>.toml       (pi-agent profile configs)
+  - definitions/pi-agent.toml                       (Pi asset selection)
   - definitions/profiles/copilot/<name>.toml        (Copilot profile configs)
 
 Generated output (ephemeral build artifacts):
@@ -26,6 +26,7 @@ Generated output (ephemeral build artifacts):
   - generated/gemini/skills/<skill>/...    (copied 1:1 from definitions/skills)
 
   - generated/codex/AGENTS.md
+  - generated/codex/marketplace/              (local marketplace with the dev-bin skills plugin)
 
   - generated/claude/CLAUDE.md
   - generated/claude/commands/*.md         (prompt templates derived from definitions/prompts)
@@ -40,10 +41,9 @@ Generated output (ephemeral build artifacts):
 
   - generated/cursor/skills/<skill>/...
 
-  - generated/pi-agent-profiles/<name>/.target      (deploy target path, read by agents_files_cp.sh)
-  - generated/pi-agent-profiles/<name>/AGENTS.md    (rendered from profile's agents_file)
-  - generated/pi-agent-profiles/<name>/skills/...   (subset or all skills per profile config)
-  - generated/pi-agent-profiles/<name>/prompts/...  (subset or all prompts per profile config)
+  - generated/pi-agent/AGENTS.md
+  - generated/pi-agent/skills/...
+  - generated/pi-agent/prompts/...
 
 These generated artifacts are then copied to their final locations by:
   - $HOME/.local/bin/agents_files_cp.sh
@@ -65,6 +65,8 @@ Requirements:
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
 import os
 import re
 import shutil
@@ -189,7 +191,7 @@ def plan_global_agent_files(out_root: Path, definitions_root: Path):
     if claude_src.exists():
         _resolve_and_plan(claude_src, out_root / "claude" / "CLAUDE.md")
 
-    # Codex / copilot base (pi-agent AGENTS.md is now handled per-profile)
+    # Codex / Copilot base
     gpt52_src = agents_root / "AGENTS_GPT52.md"
     if gpt52_src.exists():
         _resolve_and_plan(
@@ -201,32 +203,37 @@ def plan_global_agent_files(out_root: Path, definitions_root: Path):
     return planned
 
 
-def plan_skill_copies(spec_root: Path, out_root: Path):
-    skills_root = spec_root / "skills"
-    if not skills_root.exists():
+def plan_pi_agent(spec_root: Path, out_root: Path) -> list[tuple]:
+    manifest = spec_root / "pi-agent.toml"
+    if not manifest.is_file():
         return []
+    with manifest.open("rb") as file:
+        settings = tomllib.load(file)
 
-    planned = []
-    for skill_dir in sorted([p for p in skills_root.iterdir() if p.is_dir()]):
-        dest = out_root / "pi-agent" / "skills" / skill_dir.name
-        planned += plan_skill_bundle(skill_dir, dest, spec_root, "pi-agent")
+    dest = out_root / "pi-agent"
+    agents_src = spec_root / "agents" / settings["agents_file"]
+    text = agents_src.read_text(encoding="utf-8")
+    blocks = agents_src.parent / "blocks"
+    if blocks.is_dir():
+        text = resolve_placeholders(text, blocks)
+    planned = [plan_write_file(agents_src, dest / "AGENTS.md", text)]
+
+    for name in settings["skills"]:
+        skill_dir = spec_root / "skills" / name
+        if not (skill_dir / "SKILL.md").is_file():
+            raise FileNotFoundError(f"Pi skill not found: {skill_dir}")
+        planned += plan_skill_bundle(skill_dir, dest / "skills" / name, spec_root, "pi-agent")
+
+    for name in settings["prompts"]:
+        prompt_src = spec_root / "prompts" / name
+        if not prompt_src.is_file():
+            raise FileNotFoundError(f"Pi prompt not found: {prompt_src}")
+        planned.append(plan_file_copy(prompt_src, dest / "prompts" / name))
     return planned
 
 
-def plan_prompt_copies(spec_root: Path, out_root: Path):
-    prompts_root = spec_root / "prompts"
-    if not prompts_root.exists():
-        return []
-
-    planned = []
-    for prompt_file in sorted(prompts_root.glob("*.md")):
-        dest = out_root / "pi-agent" / "prompts" / prompt_file.name
-        planned.append(plan_file_copy(prompt_file, dest))
-    return planned
-
-
-def load_agent_profiles(profiles_dir: Path) -> list[dict]:
-    """Load all *.toml profile configs from a profiles directory."""
+def load_copilot_profiles(profiles_dir: Path) -> list[dict]:
+    """Load all Copilot profile configs from a profiles directory."""
     if not profiles_dir.exists():
         return []
     profiles = []
@@ -239,48 +246,30 @@ def load_agent_profiles(profiles_dir: Path) -> list[dict]:
     return profiles
 
 
-def load_pi_agent_profiles(profiles_dir: Path) -> list[dict]:
-    """Load all *.toml profile configs from definitions/profiles/pi-agent/."""
-    return load_agent_profiles(profiles_dir)
-
-
-def load_copilot_profiles(profiles_dir: Path) -> list[dict]:
-    """Load all *.toml profile configs from definitions/profiles/copilot/."""
-    return load_agent_profiles(profiles_dir)
-
-
-def plan_profile(
-    profile: dict,
-    spec_root: Path,
-    out_root: Path,
-    *,
-    profile_kind: str,
-    instructions_filename: str,
-    include_prompts: bool,
-) -> list[tuple]:
-    """Plan generation of a single tool profile into generated/<kind>-profiles/<name>/."""
+def plan_copilot_profile(profile: dict, spec_root: Path, out_root: Path) -> list[tuple]:
+    """Plan generation of a single Copilot profile."""
     planned = []
     profile_name = profile["name"]
-    profile_out = out_root / f"{profile_kind}-profiles" / profile_name
+    profile_out = out_root / "copilot-profiles" / profile_name
 
     agents_root = spec_root / "agents"
     blocks_dir = agents_root / "blocks"
 
     # .target file (deploy destination, read by agents_files_cp.sh)
     planned.append(plan_write_file(
-        spec_root / "profiles" / profile_kind / f"{profile_name}.toml",
+        spec_root / "profiles" / "copilot" / f"{profile_name}.toml",
         profile_out / ".target",
         profile["target_dir"],
     ))
 
-    # AGENTS.md: resolve the named agents_file template
+    # Resolve the named instructions template.
     agents_src = agents_root / profile["agents_file"]
     if not agents_src.exists():
         raise FileNotFoundError(f"Profile '{profile_name}' references missing agents_file: {agents_src}")
     text = agents_src.read_text(encoding="utf-8")
     if blocks_dir.exists():
         text = resolve_placeholders(text, blocks_dir)
-    planned.append(plan_write_file(agents_src, profile_out / instructions_filename, text))
+    planned.append(plan_write_file(agents_src, profile_out / "copilot-instructions.md", text))
 
     # Skills: all if key absent, filtered list if present, none if empty list
     skills_root = spec_root / "skills"
@@ -292,43 +281,10 @@ def plan_profile(
                     skill_dir,
                     profile_out / "skills" / skill_dir.name,
                     spec_root,
-                    f"{profile_kind}-profiles/{profile_name}",
+                    f"copilot-profiles/{profile_name}",
                 )
 
-    if include_prompts:
-        # Prompts: all if key absent, filtered list if present, none if empty list
-        prompts_root = spec_root / "prompts"
-        prompts_allowlist = profile.get("prompts", None)  # None = all
-        if prompts_root.exists() and prompts_allowlist != []:
-            for prompt_file in sorted(prompts_root.glob("*.md")):
-                if prompts_allowlist is None or prompt_file.name in prompts_allowlist:
-                    planned.append(plan_file_copy(prompt_file, profile_out / "prompts" / prompt_file.name))
-
     return planned
-
-
-def plan_pi_agent_profile(profile: dict, spec_root: Path, out_root: Path) -> list[tuple]:
-    """Plan generation of a single pi-agent profile into generated/pi-agent-profiles/<name>/."""
-    return plan_profile(
-        profile,
-        spec_root,
-        out_root,
-        profile_kind="pi-agent",
-        instructions_filename="AGENTS.md",
-        include_prompts=True,
-    )
-
-
-def plan_copilot_profile(profile: dict, spec_root: Path, out_root: Path) -> list[tuple]:
-    """Plan generation of a single Copilot profile into generated/copilot-profiles/<name>/."""
-    return plan_profile(
-        profile,
-        spec_root,
-        out_root,
-        profile_kind="copilot",
-        instructions_filename="copilot-instructions.md",
-        include_prompts=False,
-    )
 
 
 def plan_gemini_command_files(spec_root: Path, out_root: Path):
@@ -365,6 +321,88 @@ def plan_gemini_skill_copies(spec_root: Path, out_root: Path):
         planned += plan_skill_bundle(skill_dir, dest, spec_root, "gemini")
 
     return planned
+
+
+def _codex_skill_version(planned: list[tuple], plugin: Path) -> str:
+    # Codex caches skills by plugin install path, which includes the version.
+    # Hash the final package inputs so every meaningful update rotates that path.
+    fingerprints = {}
+    for kind, source, dest, *content in planned:
+        if kind == "writefile":
+            fingerprints[dest.relative_to(plugin).as_posix()] = (0, hashlib.sha256(content[0].encode()).hexdigest())
+            continue
+        files = source.rglob("*") if kind == "copydir" else (source,)
+        for file in files:
+            if file.is_symlink():
+                raise ValueError(f"Codex plugins do not copy symlinks: {file}")
+            if file.is_file():
+                target = dest / file.relative_to(source) if kind == "copydir" else dest
+                fingerprints[target.relative_to(plugin).as_posix()] = (
+                    file.stat().st_mode & 0o111, hashlib.sha256(file.read_bytes()).hexdigest()
+                )
+
+    digest = hashlib.sha256(json.dumps(fingerprints, sort_keys=True).encode()).hexdigest()[:12]
+    return f"1.0.0+{digest}"
+
+
+def plan_codex_marketplace(spec_root: Path, out_root: Path):
+    skills_root = spec_root / "skills"
+    if not skills_root.exists():
+        return []
+
+    codex_root = out_root / "codex"
+    marketplace = codex_root / "marketplace"
+    plugin = marketplace / "plugins" / "dev-bin"
+    planned = []
+    for skill_dir in sorted(skills_root.iterdir()):
+        if skill_dir.is_dir():
+            if skill_dir.is_symlink() or not (skill_dir / "SKILL.md").is_file():
+                raise ValueError(f"Invalid Codex skill: {skill_dir}")
+            planned += plan_skill_bundle(skill_dir, plugin / "skills" / skill_dir.name, spec_root, "codex")
+
+    manifest = {
+        "name": "dev-bin",
+        "version": _codex_skill_version(planned, plugin),
+        "description": "Agent skills maintained in dev-bin.",
+        "skills": "./skills/",
+    }
+    catalog = {
+        "name": "dev-bin-local",
+        "plugins": [{"name": "dev-bin", "source": {"source": "local", "path": "./plugins/dev-bin"}}],
+    }
+    planned += [
+        plan_write_file(skills_root, plugin / ".codex-plugin" / "plugin.json", json.dumps(manifest, indent=2) + "\n"),
+        plan_write_file(skills_root, marketplace / ".agents" / "plugins" / "marketplace.json", json.dumps(catalog, indent=2) + "\n"),
+        plan_write_file(skills_root, codex_root / ".data-dir-agents-managed", "owner=data-dir-agents\ndeployment=codex\nschema=1\n"),
+    ]
+    return planned
+
+
+def verify_codex_bundle(spec_root: Path, out_root: Path) -> None:
+    codex = out_root / "codex"
+    plugin = codex / "marketplace" / "plugins" / "dev-bin"
+    manifest = plugin / ".codex-plugin" / "plugin.json"
+    marker = codex / MANAGED_SKILL_MARKER
+    catalog = codex / "marketplace" / ".agents" / "plugins" / "marketplace.json"
+    expected = {
+        item[2]: item[3]
+        for item in plan_codex_marketplace(spec_root, out_root)
+        if item[0] == "writefile" and item[2] in (manifest, marker, catalog)
+    }
+    if manifest not in expected:
+        raise ValueError("Codex bundle is stale: missing canonical skill sources")
+
+    agents = spec_root / "agents"
+    expected[codex / "AGENTS.md"] = resolve_placeholders(
+        (agents / "AGENTS_GPT52.md").read_text(encoding="utf-8"), agents / "blocks"
+    )
+    for path, contents in expected.items():
+        if not path.is_file() or path.read_bytes() != contents.encode("utf-8"):
+            raise ValueError(f"Codex bundle is stale: {path.relative_to(out_root)}")
+
+    skills = plugin / "skills"
+    if _codex_skill_version([plan_dir_copy(skills, skills)], plugin) != json.loads(expected[manifest])["version"]:
+        raise ValueError("Codex bundle is stale: generated skill contents differ from the manifest")
 
 
 def plan_claude_command_files(spec_root: Path, out_root: Path):
@@ -541,12 +579,8 @@ def main(argv=None):
         for profile in load_copilot_profiles(copilot_profiles_dir):
             skills_info = profile.get("skills", "all")
             print(f" - {profile['name']} -> {profile['target_dir']}  (agents_file={profile['agents_file']}, skills={skills_info})")
-        print("\npi-agent profiles:")
-        pi_profiles_dir = spec_root / "profiles" / "pi-agent"
-        for profile in load_pi_agent_profiles(pi_profiles_dir):
-            skills_info = profile.get("skills", "all")
-            prompts_info = profile.get("prompts", "all")
-            print(f" - {profile['name']} -> {profile['target_dir']}  (agents_file={profile['agents_file']}, skills={skills_info}, prompts={prompts_info})")
+        if (spec_root / "pi-agent.toml").is_file():
+            print("\nPi configuration: pi-agent.toml -> ~/.pi/agent")
         print("\nSkills:")
         if skills_root.exists():
             for d in sorted([p for p in skills_root.iterdir() if p.is_dir()]):
@@ -573,6 +607,7 @@ def main(argv=None):
     # Tool-specific derived artifacts
     planned += plan_gemini_command_files(spec_root, out_root)
     planned += plan_gemini_skill_copies(spec_root, out_root)
+    planned += plan_codex_marketplace(spec_root, out_root)
     planned += plan_claude_command_files(spec_root, out_root)
     planned += plan_claude_skill_copies(spec_root, out_root)
     planned += plan_copilot_skill_copies(spec_root, out_root)
@@ -584,13 +619,7 @@ def main(argv=None):
     for profile in copilot_profiles:
         planned += plan_copilot_profile(profile, spec_root, out_root)
 
-    # pi-agent profiles (each profile controls agents_file, skills subset, prompts subset)
-    pi_profiles_dir = spec_root / "profiles" / "pi-agent"
-    pi_profiles = load_pi_agent_profiles(pi_profiles_dir)
-    if not pi_profiles:
-        print(f"WARNING: No pi-agent profiles found in {pi_profiles_dir}. Skipping pi-agent generation.")
-    for profile in pi_profiles:
-        planned += plan_pi_agent_profile(profile, spec_root, out_root)
+    planned += plan_pi_agent(spec_root, out_root)
 
     if not planned:
         print("Nothing to do: no AGENTS_*.md and no definitions/skills or definitions/prompts found")

@@ -19,7 +19,7 @@ Use a subagent only when independent evidence, isolation, parallelism, or bounde
 
 **Precondition — start in the target directory.** `scripts/cmux-worker.sh` inherits the invoking shell’s working directory and has no `--cwd` option; its write scope is the directory tree rooted at that cwd. So `cd` into the target directory named by the handoff — the narrowest directory tree containing all authorized writes, including the report path (the common ancestor when work spans sibling directories) — before invoking the launcher, or create the pane/workspace there with `--cwd /absolute/path/to/target-dir`. Starting elsewhere leaves an editable worker unable to write to the handoff’s target paths.
 
-Use this skill's launcher; do not invoke `pi-profile` directly.
+Use this skill’s launcher for CMUX workers.
 
 Editable worker:
 
@@ -37,7 +37,7 @@ scripts/cmux-worker.sh --mode readonly -- \
   'Execute the handoff exactly; use CMUX-only completion.'
 ```
 
-`scripts/cmux-worker.sh` requires exactly one `--mode readonly|editable` before `--`. When `pi-profile` is available, it uses `PI_WORKER_PROFILE` (default `minimal`) to select a deployed profile. Without `pi-profile`, it uses plain `pi` with `$HOME/.pi/agent` (effective profile `default`); an explicit non-`default` `PI_WORKER_PROFILE` fails because a direct Pi host cannot select named profiles. Editable mode retains default Pi tools. Read-only mode loads `pi-focus-guard`, starts `--dm-read=1`, and permits `read,bash,grep,find,ls`; the guard blocks writes and non-read-only Bash. It rejects caller overrides of print mode, extensions, model/provider/thinking, tools, and `--dm-*`. Neither mode uses `-p`. Its shared runtime is bundled into this skill at generation time and is the same runtime used by `sub-agent-herdr-supervisor`, so CMUX workers follow the repository policy documented there: a `.sub_agent_conf` at the launch repository's Git root selects `PROVIDER`, `MODEL`, and optional `THINKING`, and the launcher itself loads the trusted extensions a provider needs (`home-llm` requires `pi-olla-autodetect`). Only without that file do workers fall back to the authenticated OpenAI Codex, then GitHub Copilot default selection with `minimal` thinking. CMUX does not load Herdr reporting behavior.
+`scripts/cmux-worker.sh` requires exactly one `--mode readonly|editable` before `--`. It launches plain Pi with its native configuration directory. Editable mode retains default Pi tools. Read-only mode loads `pi-focus-guard`, starts `--dm-read=1`, and permits `read,bash,grep,find,ls`; the guard blocks writes and non-read-only Bash. It rejects caller overrides of print mode, extensions, model/provider/thinking, tools, and `--dm-*`. Neither mode uses `-p`. Its shared runtime is bundled into this skill at generation time and is the same runtime used by `sub-agent-herdr-supervisor`, so CMUX workers follow the repository policy documented there: a `.sub_agent_conf` at the launch repository's Git root selects `PROVIDER`, `MODEL`, and optional `THINKING`, and the launcher itself loads the trusted extensions a provider needs (`home-llm` requires `pi-olla-autodetect`). Only without that file do workers fall back to the authenticated OpenAI Codex, then GitHub Copilot default selection with `minimal` thinking. CMUX does not load Herdr reporting behavior.
 
 ## Select Work Deliberately
 

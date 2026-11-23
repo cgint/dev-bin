@@ -9,7 +9,7 @@ Deploy generated agent definitions to local agent config dirs.
 Main Mac only (MacBook-Pro.local); homelab hosts are served by
 agents_files_cp_remote.sh from the main Mac.
   --delete           also remove retired files/dirs from synced targets (skill dirs,
-                       profile prompts/commands, gemini/claude commands); active contents always mirror source
+                       Pi prompts, gemini/claude commands); active contents always mirror source
   --openspec-config  also roll out openspec/config.yaml to existing OpenSpec directories
   --agy-only        deploy existing generated skills to ~/.gemini/config/skills only
   -h, --help         show this help
@@ -67,34 +67,6 @@ rsync_copy_dir() {
     rsync "${RSYNC_OPTS[@]}" --delete "$src_dir/" "$dest_dir/"
   else
     rsync "${RSYNC_OPTS[@]}" "$src_dir/" "$dest_dir/"
-  fi
-}
-
-sync_profile_prompts() {
-  local profile_dir="$1"
-  local target_dir="$2"
-  local prompts_src="$profile_dir/prompts"
-  local prompts_dest="$target_dir/prompts"
-  if [ ! -d "$prompts_src" ]; then
-    # Profile defines no prompts: retire the deployed set (delete-only).
-    if [ "$DELETE_RSYNC" = true ] && [ -d "$prompts_dest" ]; then
-      mkdir -p "$prompts_src"
-      rsync "${RSYNC_OPTS[@]}" --delete "$prompts_src/" "$prompts_dest/"
-    fi
-    return 0
-  fi
-  if [ "$DELETE_RSYNC" = true ]; then
-    # Mirror: remove prompts no longer in the profile (e.g. converted to skills).
-    rsync "${RSYNC_OPTS[@]}" --delete "$prompts_src/" "$prompts_dest/"
-  else
-    # Non-destructive: deploy the profile's prompts, leave retired ones in place
-    # (remove them with a subsequent agents_files_cp.sh --delete pass).
-    local prompt_file
-    mkdir -p "$prompts_dest"
-    for prompt_file in "$prompts_src"/*.md; do
-      [ -f "$prompt_file" ] || continue
-      cp -f "$prompt_file" "$prompts_dest/"
-    done
   fi
 }
 
@@ -158,7 +130,6 @@ COPILOT_AGENTS_DIR="$USER_HOME_DIR/.copilot"
 
 GEMINI_AGENTS_FILE="$GEMINI_AGENTS_DIR/GEMINI.md"
 CLAUDE_AGENTS_FILE="$CLAUDE_AGENTS_DIR/CLAUDE.md"
-CODEX_AGENTS_FILE="$CODEX_AGENTS_DIR/AGENTS.md"
 COPILOT_AGENTS_FILE="$COPILOT_AGENTS_DIR/copilot-instructions.md"
 
 if [ "$AGY_ONLY" = true ]; then
@@ -188,6 +159,12 @@ fi
 # Copy generated artifacts if available
 if [ -d "$GENERATED_DIR" ]; then
   echo "Copying generated agent artifacts from $GENERATED_DIR ..."
+  if [ -d "$CODEX_AGENTS_DIR" ]; then
+    source "$AGENTS_SRC_DATA_DIR/codex-plugin.sh"
+    CODEX_BIN=$(command -v codex) || { echo 'ERROR: Codex is missing from PATH' >&2; exit 1; }
+    deploy_codex_bundle "$AGENTS_SRC_DATA_DIR" "$CODEX_BIN" true
+  fi
+
   # Gemini: copy GEMINI.md + commands + skills into ~/.gemini/
   if [ -d "$GEMINI_AGENTS_DIR" ] && [ -f "$GENERATED_DIR/gemini/GEMINI.md" ]; then
     mkdir -p "$GEMINI_AGENTS_DIR"
@@ -216,12 +193,6 @@ if [ -d "$GENERATED_DIR" ]; then
   fi
   if [ -d "$CLAUDE_AGENTS_DIR" ] && [ -d "$GENERATED_DIR/claude/skills" ]; then
     sync_managed_skills "$GENERATED_DIR/claude/skills" "$CLAUDE_AGENTS_DIR/skills" "claude"
-  fi
-
-  # Codex: copy AGENTS.md into ~/.codex/AGENTS.md
-  if [ -d "$CODEX_AGENTS_DIR" ] && [ -f "$GENERATED_DIR/codex/AGENTS.md" ]; then
-    mkdir -p "$CODEX_AGENTS_DIR"
-    cp -v "$GENERATED_DIR/codex/AGENTS.md" "$CODEX_AGENTS_FILE"
   fi
 
   # Copilot: copy combined file into ~/.copilot/ plus Agent Skills
@@ -264,33 +235,20 @@ if [ -d "$GENERATED_DIR" ]; then
     sync_managed_skills "$GENERATED_DIR/cursor/skills" "$CURSOR_SKILLS_DIR" "cursor"
   fi
 
-  # pi-agent profiles: deploy each generated profile to its configured target dir
-  PI_PROFILES_GENERATED="$GENERATED_DIR/pi-agent-profiles"
-  if [ -d "$PI_PROFILES_GENERATED" ]; then
-    for profile_dir in "$PI_PROFILES_GENERATED"/*/; do
-      profile_name=$(basename "$profile_dir")
-      target_dir=$(cat "$profile_dir/.target" 2>/dev/null || true)
-      target_dir="${target_dir/#\~/$HOME}"
-      if [ -z "$target_dir" ]; then
-        echo " -- Skipping pi-agent profile '$profile_name': target dir is empty"
-        continue
-      fi
-      if [ ! -d "$target_dir" ]; then
-        echo " -- Creating target dir for pi-agent profile '$profile_name': $target_dir"
-        mkdir -p "$target_dir"
-      fi
-      echo " -- Deploying pi-agent profile '$profile_name' -> $target_dir ... (if no output then everything is up to date)"
-      [ -f "$profile_dir/AGENTS.md" ] && cp -v "$profile_dir/AGENTS.md" "$target_dir/AGENTS.md"
-      [ -d "$profile_dir/skills" ] && sync_managed_skills "$profile_dir/skills" "$target_dir/skills" "pi-agent-profiles/$profile_name"
-      sync_profile_prompts "$profile_dir" "$target_dir"
-    done
+  # Pi uses its native default configuration directory.
+  PI_SOURCE="$GENERATED_DIR/pi-agent"
+  PI_TARGET="$USER_HOME_DIR/.pi/agent"
+  if [ -f "$PI_SOURCE/AGENTS.md" ]; then
+    mkdir -p "$PI_TARGET"
+    cp -v "$PI_SOURCE/AGENTS.md" "$PI_TARGET/AGENTS.md"
+    sync_managed_skills "$PI_SOURCE/skills" "$PI_TARGET/skills" pi-agent
+    if [ -d "$PI_SOURCE/prompts" ]; then
+      rsync_copy_dir "$PI_SOURCE/prompts" "$PI_TARGET/prompts"
+    fi
   fi
 else
   echo "No generated directory found at $GENERATED_DIR. Run the generator to produce generated artifacts first."
 fi
-
-# NOTE: pi-agent deployment is fully profile-driven via definitions/profiles/pi-agent/*.toml.
-# Canonical sources live under $AGENTS_SRC_DATA_DIR/definitions and are deployed via generated artifacts.
 
 
 # Rollout the openspec config.yaml only when explicitly requested.

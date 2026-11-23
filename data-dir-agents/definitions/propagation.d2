@@ -5,6 +5,7 @@ Definitions: {
 
   Agents: "**definitions/agents/**\nAGENTS_*.md"
   Skills: "**definitions/skills/**\n<skill>/..."
+  PiManifest: "**definitions/pi-agent.toml**\nPi asset selection"
   Prompts: "**definitions/prompts/**\n*.md"
 }
 
@@ -14,7 +15,7 @@ Generated: {
   label: "**generated/**\n(build output; can be committed, but is regenerated)"
 
   Gemini: "generated/gemini/GEMINI.md\n+ generated/gemini/commands/*.md\n+ generated/gemini/skills/<skill>/..."
-  Codex: "generated/codex/AGENTS.md"
+  Codex: "generated/codex/AGENTS.md\n+ generated/codex/marketplace/"
   Copilot: "generated/copilot/copilot-instructions.md\n+ generated/copilot/skills/<skill>/..."
   Cursor: "generated/cursor/skills/<skill>/..."
   PiAgent: {
@@ -25,13 +26,13 @@ Generated: {
   }
 }
 
-Deployer: "**agents_files_cp.sh**\ncopies from generated/*\ninto user config dirs"
+Deployer: "**agents_files_cp.sh**\n**agents_files_cp_remote.sh**\ndeploy generated bundles"
 
 UserConfig: {
   label: "**User config dirs**"
 
   HomeGemini: "~/.gemini/GEMINI.md"
-  HomeCodex: "~/.codex/AGENTS.md"
+  HomeCodex: "~/.codex/AGENTS.md\n+ dev-bin plugin"
   HomeCopilot: "~/.copilot/copilot-instructions.md"
   HomeCursor: "~/.cursor/skills/<skill>/..."
   HomePi: "~/.pi/agent/*"
@@ -40,6 +41,7 @@ UserConfig: {
 Definitions.Agents -> Generator
 Definitions.Skills -> Generator
 Definitions.Prompts -> Generator
+Definitions.PiManifest -> Generator
 
 Generator -> Generated
 

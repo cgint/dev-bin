@@ -1,0 +1,51 @@
+direction: down
+
+source: |md
+  **Current minimal**
+
+  Canonical instructions and allowlists
+
+  Installed settings and packages
+|
+
+deploy: |md
+  **One Pi deployment**
+
+  Generate `generated/pi-agent`
+
+  Deploy to `~/.pi/agent`
+|
+
+launch: |md
+  **Switch the launchers**
+
+  Shell, updater, workers, Docker
+|
+
+state: |md
+  **Preserve Pi data**
+
+  Keep shared credentials and models
+
+  Merge every session root and remap fork links
+|
+
+verify: |md
+  **Verify in staging**
+
+  Check settings, history, and launchers
+|
+
+archive: |md
+  **Activate the staged agent**
+
+  Archive the original directories
+
+  Smoke-test plain Pi and launchers
+|
+
+source -> deploy
+deploy -> verify
+launch -> verify
+state -> verify
+verify -> archive

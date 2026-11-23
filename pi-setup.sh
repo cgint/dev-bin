@@ -5,7 +5,7 @@ set -euo pipefail
 # pi-setup.sh
 #
 # Bootstrap @mariozechner/pi-coding-agent ("pi") on macOS using Homebrew and
-# deploy the company pi agent configuration (AGENTS/skills/prompts/profiles)
+# deploy the company pi agent configuration (AGENTS/skills/prompts)
 # from devsupport-solution/workspace-tools.
 #
 # Policy (company-safe):
@@ -29,8 +29,7 @@ Notes:
   - Installs Node via Homebrew only if 'node' is missing.
   - Installs pi via: npm install -g @mariozechner/pi-coding-agent
   - Generates agent artifacts via propagate_definitions.py --apply
-  - Deploys pi-agent profiles (generated/pi-agent-profiles/*) if available.
-    Otherwise falls back to generated/pi-agent -> ~/.pi/agent.
+  - Deploys generated/pi-agent to ~/.pi/agent.
 EOF
 }
 
@@ -138,57 +137,15 @@ log
 log "Deploying pi agent configuration..."
 run mkdir -p "$HOME/.pi/agent"
 
-expand_tilde() {
-  local p="$1"
-  printf "%s" "${p/#\~/$HOME}"
-}
+PI_AGENT_GENERATED="$GENERATED_DIR/pi-agent"
+[ -f "$PI_AGENT_GENERATED/AGENTS.md" ] || die "Expected generated Pi instructions: $PI_AGENT_GENERATED/AGENTS.md"
 
-deploy_profile_dir() {
-  local profile_dir="$1"
-  local profile_name
-  profile_name="$(basename "$profile_dir")"
-
-  local target_dir
-  target_dir="$(cat "$profile_dir/.target" 2>/dev/null || true)"
-  target_dir="$(expand_tilde "$target_dir")"
-
-  if [ -z "$target_dir" ]; then
-    warn "Skipping profile '$profile_name': empty target dir"
-    return 0
-  fi
-
-  run mkdir -p "$target_dir"
-
-  log "- profile '$profile_name' -> $target_dir"
-  [ -f "$profile_dir/AGENTS.md" ] && run cp -v "$profile_dir/AGENTS.md" "$target_dir/AGENTS.md"
-  [ -d "$profile_dir/skills" ] && run rsync -avh "$profile_dir/skills/" "$target_dir/skills/"
-  [ -d "$profile_dir/prompts" ] && run rsync -avh "$profile_dir/prompts/" "$target_dir/prompts/"
-}
-
-PI_PROFILES_GENERATED="$GENERATED_DIR/pi-agent-profiles"
-
-if [ -d "$PI_PROFILES_GENERATED" ]; then
-  shopt -s nullglob
-  profile_dirs=("$PI_PROFILES_GENERATED"/*)
-  shopt -u nullglob
-
-  if [ ${#profile_dirs[@]} -eq 0 ]; then
-    warn "No profiles found in $PI_PROFILES_GENERATED."
-  else
-    for d in "${profile_dirs[@]}"; do
-      [ -d "$d" ] || continue
-      deploy_profile_dir "$d"
-    done
-  fi
-else
-  warn "No generated pi-agent profiles found ($PI_PROFILES_GENERATED missing). Falling back to generated/pi-agent -> ~/.pi/agent"
-
-  PI_AGENT_GENERATED="$GENERATED_DIR/pi-agent"
-  [ -d "$PI_AGENT_GENERATED" ] || die "Expected generated pi-agent directory not found: $PI_AGENT_GENERATED"
-
-  [ -f "$PI_AGENT_GENERATED/AGENTS.md" ] && run cp -v "$PI_AGENT_GENERATED/AGENTS.md" "$HOME/.pi/agent/AGENTS.md"
-  [ -d "$PI_AGENT_GENERATED/skills" ] && run rsync -avh "$PI_AGENT_GENERATED/skills/" "$HOME/.pi/agent/skills/"
-  [ -d "$PI_AGENT_GENERATED/prompts" ] && run rsync -avh "$PI_AGENT_GENERATED/prompts/" "$HOME/.pi/agent/prompts/"
+run cp -v "$PI_AGENT_GENERATED/AGENTS.md" "$HOME/.pi/agent/AGENTS.md"
+if [ -d "$PI_AGENT_GENERATED/skills" ]; then
+  run rsync -avh "$PI_AGENT_GENERATED/skills/" "$HOME/.pi/agent/skills/"
+fi
+if [ -d "$PI_AGENT_GENERATED/prompts" ]; then
+  run rsync -avh "$PI_AGENT_GENERATED/prompts/" "$HOME/.pi/agent/prompts/"
 fi
 
 log

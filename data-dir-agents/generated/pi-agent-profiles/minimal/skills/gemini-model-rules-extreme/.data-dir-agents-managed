@@ -1,4 +1,0 @@
-owner=data-dir-agents
-deployment=pi-agent-profiles/minimal
-skill=gemini-model-rules-extreme
-schema=1

@@ -1,11 +1,12 @@
 # Skills: taxonomy and naming
 
-Skills are the modular building blocks attached to agent profiles. Each skill lives in its own directory under `definitions/skills/<name>/` and is copied wholesale into `generated/<target>/skills/<name>/` during propagation.
+Skills are the modular building blocks used by agent tools. Each skill lives in its own directory under `definitions/skills/<name>/` and is copied wholesale into `generated/<target>/skills/<name>/` during propagation.
 
 ## How skills attach to agents
 
-- **Global (unfiltered) profiles** — `default` (pi-agent), `default` (copilot) — pick up *every* skill directory in `definitions/skills/`.
-- **Filtered profiles** — `minimal`, `opsx`, `partner` (and Copilot equivalents) — declare an explicit `skills = [...]` list in their `[profile]` TOML. Only listed skills are deployed.
+- **Global (unfiltered) profiles** — `default` (copilot) — pick up *every* skill directory in `definitions/skills/`.
+- **Filtered profiles** — Copilot `minimal` and `partner` — declare an explicit `skills = [...]` list in their `[profile]` TOML. Only listed skills are deployed.
+- Pi uses the explicit asset lists in `definitions/pi-agent.toml`.
 - Some targets (Gemini, Codex, Copilot CLI base) receive *all* skills regardless of profile filtering; profile-level skill lists only affect the profile-specific output directories.
 
 ## Skill naming convention
@@ -16,7 +17,7 @@ Skills are the modular building blocks attached to agent profiles. Each skill li
 | `<name>-retro` | Post-hoc variant of a standing skill | `criticalthink` replaces `criticalthink` |
 | `<name>-<mode>` | Variant tuned for a specific mode/context | — |
 
-**Rule:** When a skill replaces another (rename, refactor, specialization), update the TOML skill lists in every profile that references it. Generation fully recreates `generated/`. Normal rollout always synchronizes every active managed skill directory with `rsync --delete`, so stale files inside that active skill disappear automatically. `agents_files_cp.sh --delete` controls the separate outer cleanup: removal of an obsolete top-level directory only after its generated ownership marker proves it belongs to that deployment. Unmarked siblings with different names are skipped by that outer cleanup. An unmarked directory sharing an active generated skill name is not collision-guarded by the inner sync; do not share that name until the rollout script adds a guard.
+**Rule:** When a skill replaces another (rename, refactor, specialization), update the Pi manifest and the Copilot profiles that reference it. Generation fully recreates `generated/`. Normal rollout always synchronizes every active managed skill directory with `rsync --delete`, so stale files inside that active skill disappear automatically. `agents_files_cp.sh --delete` controls the separate outer cleanup: removal of an obsolete top-level directory only after its generated ownership marker proves it belongs to that deployment. Unmarked siblings with different names are skipped by that outer cleanup. An unmarked directory sharing an active generated skill name is not collision-guarded by the inner sync; do not share that name until the rollout script adds a guard.
 
 ## Skill categories
 
@@ -100,11 +101,11 @@ Skills for multi-agent coordination.
 
 1. Create `definitions/skills/<name>/SKILL.md` (the entry point).
 2. Optionally add supporting files (scripts, examples, subdirectories).
-3. If the skill should be profile-filtered, add `<name>` to the `skills = [...]` list in the relevant TOML profile(s).
+3. For each filtered target, add `<name>` to the `skills = [...]` list in the relevant manifest or Copilot profile.
 4. Run `agents_files_cp.sh` to propagate and deploy.
 
 ## Renaming or removing a skill
 
 1. Rename the directory: `mv definitions/skills/<old> definitions/skills/<new>`.
-2. Update all TOML profile references (`skills = [...]`).
+2. Update the Pi manifest and Copilot profile references (`skills = [...]`).
 3. Run `agents_files_cp.sh` to install the new directory. Its normal inner sync makes each active managed skill directory match its source. Run `agents_files_cp.sh --delete` only when ready to remove the retired top-level directory; that outer cleanup removes only directories carrying a matching generated ownership marker.

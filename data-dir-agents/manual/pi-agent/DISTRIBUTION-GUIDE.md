@@ -37,7 +37,6 @@ find ~/.pi -name "<filename>"
 | Location | Notes |
 |---|---|
 | `~/.pi/agent/extensions/advisor.ts` | Active Pi agent extension directory |
-| `~/.pi/profiles/<profile>/agent/extensions/advisor.ts` | Profile-specific extension override |
 | `data-dir-agents/manual/pi-agent/extensions/advisor.ts` | Local copy managed in this repo |
 
 ## When to sync
@@ -54,7 +53,6 @@ In READ-ONLY mode the write guard restricts output to the repo directory
 
 ```bash
 cp data-dir-agents/manual/pi-agent/extensions/advisor.ts ~/.pi/agent/extensions/advisor.ts
-cp data-dir-agents/manual/pi-agent/extensions/advisor.ts ~/.pi/profiles/partner/agent/extensions/advisor.ts
 ```
 
 If the write guard blocks this, the user needs to update the write guard to
@@ -68,6 +66,5 @@ find ~/.pi -name "advisor.ts"
 
 # List known locations
 echo "~/.pi/agent/extensions/"
-echo "~/.pi/profiles/*/agent/extensions/"
 echo "data-dir-agents/manual/pi-agent/extensions/"
 ```

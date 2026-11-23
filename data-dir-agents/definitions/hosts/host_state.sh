@@ -58,8 +58,8 @@ echo "--- extensions: live registry (packages array in agent settings.json) ---"
 ssh $SSH_OPTS "$HOST" "python3 -c \"import json,os;print(json.dumps(json.load(open(os.path.expanduser('~/.pi/agent/settings.json'))).get('packages',[]),indent=1))\" 2>&1" || echo "[UNREACHABLE or no python3/settings.json]"
 
 echo
-echo "--- active settings: profile-aware (pi docs: profile settings > agent-dir settings) ---"
-ssh $SSH_OPTS "$HOST" "for f in ~/.pi/profiles/*/settings.json ~/.pi/agent/settings.json; do [ -f \"\$f\" ] && echo \"== \$f ==\" && grep -E 'defaultProvider|defaultModel|thinking' \"\$f\" 2>/dev/null; done; echo '(end)'" || echo "[UNREACHABLE]"
+echo "--- active Pi defaults ---"
+ssh $SSH_OPTS "$HOST" 'grep -E "defaultProvider|defaultModel|thinking" ~/.pi/agent/settings.json 2>/dev/null || echo "(no defaults)"' || echo "[UNREACHABLE]"
 
 echo
 echo "--- loose extensions (~/.pi/agent/extensions/, untracked) ---"

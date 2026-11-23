@@ -53,7 +53,7 @@
 #
 #   8. Full Executable Invocations (No Shell Aliases):
 #      - Aliases (such as `pimsr`) are not expanded in non-interactive/herdr subshells.
-#      - Directly invokes `pi-profile minimal --dm-read ...`.
+#      - Directly invokes `pi --dm-read ...`.
 #
 #   9. Safe Lifecycle & Pane Readiness:
 #      - Verifies the target pane exists and is ready before sending keystrokes.
@@ -227,7 +227,7 @@ prepare_env_file() {
 # 8. launch_pi_in_target_pane
 #    WHAT: Injects the launch sequence into the target Herdr pane.
 #    WHY:  Sources the env file, removes the temp file, navigates to $TARGET_DIR,
-#          and launches `pi-profile minimal` with AGENTS.md and extra args.
+#          and launches plain Pi with memory read and extra args.
 # ------------------------------------------------------------------------------
 launch_pi_in_target_pane() {
   if [ -z "${TARGET_PANE:-}" ]; then
@@ -244,11 +244,8 @@ launch_pi_in_target_pane() {
     done
   fi
 
-  # The pi invocation itself: profile, memory read, and AGENTS.md injection.
-  local pi_profile_cmd="pi-profile minimal --dm-read --append-system-prompt /Users/christian.gintenreiter/.pi/profiles/minimal/agent/AGENTS.md"
-
   local pi_cmd
-  pi_cmd="cd $(printf '%q' "$TARGET_DIR"); [ -f $(printf '%q' "$ENV_FILE") ] && { source $(printf '%q' "$ENV_FILE"); rm -f $(printf '%q' "$ENV_FILE"); }; ${pi_profile_cmd}${extra_args}"
+  pi_cmd="cd $(printf '%q' "$TARGET_DIR"); [ -f $(printf '%q' "$ENV_FILE") ] && { source $(printf '%q' "$ENV_FILE"); rm -f $(printf '%q' "$ENV_FILE"); }; pi --dm-read${extra_args}"
 
   # Give terminal subshell 50ms to be fully interactive before injecting
   sleep 0.05

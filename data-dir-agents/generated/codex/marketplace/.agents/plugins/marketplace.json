@@ -1,0 +1,12 @@
+{
+  "name": "dev-bin-local",
+  "plugins": [
+    {
+      "name": "dev-bin",
+      "source": {
+        "source": "local",
+        "path": "./plugins/dev-bin"
+      }
+    }
+  ]
+}

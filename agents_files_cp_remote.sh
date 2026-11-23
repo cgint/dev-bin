@@ -1,8 +1,8 @@
 #!/bin/bash
 #
-# agents_files_cp_remote.sh — ship pi-agent bundles or agy skills to homelab hosts.
+# agents_files_cp_remote.sh — ship pi-agent, Codex, and agy bundles to homelab hosts.
 # Copies rendered agent bundles to remote hosts via ssh/rsync.
-# Note: does NOT run the generator — renders AGENTS.md on the fly from definitions/.
+# Renders pi-agent instructions and checks the generated Codex bundle against definitions/.
 #
 # Host specs: definitions/hosts/<name>.toml — self-contained, no profile refs:
 #
@@ -13,6 +13,7 @@
 #   prompts     = [...]            # whitelist from definitions/prompts/
 #   delete      = false            # per-host rsync --delete (DANGEROUS)
 #   ssh_opts    = [...]            # extra ssh options
+#   codex_bin   = ".npm-global/bin/codex" # optional Codex executable relative to remote home
 #
 # Usage: agents_files_cp_remote.sh [--apply] [--delete] [--host HOST] [--agy-only] [-h]
 #   default = dry-run. --apply transfers for real. --delete enables rsync --delete.
@@ -37,7 +38,7 @@ STAGE="$DATA_DIR/.stage"
 usage() {
   cat <<'EOF'
 Usage: agents_files_cp_remote.sh [--apply] [--delete] [--host HOST] [--agy-only] [-h]
-Deploy pi-agent bundles or agy skills to hosts in definitions/hosts/*.toml.
+Deploy pi-agent and opted-in Codex bundles, or agy skills, to hosts in definitions/hosts/*.toml.
 Main Mac only (MacBook-Pro.local) — this driver pushes to the hosts itself.
   --apply     transfer for real (default is dry-run)
   --delete    mirror pi-agent dirs or remove retired repo-managed agy skills
@@ -134,6 +135,19 @@ for toml in "$HOSTS_DIR"/*.toml; do
   # 1. reachability (skip, non-fatal)
   if ! ssh $ssh_opts -o BatchMode=yes -o ConnectTimeout=5 "$host" true 2>/dev/null; then
     echo "  [SKIP] $host: ssh unreachable"; skip=$((skip+1)); echo; continue
+  fi
+
+  codex_bin=$(toml_get "$toml" codex_bin)
+  if [ -n "$codex_bin" ]; then
+    echo "== $host -> Codex =="
+    source "$DATA_DIR/codex-plugin.sh"
+    if deploy_codex_bundle "$DATA_DIR" "$codex_bin" "$APPLY" "$host" "$ssh_opts"; then
+      ok=$((ok+1))
+    else
+      echo "  [FAIL] $host: Codex deployment failed"
+      fail=$((fail+1))
+      exit_code=1
+    fi
   fi
 
   # 2. target dir must already exist (we never bootstrap an install)

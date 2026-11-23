@@ -13,7 +13,7 @@ Layout:
 - `definitions/agents/`
   - `AGENTS_GEMINI.md` → source for Gemini CLI `GEMINI.md`
   - `AGENTS_CLAUDE.md` → source for Claude Code `CLAUDE.md`
-  - `AGENTS_GPT52.md` → source for Codex (`~/.codex/AGENTS.md`), Copilot CLI instructions, and pi-agent `AGENTS.md`
+  - `AGENTS_GPT52.md` → source for Codex (`~/.codex/AGENTS.md`), and Copilot CLI instructions
   - `AGENTS_SHORT.md`, `AGENTS_LONG.md` → optional variants (currently not used by the generator)
 - `definitions/skills/<skill>/...`
   - Full **pi-agent skill directories** (must remain directories; can include scripts/subfolders)
@@ -73,6 +73,9 @@ See: [`definitions/targets/`](../definitions/targets/README.md)
 - `definitions/agents/AGENTS_GPT52.md`
   → `generated/codex/AGENTS.md`
   → `~/.codex/AGENTS.md`
+- `definitions/skills/<skill>/...`
+  → `generated/codex/marketplace/`
+  → the `dev-bin` plugin in Codex
 
 ### Copilot CLI
 - `definitions/agents/AGENTS_GPT52.md`
@@ -89,7 +92,9 @@ See: [`definitions/targets/`](../definitions/targets/README.md)
   → `~/.copilot/profiles/<name>/...`
 
 ### pi-agent
-- `definitions/agents/AGENTS_GPT52.md`
+Assets are selected by `definitions/pi-agent.toml`.
+
+- `definitions/agents/AGENTS_MINIMAL.md`
   → `generated/pi-agent/AGENTS.md`
   → `~/.pi/agent/AGENTS.md`
 

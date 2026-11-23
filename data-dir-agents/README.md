@@ -35,14 +35,14 @@ Generated files are derived artifacts — the repo must always be in a consisten
 | Codex | `generated/codex/AGENTS.md` |
 | Copilot | `generated/copilot/copilot-instructions.md` + skills |
 | Cursor | `generated/cursor/skills/...` |
-| pi-agent | `generated/pi-agent-profiles/<name>/AGENTS.md` + skills + prompts |
+| pi-agent | `generated/pi-agent/AGENTS.md` + skills + prompts |
 | Copilot profiles | `generated/copilot-profiles/<name>/copilot-instructions.md` + skills |
 
-pi-agent profiles: `default`, `minimal`, `partner`, `opsx`, `zero`. Copilot profiles: `default`, `minimal`, `partner`. See `definitions/skills/README.md` for how skills attach to profiles.
+Pi uses the single configuration in `~/.pi/agent`. Copilot profiles: `default`, `minimal`, `partner`. See `definitions/skills/README.md` for how skills attach to profiles.
 
 ## Adding / renaming skills
 
-- **Add:** create `definitions/skills/<name>/SKILL.md`, optionally add supporting files, list in profile TOMLs if filtered.
+- **Add:** create `definitions/skills/<name>/SKILL.md`, optionally add supporting files, list in the Pi manifest or Copilot profile TOMLs where needed.
 - **Rename/remove:** rename the directory, update TOML references, run `agents_files_cp.sh --delete` to remove the retired marker-owned target directory. Active managed skill contents always mirror their source with `rsync --delete`; the flag controls only stale-directory cleanup.
 - Details: `definitions/skills/README.md` → "Adding a new skill" / "Renaming or removing a skill".
 
