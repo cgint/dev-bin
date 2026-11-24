@@ -1,0 +1,19 @@
+direction: down
+
+a: "**Repo**" {
+  style.fill: "#e8f0fe"
+  guard: "Allow 2nd host + tests"
+  merge: "merge_pi_history.py + tests"
+  script: "pi_profiles_migrate.sh + test"
+}
+
+b: "**This Mac**" {
+  style.fill: "#e6f4ea"
+  stop: "Stop pi"
+  migrate: "pi_profiles_migrate.sh --apply"
+  deploy: "agents_files_cp.sh --delete"
+  verify: "Verify ✅"
+  stop -> migrate -> deploy -> verify
+}
+
+a -> b

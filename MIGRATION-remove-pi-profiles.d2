@@ -1,32 +1,17 @@
 direction: down
 
-preflight: "1. Pre-flight & Stop Writers" {
-  style.fill: "#FFF4E5"
-  check: "Verify zero pi processes\n(check Herdr sessions & Docker)"
-  pull: "Pull latest dev-bin\n(removes pi-profile)"
-  check -> pull
+stop: "**1. Stop Pi**\npgrep -x pi empty\n(herdr, hc)" {style.fill: "#fff3cd"}
+pull: "**2. git pull**"
+migrate: "**3. pi_profiles_migrate.sh --apply**" {
+  style.fill: "#e6f4ea"
+  merge: "merge all sessions\nremap fork links"
+  swap: "swap sessions\narchive profiles"
+  tidy: "retire 9 skills\nfix ACP map, .zshrc"
+  merge -> swap -> tidy
 }
+deploy: "**4. agents_files_cp.sh --delete**\nAGENTS.md, skills, prompts" {style.fill: "#e8f0fe"}
+verify: "**Verify**\n/resume across former profiles"
+rollback: "~/.pi-rollback-YYYYMMDD" {style.fill: "#f8d7da"}
 
-stage: "2. Stage New ~/.pi/agent (Same Volume)" {
-  style.fill: "#E8F4FD"
-  copy: "Copy minimal/agent\n(excluding sessions/)"
-  creds: "Replace auth.json & models.json\nsymlinks with 0600 regular copies"
-  merge: "Merge all session roots\n+ remap parentSession fork links"
-  copy -> creds -> merge
-}
-
-swap: "3. Atomic Swap & Rollout" {
-  style.fill: "#E8F5E9"
-  mv_old: "Move ~/.pi/{agent,profiles}\n-> ~/.pi-rollback-YYYYMMDD/"
-  mv_new: "Move staged agent\n-> ~/.pi/agent"
-  deploy: "Deploy generated configs\n(pi, claude, codex, gemini, copilot, cursor)"
-  shell: "Clean ~/.zshrc / ~/.bashrc\n+ pull pi-subagent-herdr"
-  mv_old -> mv_new -> deploy -> shell
-}
-
-verify: "4. Verify" {
-  style.fill: "#F3E5F5"
-  checks: "Zero broken symlinks · pi auth & models OK\nNo ~/.pi/profiles · No pi-profile on PATH"
-}
-
-preflight -> stage -> swap -> verify
+stop -> pull -> migrate -> deploy -> verify
+migrate.swap -> rollback: "moved, not deleted" {style.stroke-dash: 3}
