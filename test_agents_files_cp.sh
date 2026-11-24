@@ -24,7 +24,7 @@ AGENTS_FILES_CP_HOSTNAME=pluto HOME="$GUARD_HOME" "$TMPDIR_TEST/bin/agents_files
 guard_rc=$?
 set -e
 [ "$guard_rc" -eq 2 ] || fail "host guard: expected exit 2 on a non-Mac host, got $guard_rc"
-grep -q 'may only run on the main Mac (MacBook-Pro.local)' "$TMPDIR_TEST/guard.err" \
+grep -q 'allowed hosts: MacBook-Pro, christian.gintenreiter-smec' "$TMPDIR_TEST/guard.err" \
   || fail 'host guard: warning does not name the allowed host'
 grep -q 'Detected host: pluto' "$TMPDIR_TEST/guard.err" \
   || fail 'host guard: warning does not name the detected host'
@@ -34,6 +34,21 @@ if grep -q 'Generating artifacts' "$TMPDIR_TEST/guard.out" "$TMPDIR_TEST/guard.e
   fail 'host guard: generator ran before the guard refused'
 fi
 [ ! -e "$GUARD_HOME/.pi" ] || fail 'host guard: created pi config dirs on a refused host'
+
+# Hostnames use an exact full-name match or the original Mac short name.
+for refused in christian pluto; do
+  set +e
+  AGENTS_FILES_CP_HOSTNAME="$refused" HOME="$GUARD_HOME" "$TMPDIR_TEST/bin/agents_files_cp.sh" --agy-only >"$TMPDIR_TEST/host.out" 2>"$TMPDIR_TEST/host.err"
+  rc=$?
+  set -e
+  [ "$rc" -eq 2 ] || fail "host guard accepted $refused (exit $rc)"
+  grep -Fq "Detected host: $refused" "$TMPDIR_TEST/host.err" || fail "host guard did not report $refused"
+done
+mkdir -p "$GUARD_HOME/.gemini/antigravity-cli" "$GUARD_HOME/.gemini/config/skills"
+for admitted in MacBook-Pro MacBook-Pro.local christian.gintenreiter-smec; do
+  AGENTS_FILES_CP_HOSTNAME="$admitted" HOME="$GUARD_HOME" "$TMPDIR_TEST/bin/agents_files_cp.sh" --agy-only >"$TMPDIR_TEST/host.out" 2>"$TMPDIR_TEST/host.err" \
+    || fail "host guard refused $admitted: $(cat "$TMPDIR_TEST/host.err")"
+done
 
 # --- --help stays available on any host (guard sits after arg parsing) ---
 "$TMPDIR_TEST/bin/agents_files_cp.sh" --help >"$TMPDIR_TEST/help.out" 2>&1 \

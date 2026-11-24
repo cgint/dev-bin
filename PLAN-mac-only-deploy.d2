@@ -6,7 +6,7 @@ mac: MacBook-Pro.local (main Mac) {
   remote: agents_files_cp_remote.sh — bundle push
 }
 
-guard: host guard: hostname -s == MacBook-Pro — else warning + exit 2 {
+guard: host guard: hostname in ALLOWED_HOSTS (MacBook-Pro, christian.gintenreiter-smec) — else warning + exit 2 {
   shape: diamond
   style.fill: "#fde68a"
 }

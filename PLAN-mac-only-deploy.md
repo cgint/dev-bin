@@ -4,6 +4,8 @@ as-of: 2026-11-08 · repo: `~/dev/dev-bin` (main)
 
 ## Status
 
+**2026-11-24 update:** local deployment additionally admits `christian.gintenreiter-smec`; the remote deploy guard remains main-Mac-only. Earlier design and evidence below are historical. See `STATUS-second-mac-migration.md`.
+
 **Implemented and verified (2026-11-08):** host guard in both deploy scripts (TDD red→green); pluto refusal verified live (exit 2, warning, no state change, `--help` works); pluto host cleanup done (4 profile sessions consolidated into `~/.pi/agent/sessions/`, `~/.pi/profiles` removed). Remaining: user-gated purge of `~/.pi-profiles.removed-20261108`. No host besides pluto was affected.
 
 Unrelated pre-existing test failures on pluto (not touched by this change): `tests/md2html.test.sh` (pandoc 3.7 rejects `--syntax-highlighting`), `tests/watchdiff.test.sh` (`state/ready` timeout).

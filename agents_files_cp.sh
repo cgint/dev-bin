@@ -6,8 +6,8 @@ usage() {
   cat <<'EOF'
 Usage: agents_files_cp.sh [--delete] [--openspec-config | --agy-only]
 Deploy generated agent definitions to local agent config dirs.
-Main Mac only (MacBook-Pro.local); homelab hosts are served by
-agents_files_cp_remote.sh from the main Mac.
+Local deployment is allowed on MacBook-Pro and christian.gintenreiter-smec;
+homelab hosts are served by agents_files_cp_remote.sh from the main Mac.
   --delete           also remove retired files/dirs from synced targets (skill dirs,
                        Pi prompts, gemini/claude commands); active contents always mirror source
   --openspec-config  also roll out openspec/config.yaml to existing OpenSpec directories
@@ -43,14 +43,19 @@ for arg in "$@"; do
   esac
 done
 
-# Main-Mac-only guard: local deploy runs on the main Mac only. Homelab hosts
-# receive their bundles from the main Mac via agents_files_cp_remote.sh
-# (definitions/hosts/*.toml). AGENTS_FILES_CP_HOSTNAME: test injection for the
-# detected hostname — not a supported bypass.
-ALLOWED_HOST="MacBook-Pro"
-CURRENT_HOST="${AGENTS_FILES_CP_HOSTNAME:-$(hostname -s)}"
-if [ "$CURRENT_HOST" != "$ALLOWED_HOST" ]; then
-  echo "ERROR: agents_files_cp.sh may only run on the main Mac ($ALLOWED_HOST.local)." >&2
+# Only these Macs may deploy locally. Homelab hosts receive bundles remotely.
+# AGENTS_FILES_CP_HOSTNAME is test injection, not a supported bypass.
+ALLOWED_HOSTS=(MacBook-Pro christian.gintenreiter-smec)
+CURRENT_HOST="${AGENTS_FILES_CP_HOSTNAME:-$(hostname)}"
+HOST_ALLOWED=false
+for allowed_host in "${ALLOWED_HOSTS[@]}"; do
+  if [ "$CURRENT_HOST" = "$allowed_host" ] || [ "${CURRENT_HOST%%.*}" = "$allowed_host" ]; then
+    HOST_ALLOWED=true
+    break
+  fi
+done
+if [ "$HOST_ALLOWED" = false ]; then
+  echo "ERROR: local deployment is restricted; allowed hosts: MacBook-Pro, christian.gintenreiter-smec." >&2
   echo "  Detected host: $CURRENT_HOST" >&2
   echo "  Homelab hosts are deployed from the main Mac via: agents_files_cp_remote.sh --host <host> --apply" >&2
   exit 2
