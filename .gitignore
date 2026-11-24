@@ -46,3 +46,10 @@ agent-data-mining/
 twg
 
 t3
+
+# Local tool binaries/symlinks (not part of the repo)
+/browse
+/claude
+/hc
+/herdr-app
+/herdr-core
