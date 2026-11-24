@@ -66,16 +66,18 @@ echo "STAGE=$STAGE"
 # 1. Copy minimal/agent (excluding sessions)
 rsync -a --exclude='/sessions' "$HOME/.pi/profiles/minimal/agent/" "$STAGE/agent/"
 
-# 2. Replace auth.json & models.json symlinks with regular 0600 copies from old ~/.pi/agent
+# 2. Dereference auth.json & models.json symlinks into regular 0600 files
 for f in auth.json models.json; do
-  rm -f "$STAGE/agent/$f"
-  cp -p "$HOME/.pi/agent/$f" "$STAGE/agent/$f"
-  chmod 600 "$STAGE/agent/$f"
-  test ! -L "$STAGE/agent/$f" && test -f "$STAGE/agent/$f"
+  if [ -L "$STAGE/agent/$f" ]; then
+    rm -f "$STAGE/agent/$f"
+    cp -L "$HOME/.pi/profiles/minimal/agent/$f" "$STAGE/agent/$f"
+  fi
+  [ -f "$STAGE/agent/$f" ] && chmod 600 "$STAGE/agent/$f"
+  test ! -L "$STAGE/agent/$f"
 done
 
 # 3. Merge all session roots (default + all profiles) and remap fork parentSession links
-uv run python /tmp/merge_pi_history.py "$HOME/.pi" "$STAGE/agent/sessions" | tee "$STAGE/merge_result.json"
+uv run --no-project python /tmp/merge_pi_history.py "$HOME/.pi" "$STAGE/agent/sessions" | tee "$STAGE/merge_result.json"
 
 # 4. Verify zero broken symlinks in staged agent
 find "$STAGE/agent" -maxdepth 4 -not -path '*/node_modules/*' -type l ! -exec test -e {} \; -ls
@@ -127,9 +129,11 @@ Choose the option that matches this laptop:
   If this laptop has a host TOML under `data-dir-agents/definitions/hosts/`, run `./agents_files_cp_remote.sh --host <laptop> --apply` and `--agy-only --apply` from the main Mac, and sync `~/.claude`, `~/.gemini`, `~/.copilot`, `~/.cursor` if those tools are installed.
 
 ### 6. Update installed `pi-subagent-herdr` & shell dotfiles
-1. **Update installed `pi-subagent-herdr`:**
+1. **Update installed `pi-subagent-herdr` (if installed):**
    ```bash
-   git -C "$HOME/.pi/agent/git/github.com/cgint/pi-subagent-herdr" pull --ff-only origin master
+   if [ -d "$HOME/.pi/agent/git/github.com/cgint/pi-subagent-herdr/.git" ]; then
+     git -C "$HOME/.pi/agent/git/github.com/cgint/pi-subagent-herdr" pull --ff-only origin master
+   fi
    # or: pi update --extensions
    ```
 2. **Clean `~/.zshrc` (and `~/.bashrc` if present):**
@@ -163,7 +167,7 @@ test ! -e "$HOME/.pi/profiles"
 ! command -v pi-profile >/dev/null 2>&1
 test -f "$HOME/.pi/agent/auth.json" && test ! -L "$HOME/.pi/agent/auth.json"
 test -f "$HOME/.pi/agent/models.json" && test ! -L "$HOME/.pi/agent/models.json"
-stat -f '%Sp %N' "$HOME/.pi/agent/auth.json" "$HOME/.pi/agent/models.json"
+ls -l "$HOME/.pi/agent/auth.json" "$HOME/.pi/agent/models.json"
 find "$HOME/.pi/agent" -maxdepth 4 -not -path '*/node_modules/*' -type l ! -exec test -e {} \; -ls
 pi --version
 pi auth check --provider openai-codex
@@ -172,7 +176,12 @@ pi --list-models | head -12
 # Verify zero stale pi-profile hits in deployed tool skills (ignoring the exit-83 poison-pill test)
 for d in ~/.pi/agent/skills ~/.claude/skills ~/.gemini/skills ~/.gemini/config/skills ~/.copilot/skills ~/.copilot/profiles ~/.cursor/skills ~/.codex/dev-bin ~/.pi/agent/git/github.com/cgint/pi-subagent-herdr/skills; do
   [ -d "$d" ] || continue
-  rg -l 'pi-profile' "$d" 2>/dev/null | grep -v 'test_worker_launchers.sh' && exit 1 || echo "CLEAN: $d"
+  hits="$(rg -l 'pi-profile' "$d" 2>/dev/null | grep -v 'test_worker_launchers.sh' || true)"
+  if [ -n "$hits" ]; then
+    echo "STALE pi-profile in $d: $hits" >&2
+    exit 1
+  fi
+  echo "CLEAN: $d"
 done
 
 # Verify dotfiles clean
